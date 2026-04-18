@@ -221,9 +221,10 @@ cd CRA &amp;&amp; npm run analyze:all
 # AB: Run all 6 advanced analysis scripts
 cd ../AB &amp;&amp; npm run analyze:all
 
-# General: Resolve an entity across all datasets
+# General: Run the full entity-resolution pipeline (CRA + FED + AB)
 cd ../general
-node scripts/resolve-entity.js --name "Boyle Street Service" --bn 118814391 --llm</pre>
+npm run entities:dashboard        # browser dashboard at localhost:3800
+npm run entities:dossier          # per-entity dossier explorer at localhost:3801</pre>
       </div></div>
 
       <div class="step"><div class="step-num">5</div><div class="step-content">
@@ -429,64 +430,110 @@ npm run analyze:non-profit   # Lifecycle trends, survival analysis, sector healt
 
     <!-- ═══════ GENERAL ═══════ -->
     <section :class="{active: tab==='general'}">
-      <h2>General &mdash; Shared Tools &amp; Entity Resolution</h2>
-      <p><strong>Schema:</strong> <code>general</code> &nbsp;|&nbsp; Cross-dataset utilities, reference data, and AI-powered matching.</p>
+      <h2>General &mdash; Cross-Dataset Entity Resolution</h2>
+      <p><strong>Schema:</strong> <code>general</code> &nbsp;|&nbsp; Cross-dataset utilities, reference data, and the entity resolution pipeline.</p>
 
-      <h3>Ministry Reference Data</h3>
-      <p>27 current Alberta ministries with short codes, ministers, deputy ministers, and effective dates. Loaded from <code>Ministry.js</code> and updated with the latest cabinet.</p>
-      <pre>cd general &amp;&amp; npm install &amp;&amp; npm run setup</pre>
+      <h3>The Problem</h3>
+      <div class="card highlight">
+        <p>The same legal organization appears under dozens of name variations across CRA, federal, and Alberta sources. A real example: <em>The Boyle Street Service Society</em> appears in the source data with <strong>11 distinct name variants</strong>, <strong>4 different Business Number suffixes</strong> (RR for charity account, RC for corporate tax, RP for payroll), and <strong>256 source records</strong> spread across 6 different tables. Without reconciling all of these to one canonical entity, cross-dataset accountability analysis is impossible.</p>
+        <p>The <code>general</code> module produces one <strong>golden record</strong> per real-world organization, linked to every source row that contributed to it.</p>
+      </div>
 
-      <h3>Entity Resolution Engine</h3>
-      <p>Multi-layer resolution that handles the challenge of matching entities across CRA, FED, and AB where organizations appear under dozens of name variations.</p>
+      <h3>The Three Techniques</h3>
+      <p>The pipeline combines three complementary approaches to entity matching. Each catches cases the others miss.</p>
 
-      <h4>Resolution Layers</h4>
+      <h4>1. Deterministic matching (rules-based)</h4>
+      <p>Walks the six source tables in trust order &mdash; CRA first (every registered charity has a Business Number), then federal grants, then Alberta data &mdash; and applies a cascade of matching rules. BN-based matching handles the gold-standard cases; normalized-name matching strips out operational noise like <em>TRADE NAME OF</em>, <em>O/A</em>, <em>DBA</em>, <em>AKA</em>, <em>FORMERLY</em>, and bilingual English-French pipe separators; trade-name extraction catches the common Canadian pattern where an organization operates under a different trading name.</p>
+
+      <h4>2. Probabilistic matching (Splink)</h4>
+      <p>Integrates <strong><a href="https://moj-analytical-services.github.io/splink/" target="_blank">Splink</a></strong>, the UK Ministry of Justice's open-source Fellegi-Sunter record linkage library. Splink weights multiple features &mdash; name similarity (Jaro-Winkler at thresholds 0.92 and 0.82), city, postal code, entity type, and BN &mdash; and learns the relative weights from the data itself through expectation-maximization training. Runs on a DuckDB backend for speed (~3 minutes on ~1 million records), then writes pairwise match probabilities and connected-component cluster IDs back to Postgres.</p>
+      <p>Splink catches the cases that rules miss: hierarchical organizations where word order differs, truncated federal-registry variants, no-BN cross-dataset pairs that match by address rather than name. It is fully deterministic given a fixed seed &mdash; two runs produce bit-identical predictions.</p>
+
+      <h4>3. LLM verdict and canonical-name authoring</h4>
+      <p>Claude Sonnet 4.6 reviews every candidate pair produced by the deterministic and probabilistic stages. 100 concurrent workers per provider, running against both Anthropic's direct API and Google Vertex AI in parallel (separate rate-limit pools). Each LLM call does two things in one pass:</p>
+      <ul style="margin: 8px 0 16px 24px; line-height: 1.8;">
+        <li><strong>Decide</strong> whether the two entities are the SAME legal organization, RELATED (parent/subsidiary/regional chapter/affiliate), or DIFFERENT.</li>
+        <li><strong>Author the golden record</strong> for SAME verdicts: the canonical legal name (the cleanest, most official-looking form chosen from all observed variants), the entity type (charity / non-profit / company / government / grant-recipient / individual / unknown), and an exhaustive deduplicated list of every meaningful name variant across both entities.</li>
+      </ul>
+      <p>LLM review is resumable across crashes. Workers claim candidates via row-level locks; stuck reviews are reset automatically after 10 minutes. 429 rate-limit errors trigger 30-120 second exponential backoff.</p>
+
+      <h3>The Pipeline: Seven Stages</h3>
       <table>
-        <thead><tr><th>Layer</th><th>Method</th><th>Confidence</th><th>Description</th></tr></thead>
+        <thead><tr><th>#</th><th>Stage</th><th>What it does</th><th>Typical runtime</th></tr></thead>
         <tbody>
-          <tr><td>1</td><td>BN Anchor</td><td>99%</td><td>Match on root 9-digit business number (gold standard)</td></tr>
-          <tr><td>1b</td><td>BN Negative</td><td>reject</td><td>Different BN root = confirmed different entity</td></tr>
-          <tr><td>2</td><td>Exact Normalized</td><td>95%</td><td>Exact match after normalization</td></tr>
-          <tr><td>3</td><td>Core Token Gate</td><td>70-90%</td><td>All discriminating words must be present</td></tr>
-          <tr><td>4</td><td>Trigram + Gate</td><td>60-85%</td><td>pg_trgm similarity filtered by tokens</td></tr>
-          <tr><td>5</td><td>Trade-Name Expansion</td><td>varies</td><td>Parse "TRADE NAME OF" and bilingual "|"</td></tr>
-          <tr><td>6</td><td>AI Review</td><td>varies</td><td>Claude contextual judgment (SAME/RELATED/DIFFERENT)</td></tr>
+          <tr><td>1</td><td>Schema migration</td><td>Creates the entity tables, indexes, and SQL helper functions (normalized-name, BN validator, BN extractor).</td><td>~10s</td></tr>
+          <tr><td>2</td><td>Deterministic resolve</td><td>Seeds entities from CRA (87K charities), then enriches with CRA qualified-donees (name variants from T3010s), federal grants, and Alberta data. Ends with deduplication by shared BN and same normalized-name.</td><td>~20&ndash;25 min</td></tr>
+          <tr><td>3</td><td>Splink probabilistic match</td><td>Exports cleaned source data to Parquet, runs Splink with EM-trained feature weights on a DuckDB backend, writes ~530K pairwise predictions and ~210K cluster-alias rows back to Postgres.</td><td>~10 min</td></tr>
+          <tr><td>4</td><td>Candidate detection</td><td>Five tiers: same normalized name, shared BN root, trade-name extraction, trigram similarity, Splink probabilistic. Fills a staging table of ~1.5M candidate pairs.</td><td>~5&ndash;10 min</td></tr>
+          <tr><td>5</td><td>IDF keyword overlap</td><td>Inverted-index scan weighted by inverse document frequency. Catches hierarchical organizations (e.g., "Diocese of Hamilton") that trigram misses because of word-order variation.</td><td>~3 min</td></tr>
+          <tr><td>6</td><td>LLM verdict + authoring</td><td>100&times;2 concurrent Claude workers decide SAME/RELATED/DIFFERENT and author golden-record fields. Dual-provider throughput (~30 pairs/sec combined).</td><td>~6&ndash;8 hours</td></tr>
+          <tr><td>7</td><td>Final golden-record compile</td><td>For every active entity (LLM-touched or not), compiles ranked aliases with provenance, source summary, addresses, CRA financial rollup, federal grants profile, Alberta profile.</td><td>~2&ndash;5 min</td></tr>
         </tbody>
       </table>
 
-      <h3>Commands</h3>
-      <pre># Deterministic resolution (no API key needed)
-node scripts/resolve-entity.js --name "Boyle Street Service" --bn 118814391
-
-# With AI second pass (Anthropic -> Vertex fallback)
-node scripts/resolve-entity.js --name "Homeward Trust" --bn 834173627 --llm
-
-# Force a specific provider
-node scripts/resolve-entity.js --name "mustard seed" --llm --provider vertex
-
-# Save results to JSON
-node scripts/resolve-entity.js --name "Homeward Trust" --llm --output results.json
-
-# Basic fuzzy search (simpler, trigram-only)
-node scripts/fuzzy-search.js --name "University of Alberta"
-
-# Batch cross-dataset matching
-node scripts/cross-match.js --threshold 0.6 --limit 200
-
-# Standalone AI review from saved results
-node scripts/llm-review.js --input results.json --output reviewed.json</pre>
-
-      <h3>AI Provider Configuration</h3>
+      <h3>Why CRA Qualified Donees Matter</h3>
       <div class="card">
-        <p>The LLM review supports <strong>two providers</strong> with automatic fallback. Set credentials in <code>.env.public</code> or <code>.env</code>:</p>
-        <table>
-          <thead><tr><th>Provider</th><th>Env Variable</th><th>Notes</th></tr></thead>
-          <tbody>
-            <tr><td>Anthropic Direct</td><td><code>ANTHROPIC_API_KEY</code></td><td>Tried first</td></tr>
-            <tr><td>Vertex AI</td><td><code>VERTEX_SERVICE_ACCOUNT_JSON</code> + <code>VERTEX_PROJECT_ID</code></td><td>Fallback</td></tr>
-          </tbody>
-        </table>
-        <p>Override with <code>--provider vertex</code> or <code>--provider anthropic</code>. To add your own LLM, implement <code>callYourProvider(prompt, opts)</code> in <code>lib/llm-review.js</code>.</p>
+        <p>Every registered Canadian charity declares its gifts to other charities on its annual T3010 filing, <strong>writing out the recipient's name as it knows it</strong>. This produces an under-appreciated gold mine: the same organization appears under many different names written by many different donors. Boyle Street Service Society alone picks up 7 additional name variants from T3010s &mdash; <em>"STREETWORKS - BOYLE STREET SERVICE SOCIETY"</em>, <em>"1743 THE BOYLE STREET SERVICE SOCIETY"</em>, <em>"BOYLE STREET SERVICE"</em>, etc. &mdash; that don't appear in any other source. The pipeline pulls these in explicitly as a dedicated sub-phase.</p>
       </div>
+
+      <h3>Libraries &amp; Tools</h3>
+      <table>
+        <thead><tr><th>Tool</th><th>Role</th><th>Why</th></tr></thead>
+        <tbody>
+          <tr><td>PostgreSQL</td><td>Primary data store and compute engine</td><td>Single source of truth; every stage reads and writes SQL. GIN indexes enable millisecond fuzzy-name joins at 800K-entity scale.</td></tr>
+          <tr><td><code>pg_trgm</code></td><td>Character-trigram similarity</td><td>Postgres extension; catches typos and character-level drift in names.</td></tr>
+          <tr><td>Splink (MoJ, MIT license)</td><td>Probabilistic matching</td><td>Academic-standard Fellegi-Sunter implementation; feature weights learned from data via EM. Battle-tested at government scale.</td></tr>
+          <tr><td>DuckDB</td><td>Splink's in-memory compute backend</td><td>Fastest option for single-machine Splink. Handles ~1M-record pairwise comparison universe in a few minutes.</td></tr>
+          <tr><td>Claude Sonnet 4.6 (Anthropic + Vertex AI)</td><td>Verdict + canonical-name authoring</td><td>Handles the long tail &mdash; cross-system registration numbers, hierarchical organization semantics, bilingual variants &mdash; that rules can't reliably resolve.</td></tr>
+          <tr><td>Node.js + Express</td><td>Pipeline orchestration + dashboard</td><td>Clean async-await for 100-way concurrent LLM calls; single-file dashboard for end-to-end observability.</td></tr>
+          <tr><td>cleanco (Python)</td><td>Legal-suffix stripping</td><td>Strips "Inc", "Ltd", "Soci&eacute;t&eacute;", "GmbH" etc. so Splink sees stems rather than boilerplate.</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Dashboard</h3>
+      <p>A browser dashboard at <code>http://localhost:3800</code> provides control and observability. Click through the pipeline stages; each button spawns the corresponding script server-side and streams its output inline. The dashboard polls Postgres every 2 seconds to show:</p>
+      <ul style="margin: 8px 0 16px 24px; line-height: 1.7;">
+        <li>A pipeline-stage strip showing the current state (inferred from the database &mdash; no manual coordination needed)</li>
+        <li>Entity counts, source-link counts per table, Splink prediction stats with band breakdown, golden-record count</li>
+        <li>LLM progress with reviewed-per-second throughput and ETA; per-provider split when both Anthropic and Vertex are running in parallel</li>
+        <li>Six <strong>test-entity sanity cards</strong> (Boyle Street, Homeward Trust, St&nbsp;Andrew's Presbyterian &times;2, Bissell Centre, University of Alberta) that update every poll; regressions are visible instantly</li>
+        <li>Recent-merges feed showing absorbed &rarr; survivor pairs as they happen</li>
+        <li>Orphan recovery: phase PIDs persist across dashboard restarts; a "Kill all pipeline processes" button cleans up any stuck jobs</li>
+      </ul>
+
+      <h3>Outcomes</h3>
+      <div class="stat-grid">
+        <div class="stat"><div class="number">~800K</div><div class="label">active canonical entities</div></div>
+        <div class="stat"><div class="number">~3.3M</div><div class="label">source links across 6 tables</div></div>
+        <div class="stat"><div class="number">~40K</div><div class="label">multi-dataset entities</div></div>
+        <div class="stat"><div class="number">~50K</div><div class="label">LLM-confirmed SAME merges</div></div>
+        <div class="stat"><div class="number">~45K</div><div class="label">RELATED cross-links</div></div>
+        <div class="stat"><div class="number">98%</div><div class="label">coverage vs Splink reference sample</div></div>
+      </div>
+
+      <h3>Design Principles</h3>
+      <ul style="margin: 8px 0 16px 24px; line-height: 1.8;">
+        <li><strong>BN is the primary identifier.</strong> Every stage treats the 9-digit Canadian Business Number root as authoritative. Where it's available it overrides name evidence; where it's missing we cascade to weaker signals.</li>
+        <li><strong>Every stage is idempotent and resumable.</strong> Unique constraints, <em>ON CONFLICT DO NOTHING</em> on inserts, and row-level locks on LLM claims mean re-running any phase is safe and continues from where it left off.</li>
+        <li><strong>Observable by default.</strong> The dashboard polls the database directly, not a separate event stream. What you see is the actual state of the pipeline, always.</li>
+        <li><strong>No destructive operations without explicit consent.</strong> The reset script requires <code>--yes</code> or a dashboard confirmation dialog.</li>
+      </ul>
+
+      <h3>Commands</h3>
+      <pre>cd general
+npm install
+
+# One-time setup
+npm run entities:splink:install       # Splink Python dependencies
+npm run setup                         # base schema + Alberta ministries
+
+# Primary operator interface: the dashboard
+npm run entities:dashboard            # http://localhost:3800 (click through stages)
+
+# Headless end-to-end (destructive rebuild)
+npm run pipeline:rebuild              # reset + all stages in order</pre>
+
+      <p>Full documentation: <a href="general/README.md">general/README.md</a></p>
     </section>
 
     <!-- ═══════ REPORTS ═══════ -->

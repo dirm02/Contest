@@ -1,0 +1,1392 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Entity Dossier</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #f6f8fa; --surface: #ffffff; --surface-2: #f0f3f6;
+    --border: #d0d7de; --text: #1f2328; --muted: #57606a; --accent: #0969da;
+    --accent-2: #8250df; --ok: #1a7f37; --warn: #bf8700; --err: #cf222e;
+    --shadow: 0 1px 2px rgba(0,0,0,0.04);
+  }
+  html.dark {
+    --bg: #0d1117; --surface: #161b22; --surface-2: #1c2128;
+    --border: #30363d; --text: #e6edf3; --muted: #8b949e; --accent: #58a6ff;
+    --accent-2: #bc8cff; --ok: #3fb950; --warn: #d29922; --err: #f85149;
+    --shadow: 0 1px 2px rgba(0,0,0,0.35);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+         background: var(--bg); color: var(--text); min-height: 100vh; }
+  a { color: var(--accent); }
+  .app { max-width: 1280px; margin: 0 auto; padding: 20px; }
+
+  /* Header */
+  header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+  header h1 { font-size: 22px; margin: 0; color: var(--text); }
+  .theme-btn { padding: 8px 14px; border: 1px solid var(--border); background: var(--surface);
+               color: var(--text); border-radius: 6px; cursor: pointer; font-size: 13px; }
+  .theme-btn:hover { background: var(--surface-2); }
+
+  /* Search */
+  .search-box { display: flex; gap: 10px; margin-bottom: 16px; }
+  .search-box input { flex: 1; padding: 10px 14px; border: 1px solid var(--border);
+                       background: var(--surface); color: var(--text); border-radius: 8px;
+                       font-size: 15px; }
+  .search-box input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+
+  /* Cards */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+          padding: 16px 18px; margin-bottom: 14px; box-shadow: var(--shadow); }
+  .card h2 { margin: 0 0 12px 0; font-size: 14px; font-weight: 600;
+             text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+  .card h3 { margin: 12px 0 8px 0; font-size: 15px; color: var(--text); }
+
+  /* Results list */
+  .results { display: flex; flex-direction: column; gap: 6px; }
+  .result { padding: 10px 14px; border: 1px solid var(--border); border-radius: 6px;
+            cursor: pointer; display: flex; align-items: center;
+            background: var(--surface); transition: background 0.1s; gap: 0; }
+  .result:hover { background: var(--surface-2); border-color: var(--accent); }
+  .result.selected { background: #0969da15; border-color: var(--accent); }
+  .result .name { font-weight: 600; color: var(--text); }
+  .result .meta { font-size: 11px; color: var(--muted); margin-top: 2px; font-family: ui-monospace, monospace; }
+  .result .stats { font-size: 12px; color: var(--muted); text-align: right; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--border); margin-bottom: 14px;
+          overflow-x: auto; }
+  .tab { padding: 10px 16px; cursor: pointer; border: none; background: none;
+         color: var(--muted); border-bottom: 2px solid transparent; font-size: 13px;
+         font-weight: 500; white-space: nowrap; }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+
+  /* Key-value grid */
+  .kv { display: grid; grid-template-columns: auto 1fr; gap: 6px 20px; font-size: 13px; }
+  .kv .k { color: var(--muted); }
+  .kv .v { font-weight: 500; font-variant-numeric: tabular-nums; }
+
+  /* Grid cards */
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+  .stat { background: var(--surface); border: 1px solid var(--border); padding: 14px 16px;
+          border-radius: 8px; }
+  .stat .num { font-size: 26px; font-weight: 700; color: var(--text); line-height: 1.1; }
+  .stat .lab { font-size: 11px; color: var(--muted); margin-top: 4px; text-transform: uppercase;
+                letter-spacing: 0.05em; }
+
+  /* Tables */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { padding: 8px 10px; border-bottom: 1px solid var(--border); text-align: left; }
+  th { font-size: 11px; text-transform: uppercase; color: var(--muted); font-weight: 600;
+       letter-spacing: 0.05em; background: var(--surface-2); }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  tr:hover td { background: var(--surface-2); }
+
+  /* Badges */
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px;
+           background: var(--surface-2); color: var(--text); margin-right: 4px; font-weight: 500; }
+  .badge.cra { background: #0969da20; color: var(--accent); border: 1px solid #0969da40; }
+  .badge.fed { background: #8250df20; color: var(--accent-2); border: 1px solid #8250df40; }
+  .badge.ab { background: #1a7f3720; color: var(--ok); border: 1px solid #1a7f3740; }
+  .badge.merged { background: #bf870020; color: var(--warn); border: 1px solid #bf870040; }
+
+  /* Chart wrapper */
+  .chart-wrap { height: 260px; position: relative; margin-top: 8px; }
+
+  /* Spinner */
+  .spin { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border);
+          border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite;
+          vertical-align: middle; margin-right: 6px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .mini { color: var(--muted); font-size: 12px; }
+  .ok { color: var(--ok); font-weight: 600; }
+  .warn { color: var(--warn); }
+  .err { color: var(--err); }
+
+  /* Aliases */
+  .alias { padding: 6px 10px; font-size: 12px; font-family: ui-monospace, monospace;
+           background: var(--surface-2); border-radius: 4px; border: 1px solid var(--border); }
+  .alias-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+
+  /* Related merge UI */
+  .related-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+                 border: 1px solid var(--border); border-radius: 6px; margin-bottom: 6px; }
+  .related-row.merged { border-color: var(--accent); background: #0969da10; }
+  .btn { padding: 6px 12px; border: 1px solid var(--border); background: var(--surface);
+         color: var(--text); border-radius: 5px; cursor: pointer; font-size: 12px; font-weight: 600; }
+  .btn:hover { background: var(--surface-2); }
+  .btn.primary { background: var(--accent); color: white; border-color: var(--accent); }
+  .btn.primary:hover { filter: brightness(1.1); }
+  .btn.warn { background: var(--warn); color: white; border-color: var(--warn); }
+
+  /* Merge banner */
+  .merge-banner { padding: 10px 14px; background: #bf870020; color: var(--warn);
+                   border: 1px solid var(--warn); border-radius: 6px; margin-bottom: 12px; font-size: 13px; }
+
+  /* Director row */
+  .director-row { padding: 4px 0; font-size: 13px; }
+</style>
+</head>
+<body>
+<div id="app" class="app">
+  <header>
+    <h1>Entity Dossier</h1>
+    <button class="theme-btn" @click="toggleTheme">{{ dark ? 'Light' : 'Dark' }} mode</button>
+  </header>
+
+  <!-- Search -->
+  <div class="search-box">
+    <input v-model="q" @keydown.enter="doSearch" placeholder="Search by name or Business Number. Press Enter or click Search.">
+    <button class="btn primary" @click="doSearch" :disabled="searching">
+      <span v-if="searching" class="spin"></span>{{ searching ? 'Searching...' : 'Search' }}
+    </button>
+    <button class="btn" v-if="results.length && !entity" @click="results = []; selected.clear()">Clear</button>
+  </div>
+
+  <!-- Results -->
+  <div v-if="results.length && !entity" class="card">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px">
+      <h2 style="margin:0">Results ({{ results.length }})</h2>
+      <div style="display:flex; gap:8px">
+        <span class="mini" v-if="selected.size">{{ selected.size }} selected</span>
+        <button class="btn" @click="openSingleFromSelection"
+                :disabled="selected.size !== 1">Open dossier</button>
+        <button class="btn primary" @click="mergeSelection"
+                :disabled="selected.size < 2">
+          Merge {{ selected.size > 1 ? selected.size + ' entities' : 'selected' }} →
+          temporary combined dossier
+        </button>
+      </div>
+    </div>
+    <div class="mini" style="margin-bottom:8px">
+      Tick the checkboxes to select multiple entities, then click Merge to pull them
+      into one combined in-browser dossier (the largest entity is chosen as the host;
+      others are added as virtual merges). Nothing is written to the database.
+    </div>
+    <div class="results">
+      <div v-for="r in results" :key="r.id"
+           class="result" :class="{selected: selected.has(r.id)}"
+           @click="toggleSelect(r.id, $event)">
+        <input type="checkbox" :checked="selected.has(r.id)"
+               @click.stop="toggleSelect(r.id)"
+               style="margin-right:12px; transform: scale(1.2); cursor:pointer">
+        <div style="flex:1; min-width:0">
+          <div class="name">{{ r.canonical_name }}</div>
+          <div class="meta">BN {{ r.bn_root || 'none' }} · entity #{{ r.id }}</div>
+        </div>
+        <div class="stats">
+          <div><b>{{ fmt(r.link_count) }}</b> links · <b>{{ fmt(r.alias_count) }}</b> aliases</div>
+          <div>
+            <span v-for="ds in r.dataset_sources" :key="ds" class="badge" :class="ds.replace('_','')">{{ ds }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Entity dossier -->
+  <div v-if="entity">
+    <!-- Merged banner -->
+    <div v-if="mergedInto.length" class="merge-banner">
+      <b>Browser-only merge:</b> {{ mergedInto.length }} related entity(ies) are virtually merged in.
+      Totals and graphs below include their data.
+      <button class="btn" style="margin-left:10px" @click="mergedInto = []">Un-merge all</button>
+    </div>
+
+    <!-- Header card -->
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px">
+        <div>
+          <div style="font-size:22px; font-weight:700">{{ golden?.canonical_name || entity.canonical_name }}</div>
+          <div class="mini">entity #{{ entity.id }} · BN {{ entity.bn_root || 'none' }}
+            <span v-if="entity.bn_variants?.length">· variants: {{ entity.bn_variants.join(', ') }}</span>
+          </div>
+          <div style="margin-top:6px">
+            <span v-for="ds in entity.dataset_sources" :key="ds" class="badge" :class="ds.replace('_','')">{{ ds }}</span>
+            <span class="badge">{{ entity.entity_type || golden?.entity_type || 'unknown' }}</span>
+          </div>
+        </div>
+        <button class="btn" @click="entity = null; goldenYears = null; gifts = null; related = null">
+          ← Back to search
+        </button>
+      </div>
+    </div>
+
+    <!-- Top-line stats -->
+    <div class="grid" style="margin-bottom:14px">
+      <div class="stat"><div class="num">{{ fmt(totalLinks) }}</div><div class="lab">Total source links</div></div>
+      <div class="stat"><div class="num">{{ fmt(totalAliases) }}</div><div class="lab">Name variants</div></div>
+      <div class="stat"><div class="num">${{ fmtMoney(grandTotal) }}</div><div class="lab">All-sources funding</div></div>
+      <div class="stat"><div class="num">{{ fmt(mergeHistory.length) }}</div><div class="lab">Merged-in entities</div></div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab" :class="{active: tab==='overview'}" @click="tab='overview'">Overview</button>
+      <button class="tab" :class="{active: tab==='cra'}" @click="tab='cra'" v-if="entity.bn_root">CRA T3010 (by year)</button>
+      <button class="tab" :class="{active: tab==='gifts'}" @click="tab='gifts'" v-if="entity.bn_root">Qualified donees</button>
+      <button class="tab" :class="{active: tab==='sources'}" @click="tab='sources'">Source links</button>
+      <button class="tab" :class="{active: tab==='related'}" @click="tab='related'">Related / maybe-merge</button>
+      <button class="tab" :class="{active: tab==='accountability'}" @click="tab='accountability'" v-if="entity.bn_root">Accountability</button>
+      <button class="tab" :class="{active: tab==='international'}" @click="tab='international'" v-if="entity.bn_root">International</button>
+      <button class="tab" :class="{active: tab==='merges'}" @click="tab='merges'">Merge history</button>
+      <button class="tab" :class="{active: tab==='raw'}" @click="tab='raw'">Raw JSON</button>
+    </div>
+
+    <!-- Overview -->
+    <div v-if="tab==='overview'">
+      <div class="card">
+        <h2>Identity</h2>
+        <div class="kv">
+          <div class="k">Canonical name</div><div class="v">{{ golden?.canonical_name || entity.canonical_name }}</div>
+          <div class="k">Entity type</div><div class="v">{{ entity.entity_type || golden?.entity_type || 'unknown' }}</div>
+          <div class="k">BN root</div><div class="v">{{ entity.bn_root || '—' }}</div>
+          <div class="k">BN variants</div><div class="v">{{ (entity.bn_variants || []).join(', ') || '—' }}</div>
+          <div class="k">Datasets</div><div class="v">{{ (entity.dataset_sources || []).join(', ') }}</div>
+          <div class="k">Status</div><div class="v">{{ entity.status }}</div>
+          <div class="k">Confidence</div><div class="v">{{ entity.confidence }}</div>
+        </div>
+      </div>
+
+      <div class="card" v-if="allAliases.length">
+        <h2>All name variants ({{ allAliases.length }})</h2>
+        <div style="display:flex; flex-wrap:wrap; gap:6px">
+          <div v-for="a in allAliases" :key="a" class="alias">{{ a }}</div>
+        </div>
+      </div>
+
+      <div class="card" v-if="golden?.addresses?.length">
+        <h2>Addresses</h2>
+        <table>
+          <thead><tr><th>Source</th><th>City</th><th>Province</th><th>Postal</th></tr></thead>
+          <tbody>
+            <tr v-for="(a, i) in golden.addresses" :key="i">
+              <td>{{ a.source || '?' }}</td><td>{{ a.city }}</td><td>{{ a.province }}</td><td>{{ a.postal_code }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card" v-if="golden?.llm_authored">
+        <h2>LLM-authored metadata</h2>
+        <div class="kv">
+          <div class="k">Verdict</div><div class="v">{{ golden.llm_authored.verdict }}</div>
+          <div class="k">Confidence</div><div class="v">{{ golden.llm_authored.confidence }}</div>
+          <div class="k">Reasoning</div><div class="v" style="white-space:pre-wrap">{{ golden.llm_authored.reasoning }}</div>
+        </div>
+      </div>
+
+      <div class="card" v-if="externalFundingHasData">
+        <h2>External funding — FED + AB, by fiscal year</h2>
+        <div class="mini" style="margin-bottom:6px">
+          Federal grants & contributions (agreement value), Alberta grants,
+          Alberta contracts, Alberta sole-source. These are source-level line
+          items — NOT T3010 Section D revenue (which aggregates them into
+          CRA's own categories and is shown separately below).
+          <br>
+          <b>X-axis:</b> Canadian government fiscal year (April 1 – March 31)
+          as <code>YYYY-YYYY</code>. Alberta's <code>display_fiscal_year</code>
+          is used as-is with spaces stripped (<code>"2023 - 2024"</code> →
+          <code>"2023-2024"</code>). FED records <code>agreement_start_date</code>
+          — a grant starting 2023-10-01 falls in <code>"2023-2024"</code>; a
+          grant starting 2024-02-15 also falls in <code>"2023-2024"</code>
+          (the fiscal year that ends March 31 2024).
+        </div>
+        <div class="chart-wrap"><canvas ref="chartExternalCanvas"></canvas></div>
+        <div class="mini" style="margin-top:10px">Grand totals across years:
+          <span class="badge" style="background:#8250df20; color:var(--accent-2)">FED ${{ fmtMoney(fundingTotals.fed_grants) }}</span>
+          <span class="badge" style="background:#1a7f3720; color:var(--ok)">AB grants ${{ fmtMoney(fundingTotals.ab_grants) }}</span>
+          <span class="badge" style="background:#bf870020; color:var(--warn)">AB contracts ${{ fmtMoney(fundingTotals.ab_contracts) }}</span>
+          <span class="badge" style="background:#cf222e20; color:var(--err)">AB sole-source ${{ fmtMoney(fundingTotals.ab_sole_source) }}</span>
+          <span class="badge">Total external: ${{ fmtMoney(fundingTotals.fed_grants + fundingTotals.ab_grants + fundingTotals.ab_contracts + fundingTotals.ab_sole_source) }}</span>
+        </div>
+      </div>
+
+      <div class="card" v-if="craFundingHasData">
+        <h2>CRA T3010 self-reported — revenue vs expenditures</h2>
+        <div class="mini" style="margin-bottom:6px">
+          What the organization itself reported on its annual T3010 filing.
+          These totals already include government funding (reported as
+          federal/provincial/municipal in Section D), so this chart deliberately
+          does NOT stack with the external funding above — it would double-count.
+          <br>
+          <b>X-axis:</b> calendar year of the charity's fiscal-period-end
+          (<code>fpe</code>). Each CRA-registered charity sets its own fpe
+          date (common choices are March 31 and December 31), so the exact
+          12-month window behind a given label may differ from the external
+          chart's fiscal year.
+        </div>
+        <div class="chart-wrap"><canvas ref="chartCraCanvas"></canvas></div>
+        <div class="mini" style="margin-top:10px">Grand totals:
+          <span class="badge" style="background:#0969da20; color:var(--accent)">Revenue ${{ fmtMoney(fundingTotals.cra_revenue) }}</span>
+          <span class="badge" style="background:#6e768120; color:var(--muted)">Expenditures ${{ fmtMoney(fundingTotals.cra_expenditures) }}</span>
+          <span class="badge" style="background:#1a7f3720; color:var(--ok)">Gifts received ${{ fmtMoney(fundingTotals.cra_gifts_in) }}</span>
+          <span class="badge" style="background:#bf870020; color:var(--warn)">Gifts given ${{ fmtMoney(fundingTotals.cra_gifts_out) }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Accountability -->
+    <div v-if="tab==='accountability'">
+      <div v-if="loadingAcc" class="card"><span class="spin"></span> loading accountability indicators...</div>
+      <template v-else-if="accountability">
+        <div v-if="accountability.hub" class="card">
+          <h2>Hub status</h2>
+          <div class="merge-banner" style="background:#bf870020; color:var(--warn); border-color:var(--warn)">
+            This entity is classified as a <b>{{ accountability.hub.hub_type }}</b> in the
+            circular-gifting network analysis &mdash; SCC #{{ accountability.hub.scc_id }},
+            total degree {{ accountability.hub.total_degree }}
+            (in: {{ accountability.hub.in_degree }}, out: {{ accountability.hub.out_degree }}),
+            total inflow ${{ fmtMoney(accountability.hub.total_inflow) }},
+            total outflow ${{ fmtMoney(accountability.hub.total_outflow) }}.
+          </div>
+        </div>
+
+        <div v-if="accountability.loop_universe?.total_loops > 0" class="card">
+          <h2>Circular gifting loops</h2>
+          <div class="grid">
+            <div class="stat"><div class="num">{{ accountability.loop_universe.total_loops }}</div><div class="lab">Total loops</div></div>
+            <div class="stat"><div class="num">{{ accountability.loop_universe.loops_2hop }}</div><div class="lab">2-hop</div></div>
+            <div class="stat"><div class="num">{{ accountability.loop_universe.loops_3hop }}</div><div class="lab">3-hop</div></div>
+            <div class="stat"><div class="num">{{ accountability.loop_universe.loops_4hop }}</div><div class="lab">4-hop</div></div>
+            <div class="stat"><div class="num">{{ accountability.loop_universe.loops_5hop }}</div><div class="lab">5-hop</div></div>
+            <div class="stat"><div class="num">{{ accountability.loop_universe.loops_6hop }}</div><div class="lab">6-hop</div></div>
+          </div>
+        </div>
+
+        <div v-if="accountability.overhead?.length" class="card">
+          <h2>Overhead ratio by year</h2>
+          <div class="mini" style="margin-bottom:6px">Strict overhead = admin + fundraising. Broad includes support. CRA generally scrutinizes charities above ~35%.</div>
+          <table>
+            <thead><tr><th>Year</th><th class="num">Revenue</th><th class="num">Programs</th>
+              <th class="num">Admin</th><th class="num">Fundraising</th>
+              <th class="num">Strict %</th><th class="num">Broad %</th></tr></thead>
+            <tbody>
+              <tr v-for="o in accountability.overhead" :key="o.fiscal_year">
+                <td>{{ o.fiscal_year }}</td>
+                <td class="num">${{ fmtMoney(o.revenue) }}</td>
+                <td class="num">${{ fmtMoney(o.programs) }}</td>
+                <td class="num">${{ fmtMoney(o.administration) }}</td>
+                <td class="num">${{ fmtMoney(o.fundraising) }}</td>
+                <td class="num" :class="{err: o.strict_overhead_pct > 35, warn: o.strict_overhead_pct > 20}">
+                  {{ o.strict_overhead_pct ? Number(o.strict_overhead_pct).toFixed(1) : '—' }}</td>
+                <td class="num" :class="{err: o.broad_overhead_pct > 50, warn: o.broad_overhead_pct > 35}">
+                  {{ o.broad_overhead_pct ? Number(o.broad_overhead_pct).toFixed(1) : '—' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div v-if="accountability.govt_funding?.length" class="card">
+          <h2>Government funding breakdown</h2>
+          <div class="mini" style="margin-bottom:6px">Per-level share of revenue reported on T3010 Section D.</div>
+          <table>
+            <thead><tr><th>Year</th><th class="num">Federal</th><th class="num">Provincial</th>
+              <th class="num">Municipal</th><th class="num">Total government</th>
+              <th class="num">Revenue</th><th class="num">Govt share</th></tr></thead>
+            <tbody>
+              <tr v-for="g in accountability.govt_funding" :key="g.fiscal_year">
+                <td>{{ g.fiscal_year }}</td>
+                <td class="num">${{ fmtMoney(g.federal) }}</td>
+                <td class="num">${{ fmtMoney(g.provincial) }}</td>
+                <td class="num">${{ fmtMoney(g.municipal) }}</td>
+                <td class="num"><b>${{ fmtMoney(g.total_govt) }}</b></td>
+                <td class="num">${{ fmtMoney(g.revenue) }}</td>
+                <td class="num">{{ g.govt_share_of_rev ? Number(g.govt_share_of_rev).toFixed(1) + '%' : '—' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div v-if="accountability.name_history?.length > 1" class="card">
+          <h2>Name history</h2>
+          <table>
+            <thead><tr><th>Legal name</th><th>Account name</th><th>First year</th><th>Last year</th></tr></thead>
+            <tbody>
+              <tr v-for="(n, i) in accountability.name_history" :key="i">
+                <td>{{ n.legal_name }}</td>
+                <td class="mini">{{ n.account_name }}</td>
+                <td>{{ n.first_year }}</td>
+                <td>{{ n.last_year }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card" v-if="accountability.violations">
+          <h2>T3010 data-quality flags</h2>
+          <div class="mini" style="margin-bottom:6px">
+            Sanity: {{ accountability.violations.sanity.length }} ·
+            Arithmetic: {{ accountability.violations.arithmetic.length }} ·
+            Impossibility: {{ accountability.violations.impossibility.length }}
+          </div>
+          <div v-for="family in ['sanity','arithmetic','impossibility']" :key="family" v-show="accountability.violations[family].length">
+            <h3 style="text-transform:capitalize">{{ family }}</h3>
+            <table>
+              <thead><tr><th>Year</th><th>Rule</th><th>Details</th><th class="num">Severity</th></tr></thead>
+              <tbody>
+                <tr v-for="(v, i) in accountability.violations[family].slice(0, 20)" :key="i">
+                  <td>{{ v.fiscal_year }}</td>
+                  <td class="mini">{{ v.rule_code }}{{ v.sub_rule ? ' · ' + v.sub_rule : '' }}</td>
+                  <td class="mini">{{ (v.details || '').slice(0, 160) }}</td>
+                  <td class="num" :class="{err: v.severity > 3, warn: v.severity > 1}">{{ v.severity }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div v-if="!accountability.overhead?.length && !accountability.govt_funding?.length && !accountability.hub && !accountability.loop_universe" class="card mini">
+          No accountability indicators found for BN {{ entity.bn_root }}.
+        </div>
+      </template>
+    </div>
+
+    <!-- International -->
+    <div v-if="tab==='international'">
+      <div v-if="loadingIntl" class="card"><span class="spin"></span> loading international activities...</div>
+      <template v-else-if="international">
+        <div v-if="international.countries?.length" class="card">
+          <h2>Countries of operation ({{ new Set(international.countries.map(c => c.country)).size }} distinct)</h2>
+          <table>
+            <thead><tr><th>Year</th><th>Country</th><th class="num">Activities</th></tr></thead>
+            <tbody>
+              <tr v-for="(c, i) in international.countries.slice(0, 50)" :key="i">
+                <td>{{ c.yr }}</td><td>{{ c.country }}</td><td class="num">{{ c.c }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div v-if="international.resources_sent?.length" class="card">
+          <h2>Resources sent outside Canada</h2>
+          <table>
+            <thead><tr><th>Year</th><th>Recipient</th><th>Country</th><th class="num">Amount</th></tr></thead>
+            <tbody>
+              <tr v-for="(r, i) in international.resources_sent" :key="i">
+                <td>{{ r.yr }}</td><td>{{ r.individual_org_name }}</td>
+                <td>{{ r.country }}</td><td class="num">${{ fmtMoney(r.amount) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div v-if="international.exported_goods?.length" class="card">
+          <h2>Exported goods</h2>
+          <table>
+            <thead><tr><th>Year</th><th>Item</th><th>Destination</th><th>Country</th><th class="num">Value</th></tr></thead>
+            <tbody>
+              <tr v-for="(g, i) in international.exported_goods" :key="i">
+                <td>{{ g.yr }}</td><td>{{ g.item_name }}</td>
+                <td>{{ g.destination }}</td><td>{{ g.country }}</td>
+                <td class="num">${{ fmtMoney(g.item_value) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div v-if="international.non_qualified_donees?.length" class="card">
+          <h2>Non-qualified donees (gifts outside Canada's registered-charity system)</h2>
+          <table>
+            <thead><tr><th>Year</th><th>Recipient</th><th>Purpose</th>
+              <th class="num">Cash</th><th class="num">Non-cash</th></tr></thead>
+            <tbody>
+              <tr v-for="(n, i) in international.non_qualified_donees" :key="i">
+                <td>{{ n.yr }}</td><td>{{ n.recipient_name }}</td>
+                <td class="mini">{{ (n.purpose || '').slice(0, 80) }}</td>
+                <td class="num">${{ fmtMoney(n.cash_amount) }}</td>
+                <td class="num">${{ fmtMoney(n.non_cash_amount) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div v-if="!international.countries?.length && !international.resources_sent?.length && !international.exported_goods?.length && !international.non_qualified_donees?.length" class="card mini">
+          No international activities recorded for BN {{ entity.bn_root }}.
+        </div>
+      </template>
+    </div>
+
+    <!-- CRA by year -->
+    <div v-if="tab==='cra'">
+      <div v-if="loadingCra" class="card"><span class="spin"></span> loading CRA T3010 data...</div>
+      <div v-else-if="!goldenYears || !goldenYears.years.length" class="card mini">
+        No CRA T3010 data found for BN {{ entity.bn_root }}.
+      </div>
+      <template v-else>
+        <div v-for="y in goldenYears.years" :key="y.year" class="card">
+          <h2>Fiscal year {{ y.year }}</h2>
+          <div class="grid" v-if="y.financials">
+            <div class="stat"><div class="num">${{ fmtMoney(y.financials.total_revenue) }}</div><div class="lab">Total revenue</div></div>
+            <div class="stat"><div class="num">${{ fmtMoney(y.financials.total_expenditures) }}</div><div class="lab">Total expenditures</div></div>
+            <div class="stat"><div class="num">${{ fmtMoney(y.financials.program_spending) }}</div><div class="lab">Program spending</div></div>
+            <div class="stat"><div class="num">${{ fmtMoney(y.financials.gifts_to_donees) }}</div><div class="lab">Gifts to other charities</div></div>
+            <div class="stat"><div class="num">${{ fmtMoney(y.financials.assets) }}</div><div class="lab">Total assets</div></div>
+            <div class="stat"><div class="num">${{ fmtMoney(y.financials.liabilities) }}</div><div class="lab">Total liabilities</div></div>
+          </div>
+
+          <h3 v-if="y.financials">Revenue breakdown</h3>
+          <div class="kv" v-if="y.financials">
+            <div class="k">Receipted donations</div><div class="v">${{ fmtMoney(y.financials.revenue_receipted) }}</div>
+            <div class="k">Non-receipted donations</div><div class="v">${{ fmtMoney(y.financials.revenue_non_receipted) }}</div>
+            <div class="k">Gifts from other charities</div><div class="v">${{ fmtMoney(y.financials.revenue_other_charities) }}</div>
+            <div class="k">Government</div><div class="v">${{ fmtMoney(y.financials.revenue_government) }}</div>
+            <div class="k">Investment income</div><div class="v">${{ fmtMoney(y.financials.revenue_investment) }}</div>
+            <div class="k">Other</div><div class="v">${{ fmtMoney(y.financials.revenue_other) }}</div>
+          </div>
+
+          <h3 v-if="y.identification">Registration</h3>
+          <div class="kv" v-if="y.identification">
+            <div class="k">Designation</div><div class="v">{{ designation(y.identification.designation) }}</div>
+            <div class="k">Category</div><div class="v">{{ y.identification.category }}</div>
+            <div class="k">City</div><div class="v">{{ y.identification.city }}, {{ y.identification.province }}</div>
+            <div class="k">Registered since</div><div class="v">{{ y.identification.registration_date || '—' }}</div>
+          </div>
+
+          <h3 v-if="y.compensation">Compensation</h3>
+          <div class="kv" v-if="y.compensation">
+            <div class="k">Total FTE positions</div><div class="v">{{ y.compensation.total_fte || '—' }}</div>
+            <div class="k">Part-time</div><div class="v">{{ y.compensation.part_time || '—' }}</div>
+            <div class="k">Total compensation</div><div class="v">${{ fmtMoney(y.compensation.total_comp) }}</div>
+          </div>
+
+          <h3 v-if="y.directors?.length">Board ({{ y.directors.length }} members)</h3>
+          <div v-if="y.directors?.length" style="display:flex; flex-wrap:wrap; gap:10px">
+            <div v-for="d in y.directors" :key="d.sequence_number" class="alias" style="font-family:inherit">
+              {{ d.first_name }} {{ d.last_name }}
+              <span class="mini" v-if="d.position">· {{ d.position }}</span>
+              <span class="mini" v-if="d.at_arms_length === false">· NOT arm's length</span>
+            </div>
+          </div>
+
+          <h3 v-if="y.programs?.length">Programs</h3>
+          <div v-if="y.programs?.length" v-for="(p, i) in y.programs" :key="i" style="padding:4px 0; font-size:13px">
+            <b>{{ p.program_type }}:</b> {{ p.description }}
+          </div>
+        </div>
+      </template>
+    </div>
+
+    <!-- Qualified donees -->
+    <div v-if="tab==='gifts'">
+      <div v-if="loadingGifts" class="card"><span class="spin"></span> loading qualified donees...</div>
+      <template v-else-if="gifts">
+        <div class="grid" style="margin-bottom:14px">
+          <div class="stat">
+            <div class="num">${{ fmtMoney(gifts.received.total) }}</div>
+            <div class="lab">Gifts received (from {{ gifts.received.distinct_donors }} charities)</div>
+          </div>
+          <div class="stat">
+            <div class="num">{{ fmt(gifts.received.count) }}</div>
+            <div class="lab">Gift records received</div>
+          </div>
+          <div class="stat">
+            <div class="num">{{ fmt(gifts.given?.count || 0) }}</div>
+            <div class="lab">Gifts given (as donor)</div>
+          </div>
+        </div>
+
+        <div class="card" v-if="gifts.received.gifts.length">
+          <h2>Gifts received (this entity was the donee)</h2>
+          <table>
+            <thead><tr><th>Year</th><th>Donor charity</th><th>Donor BN</th><th>Name as recorded</th>
+              <th class="num">Total gift</th><th class="num">In-kind</th><th>Associated?</th></tr></thead>
+            <tbody>
+              <tr v-for="(g, i) in gifts.received.gifts.slice(0, 500)" :key="i">
+                <td>{{ g.yr }}</td>
+                <td>{{ g.donor_name }}</td>
+                <td class="mini">{{ g.donor_bn }}</td>
+                <td class="mini">{{ g.donee_name }}</td>
+                <td class="num">${{ fmtMoney(g.total_gifts) }}</td>
+                <td class="num">${{ fmtMoney(g.gifts_in_kind) }}</td>
+                <td>{{ g.associated ? 'yes' : 'no' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card" v-if="gifts.given?.gifts?.length">
+          <h2>Gifts given (as donor) — top 200</h2>
+          <table>
+            <thead><tr><th>Year</th><th>Donee</th><th>Donee BN</th><th class="num">Total</th><th class="num">Count</th></tr></thead>
+            <tbody>
+              <tr v-for="(g, i) in gifts.given.gifts.slice(0, 200)" :key="i">
+                <td>{{ g.yr }}</td>
+                <td>{{ g.donee_name }}</td>
+                <td class="mini">{{ g.donee_bn }}</td>
+                <td class="num">${{ fmtMoney(g.total_gifts) }}</td>
+                <td class="num">{{ g.count }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </template>
+    </div>
+
+    <!-- Source links -->
+    <div v-if="tab==='sources'">
+      <div class="card">
+        <h2>Source-link breakdown</h2>
+        <table>
+          <thead><tr><th>Source table</th><th class="num">Links</th><th>Distinct names</th></tr></thead>
+          <tbody>
+            <tr v-for="(l, i) in sourceLinks" :key="i">
+              <td><b>{{ l.source_schema }}.{{ l.source_table }}</b></td>
+              <td class="num">{{ fmt(l.c) }}</td>
+              <td class="mini">{{ (l.names || []).slice(0, 4).join(' | ') }}{{ (l.names || []).length > 4 ? '...' : '' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Related -->
+    <div v-if="tab==='related'">
+      <div v-if="loadingRelated" class="card"><span class="spin"></span> finding related entities...</div>
+      <template v-else-if="related">
+        <div class="card">
+          <h2>From merge-candidate detection</h2>
+          <div class="mini" style="margin-bottom:8px">Pipeline-surfaced candidates that weren't marked DIFFERENT by the LLM.</div>
+          <div v-if="!related.candidates.length" class="mini">No candidate matches found.</div>
+          <div v-for="r in related.candidates" :key="r.other_id"
+               class="related-row" :class="{merged: mergedInto.includes(r.other_id)}">
+            <div style="flex:1">
+              <b>{{ r.other_name }}</b>
+              <span class="mini"> · BN {{ r.other_bn || 'none' }} · entity #{{ r.other_id }}</span>
+              <div class="mini">method: {{ r.candidate_method }} · similarity: {{ r.similarity_score }}
+                · LLM verdict: {{ r.llm_verdict || 'pending' }}</div>
+              <div class="mini" v-if="r.llm_reasoning"><i>{{ r.llm_reasoning }}</i></div>
+            </div>
+            <button v-if="!mergedInto.includes(r.other_id)" class="btn primary"
+                    @click="toggleMerge(r.other_id)">+ Merge into this entity</button>
+            <button v-else class="btn warn" @click="toggleMerge(r.other_id)">Un-merge</button>
+          </div>
+        </div>
+
+        <div class="card" v-if="related.splink?.length">
+          <h2>From Splink probabilistic matching</h2>
+          <div class="mini" style="margin-bottom:8px">Splink probability ≥ 0.50 — records that pair with this entity's records.</div>
+          <div v-for="r in related.splink" :key="r.other_id"
+               class="related-row" :class="{merged: mergedInto.includes(r.other_id)}">
+            <div style="flex:1">
+              <b>{{ r.other_name }}</b>
+              <span class="mini"> · BN {{ r.other_bn || 'none' }} · entity #{{ r.other_id }}</span>
+              <div class="mini">Splink probability: {{ Number(r.prob).toFixed(3) }}</div>
+            </div>
+            <button v-if="!mergedInto.includes(r.other_id)" class="btn primary"
+                    @click="toggleMerge(r.other_id)">+ Merge into this entity</button>
+            <button v-else class="btn warn" @click="toggleMerge(r.other_id)">Un-merge</button>
+          </div>
+        </div>
+      </template>
+    </div>
+
+    <!-- Merge history -->
+    <div v-if="tab==='merges'">
+      <div class="card">
+        <h2>Merge history ({{ mergeHistory.length }})</h2>
+        <div v-if="!mergeHistory.length" class="mini">No merges into this entity.</div>
+        <table v-else>
+          <thead><tr><th>When</th><th>Absorbed entity</th><th>BN</th><th>Method</th><th class="num">Links moved</th></tr></thead>
+          <tbody>
+            <tr v-for="m in mergeHistory" :key="m.absorbed_id">
+              <td class="mini">{{ m.merged_at?.slice(0, 10) }}</td>
+              <td>#{{ m.absorbed_id }} {{ m.absorbed_name }}</td>
+              <td class="mini">{{ m.absorbed_bn || '—' }}</td>
+              <td>{{ m.merge_method }}</td>
+              <td class="num">{{ m.links_redirected }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Raw JSON -->
+    <div v-if="tab==='raw'">
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px">
+          <h2 style="margin:0">Complete dossier JSON</h2>
+          <div style="display:flex; gap:8px">
+            <button class="btn primary" :disabled="loadingFullExport" @click="downloadFullDossier">
+              <span v-if="loadingFullExport" class="spin"></span>
+              {{ loadingFullExport ? 'Preparing...' : 'Download full JSON' }}
+            </button>
+            <button class="btn" @click="copyFullDossier">Copy to clipboard</button>
+          </div>
+        </div>
+        <div class="mini">
+          Three top-level sections:
+          <br>• <b>primary</b> — the host entity's complete payload (entity, golden
+          record, source links, merge history, funding-by-year, CRA T3010 per-year,
+          qualified donees received/given, accountability, international, related).
+          <br>• <b>merged_in_browser</b> — array of each virtually-merged entity's
+          complete payload (same shape as primary, one per merge).
+          <br>• <b>combined</b> — pre-aggregated view across primary + all merges:
+          deduplicated aliases/BNs, summed funding by year (CRA calendar + external
+          fiscal), concatenated-with-provenance qualified donees / accountability /
+          international data, total link count by source. Every element has a
+          <code>via_entity_id</code> so you can trace each line back to the entity
+          it came from.
+        </div>
+      </div>
+      <div class="card">
+        <h2>Preview (first 4000 chars — full download has everything)</h2>
+        <pre style="white-space:pre-wrap; font-size:11px; max-height:600px; overflow:auto">{{ previewJson }}</pre>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const { createApp, ref, computed, watch, onMounted, nextTick } = Vue;
+
+createApp({
+  setup() {
+    const q = ref('');
+    const results = ref([]);
+    const searching = ref(false);
+    const selected = ref(new Set());  // entity IDs checked in the results list
+    const entity = ref(null);
+    const golden = ref(null);
+    const sourceLinks = ref([]);
+    const mergeHistory = ref([]);
+    const goldenYears = ref(null);      // { years: [...], bn }
+    const gifts = ref(null);            // { received: {...}, given: {...} }
+    const related = ref(null);          // { candidates: [...], splink: [...] }
+    const funding = ref(null);          // { years: [...], bn } — consolidated multi-source
+    const accountability = ref(null);   // { overhead, govt_funding, violations, hub, loop_universe, name_history }
+    const international = ref(null);    // { countries, resources_sent, exported_goods, non_qualified_donees }
+    const loadingCra = ref(false);
+    const loadingGifts = ref(false);
+    const loadingRelated = ref(false);
+    const loadingFunding = ref(false);
+    const loadingAcc = ref(false);
+    const loadingIntl = ref(false);
+    const loadingFullExport = ref(false);
+    const tab = ref('overview');
+    const mergedInto = ref([]);         // array of entity IDs temporarily merged in
+    const mergedData = ref({});         // id -> fetched entity data (full payload) for merged
+    const dark = ref(localStorage.getItem('theme') !== 'light');
+    const chartExternalCanvas = ref(null);
+    const chartCraCanvas = ref(null);
+    let chartExternal = null;
+    let chartCra = null;
+
+    function applyTheme() {
+      document.documentElement.classList.toggle('dark', dark.value);
+      localStorage.setItem('theme', dark.value ? 'dark' : 'light');
+    }
+    applyTheme();
+    function toggleTheme() { dark.value = !dark.value; applyTheme(); if (chart) renderChart(); }
+
+    function fmt(n) { return n === null || n === undefined ? '—' : Number(n).toLocaleString(); }
+    function fmtMoney(n) {
+      if (!n && n !== 0) return '—';
+      const v = Number(n);
+      if (v >= 1e9) return (v/1e9).toFixed(2) + 'B';
+      if (v >= 1e6) return (v/1e6).toFixed(2) + 'M';
+      if (v >= 1e3) return (v/1e3).toFixed(1) + 'K';
+      return v.toFixed(0);
+    }
+    function designation(d) {
+      return ({ A: 'A (Public Foundation)', B: 'B (Private Foundation)', C: 'C (Charitable Organization)' })[d] || d || '—';
+    }
+
+    async function doSearch() {
+      const term = q.value.trim();
+      if (!term) { results.value = []; return; }
+      searching.value = true;
+      try {
+        const r = await fetch('/api/search?q=' + encodeURIComponent(term));
+        const j = await r.json();
+        results.value = j.results || [];
+        selected.value = new Set();
+      } finally { searching.value = false; }
+    }
+
+    function toggleSelect(id, ev) {
+      if (ev && ev.target && ev.target.tagName === 'INPUT') return; // checkbox handled it
+      const s = new Set(selected.value);
+      if (s.has(id)) s.delete(id); else s.add(id);
+      selected.value = s;
+    }
+
+    function openSingleFromSelection() {
+      if (selected.value.size !== 1) return;
+      const id = [...selected.value][0];
+      loadEntity(id);
+    }
+
+    async function mergeSelection() {
+      const ids = [...selected.value];
+      if (ids.length < 2) return;
+
+      // Pick the host entity: the one in the search results with the most
+      // source links (largest data attachment). The rest get added as
+      // browser-only virtual merges.
+      const resultById = Object.fromEntries(results.value.map(r => [r.id, r]));
+      const ranked = ids.slice().sort((a, b) =>
+        (resultById[b]?.link_count || 0) - (resultById[a]?.link_count || 0));
+      const hostId = ranked[0];
+      const toMerge = ranked.slice(1);
+
+      searching.value = true;
+      try {
+        await loadEntity(hostId);
+        // toggleMerge loads the full payload for each id.
+        for (const otherId of toMerge) {
+          if (!mergedInto.value.includes(otherId)) await toggleMerge(otherId);
+        }
+        tab.value = 'overview';
+      } finally { searching.value = false; }
+    }
+
+    async function loadEntity(id) {
+      entity.value = null;
+      golden.value = null;
+      sourceLinks.value = [];
+      mergeHistory.value = [];
+      goldenYears.value = null;
+      gifts.value = null;
+      related.value = null;
+      funding.value = null;
+      accountability.value = null;
+      international.value = null;
+      mergedInto.value = [];
+      mergedData.value = {};
+      tab.value = 'overview';
+
+      const r = await fetch('/api/entity/' + id);
+      const j = await r.json();
+      entity.value = j.entity;
+      golden.value = j.golden;
+      sourceLinks.value = j.links || [];
+      mergeHistory.value = j.merge_history || [];
+      // Keep `results` populated so "← Back to search" returns the user to the
+      // same results list they were browsing (with their selections intact).
+
+      // Preload every endpoint in parallel so the dossier is ready to download
+      // as a single complete blob regardless of which tab the user opens next.
+      loadFunding(id);
+      loadCraYears(id);
+      loadGifts(id);
+      loadRelated(id);
+      loadAccountability(id);
+      loadInternational(id);
+    }
+
+    async function loadFunding(id) {
+      loadingFunding.value = true;
+      try {
+        const r = await fetch('/api/entity/' + id + '/funding-by-year');
+        funding.value = await r.json();
+      } finally { loadingFunding.value = false; }
+      renderChart();
+    }
+    async function loadCraYears(id) {
+      loadingCra.value = true;
+      try {
+        const r = await fetch('/api/entity/' + id + '/cra-years');
+        goldenYears.value = await r.json();
+      } finally { loadingCra.value = false; }
+    }
+    async function loadGifts(id) {
+      loadingGifts.value = true;
+      try {
+        const [rec, giv] = await Promise.all([
+          fetch('/api/entity/' + id + '/gifts-received').then(r => r.json()),
+          fetch('/api/entity/' + id + '/gifts-given').then(r => r.json()),
+        ]);
+        gifts.value = { received: rec, given: giv };
+      } finally { loadingGifts.value = false; }
+    }
+    async function loadRelated(id) {
+      loadingRelated.value = true;
+      try {
+        const r = await fetch('/api/entity/' + id + '/related');
+        related.value = await r.json();
+      } finally { loadingRelated.value = false; }
+    }
+    async function loadAccountability(id) {
+      loadingAcc.value = true;
+      try {
+        const r = await fetch('/api/entity/' + id + '/accountability');
+        accountability.value = await r.json();
+      } finally { loadingAcc.value = false; }
+    }
+    async function loadInternational(id) {
+      loadingIntl.value = true;
+      try {
+        const r = await fetch('/api/entity/' + id + '/international');
+        international.value = await r.json();
+      } finally { loadingIntl.value = false; }
+    }
+
+    // ────────────────────────────────────────────────────────────────────
+    // Full dossier JSON export — everything we've loaded about this entity,
+    // plus anything for virtually-merged entities.
+    // ────────────────────────────────────────────────────────────────────
+
+    function buildFullDossier() {
+      const primary = {
+        entity: entity.value,
+        golden_record: golden.value,
+        source_links: sourceLinks.value,
+        merge_history: mergeHistory.value,
+        funding_by_year: funding.value,
+        cra_t3010_by_year: goldenYears.value,
+        qualified_donees: gifts.value,
+        related_entities: related.value,
+        accountability: accountability.value,
+        international: international.value,
+      };
+      const merged = mergedInto.value.map(mid => mergedData.value[mid]).filter(Boolean);
+      return {
+        generated_at: new Date().toISOString(),
+        primary_entity_id: entity.value?.id,
+        merged_entity_ids: mergedInto.value.slice(),
+        // Raw per-entity payloads. Keep intact for provenance and future
+        // re-aggregation with different rules.
+        primary,
+        merged_in_browser: merged,
+        // Pre-aggregated view across primary + every virtually-merged entity.
+        // Consumers who just want "the combined answer" can read this directly.
+        combined: buildCombinedView(primary, merged),
+      };
+    }
+
+    function buildCombinedView(primary, merged) {
+      const all = [primary, ...merged.map(m => ({
+        entity: m.entity, golden_record: m.golden, source_links: m.links,
+        merge_history: m.merge_history, funding_by_year: m.funding,
+        cra_t3010_by_year: m.cra, qualified_donees: m.qualified_donees,
+        accountability: m.accountability, international: m.international,
+      }))];
+
+      // ─── Identity (deduplicated) ───────────────────────────────────────
+      const canonicalNames = new Set();
+      const aliasSet = new Set();
+      const bnRootSet = new Set();
+      const bnVariantSet = new Set();
+      const datasetSet = new Set();
+      const entityTypeSet = new Set();
+      all.forEach(d => {
+        if (d.entity?.canonical_name) canonicalNames.add(d.entity.canonical_name);
+        if (d.golden_record?.canonical_name) canonicalNames.add(d.golden_record.canonical_name);
+        (d.entity?.alternate_names || []).forEach(n => aliasSet.add(n));
+        if (d.entity?.bn_root) bnRootSet.add(d.entity.bn_root);
+        (d.entity?.bn_variants || []).forEach(v => bnVariantSet.add(v));
+        (d.entity?.dataset_sources || []).forEach(s => datasetSet.add(s));
+        if (d.entity?.entity_type) entityTypeSet.add(d.entity.entity_type);
+      });
+
+      // ─── Source links (concat, tagged with contributing entity id) ────
+      const allLinks = [];
+      let totalLinkCount = 0;
+      all.forEach(d => {
+        (d.source_links || []).forEach(l => {
+          allLinks.push({ contributing_entity_id: d.entity?.id, ...l });
+          totalLinkCount += Number(l.c || 0);
+        });
+      });
+      // Roll-up by source table.
+      const linksBySource = {};
+      allLinks.forEach(l => {
+        const key = `${l.source_schema}.${l.source_table}`;
+        linksBySource[key] = (linksBySource[key] || 0) + Number(l.c || 0);
+      });
+
+      // ─── Funding: CRA calendar years, summed ──────────────────────────
+      const craByYear = {};
+      all.forEach(d => {
+        (d.funding_by_year?.cra_calendar_years || []).forEach(y => {
+          craByYear[y.year] = craByYear[y.year] || {
+            year: y.year, cra_revenue: 0, cra_expenditures: 0,
+            cra_gifts_in: 0, cra_gifts_out: 0,
+          };
+          ['cra_revenue','cra_expenditures','cra_gifts_in','cra_gifts_out']
+            .forEach(k => { craByYear[y.year][k] += Number(y[k] || 0); });
+        });
+      });
+      // ─── Funding: external fiscal years (YYYY-YYYY), summed ───────────
+      const fyByKey = {};
+      all.forEach(d => {
+        (d.funding_by_year?.external_fiscal_years || []).forEach(y => {
+          fyByKey[y.fy] = fyByKey[y.fy] || {
+            fy: y.fy, fed_grants: 0, ab_grants: 0, ab_contracts: 0, ab_sole_source: 0,
+          };
+          ['fed_grants','ab_grants','ab_contracts','ab_sole_source']
+            .forEach(k => { fyByKey[y.fy][k] += Number(y[k] || 0); });
+        });
+      });
+      // ─── Funding grand totals ─────────────────────────────────────────
+      const totals = { cra_revenue: 0, cra_expenditures: 0, cra_gifts_in: 0,
+                       cra_gifts_out: 0, fed_grants: 0, ab_grants: 0,
+                       ab_contracts: 0, ab_sole_source: 0 };
+      Object.values(craByYear).forEach(y => {
+        totals.cra_revenue += y.cra_revenue; totals.cra_expenditures += y.cra_expenditures;
+        totals.cra_gifts_in += y.cra_gifts_in; totals.cra_gifts_out += y.cra_gifts_out;
+      });
+      Object.values(fyByKey).forEach(y => {
+        totals.fed_grants += y.fed_grants; totals.ab_grants += y.ab_grants;
+        totals.ab_contracts += y.ab_contracts; totals.ab_sole_source += y.ab_sole_source;
+      });
+
+      // ─── CRA T3010 per-year: shallow-merge years keyed by year number ──
+      // When multiple merged entities report for the same fiscal year (e.g.
+      // two absorbed BN registrations with overlapping filings), their
+      // financial sub-objects and director lists are concatenated under a
+      // `contributors[]` array for each year so provenance survives.
+      const craYears = {};
+      all.forEach(d => {
+        (d.cra_t3010_by_year?.years || []).forEach(y => {
+          craYears[y.year] = craYears[y.year] || { year: y.year, contributors: [] };
+          craYears[y.year].contributors.push({
+            entity_id: d.entity?.id, ...y,
+          });
+        });
+      });
+
+      // ─── Qualified donees: concat with per-entity attribution ─────────
+      const giftsReceived = [];
+      const giftsGiven = [];
+      let giftsReceivedTotal = 0;
+      all.forEach(d => {
+        (d.qualified_donees?.received?.gifts || []).forEach(g => {
+          giftsReceived.push({ via_entity_id: d.entity?.id, ...g });
+          giftsReceivedTotal += Number(g.total_gifts || 0);
+        });
+        (d.qualified_donees?.given?.gifts || []).forEach(g => {
+          giftsGiven.push({ via_entity_id: d.entity?.id, ...g });
+        });
+      });
+
+      // ─── Accountability: union the lists, keep per-entity attribution ─
+      const overhead = [];
+      const govtFunding = [];
+      const violations = { sanity: [], arithmetic: [], impossibility: [] };
+      const nameHistory = [];
+      let hub = null, loopUniverse = null;
+      all.forEach(d => {
+        (d.accountability?.overhead || []).forEach(r => overhead.push({ via_entity_id: d.entity?.id, ...r }));
+        (d.accountability?.govt_funding || []).forEach(r => govtFunding.push({ via_entity_id: d.entity?.id, ...r }));
+        (d.accountability?.name_history || []).forEach(r => nameHistory.push({ via_entity_id: d.entity?.id, ...r }));
+        ['sanity','arithmetic','impossibility'].forEach(k => {
+          (d.accountability?.violations?.[k] || []).forEach(v => violations[k].push({ via_entity_id: d.entity?.id, ...v }));
+        });
+        if (d.accountability?.hub && !hub) hub = { via_entity_id: d.entity?.id, ...d.accountability.hub };
+        if (d.accountability?.loop_universe && !loopUniverse) loopUniverse = { via_entity_id: d.entity?.id, ...d.accountability.loop_universe };
+      });
+
+      // ─── International: concat ────────────────────────────────────────
+      const intl = { countries: [], resources_sent: [], exported_goods: [], non_qualified_donees: [] };
+      all.forEach(d => {
+        ['countries','resources_sent','exported_goods','non_qualified_donees'].forEach(k => {
+          (d.international?.[k] || []).forEach(r => intl[k].push({ via_entity_id: d.entity?.id, ...r }));
+        });
+      });
+
+      // ─── Merge history: concat ────────────────────────────────────────
+      const mergeHistoryAll = [];
+      all.forEach(d => {
+        (d.merge_history || []).forEach(m => mergeHistoryAll.push({ via_entity_id: d.entity?.id, ...m }));
+      });
+
+      // ─── Related entities: concat with dedup by other_id ──────────────
+      const relatedMap = new Map();
+      all.forEach(d => {
+        const pushIfNew = (r) => {
+          if (!r.other_id) return;
+          if (!relatedMap.has(r.other_id)) relatedMap.set(r.other_id, { via_entity_id: d.entity?.id, ...r });
+        };
+        (d.related_entities?.candidates || []).forEach(pushIfNew);
+        (d.related_entities?.splink || []).forEach(pushIfNew);
+      });
+
+      return {
+        entity_count: all.length,
+        canonical_names: [...canonicalNames].sort(),
+        aliases: [...aliasSet].sort(),
+        alias_count: aliasSet.size,
+        bn_roots: [...bnRootSet],
+        bn_variants: [...bnVariantSet].sort(),
+        dataset_sources: [...datasetSet].sort(),
+        entity_types: [...entityTypeSet],
+        source_links_total: totalLinkCount,
+        source_links_by_source: linksBySource,
+        funding: {
+          cra_calendar_years: Object.values(craByYear).sort((a, b) => a.year - b.year),
+          external_fiscal_years: Object.values(fyByKey).sort((a, b) => a.fy.localeCompare(b.fy)),
+          totals,
+          grand_total_all_external: totals.fed_grants + totals.ab_grants +
+                                     totals.ab_contracts + totals.ab_sole_source,
+        },
+        cra_t3010_by_year: Object.values(craYears).sort((a, b) => b.year - a.year),
+        qualified_donees: {
+          received: { gifts: giftsReceived, total: giftsReceivedTotal, count: giftsReceived.length },
+          given: { gifts: giftsGiven, count: giftsGiven.length },
+        },
+        accountability: {
+          hub, loop_universe: loopUniverse,
+          overhead, govt_funding: govtFunding,
+          violations, name_history: nameHistory,
+        },
+        international: intl,
+        merge_history: mergeHistoryAll,
+        related_entities: [...relatedMap.values()],
+      };
+    }
+
+    async function ensureAllLoaded() {
+      // In case a user clicks Download before the async loads finished, wait
+      // briefly for anything still outstanding — won't block for long since
+      // loadEntity() kicks everything off in parallel.
+      const start = Date.now();
+      while (
+        (loadingFunding.value || loadingCra.value || loadingGifts.value ||
+         loadingRelated.value || loadingAcc.value || loadingIntl.value) &&
+        (Date.now() - start < 15000)
+      ) {
+        await new Promise(r => setTimeout(r, 150));
+      }
+    }
+
+    async function downloadFullDossier() {
+      loadingFullExport.value = true;
+      try {
+        await ensureAllLoaded();
+        const blob = new Blob([JSON.stringify(buildFullDossier(), null, 2)],
+                               { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const safe = (golden.value?.canonical_name || entity.value?.canonical_name || 'entity')
+          .replace(/[^a-z0-9]+/gi, '-').slice(0, 60);
+        a.href = url;
+        a.download = 'dossier-' + safe + '-' + entity.value.id + '.json';
+        a.click();
+        URL.revokeObjectURL(url);
+      } finally { loadingFullExport.value = false; }
+    }
+
+    async function copyFullDossier() {
+      await ensureAllLoaded();
+      await navigator.clipboard.writeText(JSON.stringify(buildFullDossier(), null, 2));
+      alert('Full dossier JSON copied to clipboard.');
+    }
+
+    const previewJson = computed(() => {
+      if (!entity.value) return '';
+      const full = JSON.stringify(buildFullDossier(), null, 2);
+      return full.length > 4000 ? full.slice(0, 4000) + '\n... [' + (full.length - 4000).toLocaleString() + ' more characters]' : full;
+    });
+
+    async function toggleMerge(otherId) {
+      const i = mergedInto.value.indexOf(otherId);
+      if (i >= 0) { mergedInto.value.splice(i, 1); renderChart(); return; }
+      // Load the other entity's FULL payload so the merged dossier totals
+      // (chart, aliases, JSON export) include it as if it were one entity.
+      if (!mergedData.value[otherId]) {
+        const [base, fund, cra, giftsR, giftsG, acc, intl] = await Promise.all([
+          fetch('/api/entity/' + otherId).then(r => r.json()),
+          fetch('/api/entity/' + otherId + '/funding-by-year').then(r => r.json()),
+          fetch('/api/entity/' + otherId + '/cra-years').then(r => r.json()),
+          fetch('/api/entity/' + otherId + '/gifts-received').then(r => r.json()),
+          fetch('/api/entity/' + otherId + '/gifts-given').then(r => r.json()),
+          fetch('/api/entity/' + otherId + '/accountability').then(r => r.json()),
+          fetch('/api/entity/' + otherId + '/international').then(r => r.json()),
+        ]);
+        mergedData.value[otherId] = {
+          entity: base.entity, golden: base.golden, links: base.links,
+          merge_history: base.merge_history, funding: fund, cra,
+          qualified_donees: { received: giftsR, given: giftsG },
+          accountability: acc, international: intl,
+        };
+      }
+      mergedInto.value.push(otherId);
+      renderChart();
+    }
+
+    // ─── Derived totals (base entity + merged-in virtual entities) ───
+    const allEntitiesData = computed(() => {
+      const base = {
+        entity: entity.value, golden: golden.value, links: sourceLinks.value,
+        funding: funding.value, cra: goldenYears.value,
+      };
+      return [base, ...mergedInto.value.map(id => mergedData.value[id]).filter(Boolean)];
+    });
+    const totalLinks = computed(() => allEntitiesData.value
+      .reduce((s, d) => s + (d.links?.reduce((a, l) => a + l.c, 0) || 0), 0));
+    const totalAliases = computed(() => allAliases.value.length);
+    const allAliases = computed(() => {
+      const set = new Set();
+      allEntitiesData.value.forEach(d => {
+        (d.entity?.alternate_names || []).forEach(n => set.add(n));
+        if (d.entity?.canonical_name) set.add(d.entity.canonical_name);
+        if (d.golden?.canonical_name) set.add(d.golden.canonical_name);
+      });
+      return [...set].sort();
+    });
+
+    // Multi-source funding rollup. Returns TWO separate series because CRA
+    // uses calendar years from fpe (e.g. 2024) while FED/AB use fiscal-year
+    // strings (e.g. "2023-2024"). The formats are preserved — we do NOT
+    // collapse them to a single axis because the underlying time periods
+    // are different.
+    const fundingAgg = computed(() => {
+      // CRA — keyed by integer calendar year.
+      const craByYear = {};
+      // External (FED + AB) — keyed by fiscal-year string "YYYY-YYYY".
+      const fyByKey = {};
+      const totals = { cra_revenue: 0, cra_expenditures: 0, cra_gifts_in: 0,
+                       cra_gifts_out: 0, fed_grants: 0, ab_grants: 0,
+                       ab_contracts: 0, ab_sole_source: 0 };
+
+      allEntitiesData.value.forEach(d => {
+        (d.funding?.cra_calendar_years || []).forEach(y => {
+          const k = y.year;
+          craByYear[k] = craByYear[k] || {
+            year: k, cra_revenue: 0, cra_expenditures: 0, cra_gifts_in: 0, cra_gifts_out: 0,
+          };
+          ['cra_revenue','cra_expenditures','cra_gifts_in','cra_gifts_out'].forEach(col => {
+            craByYear[k][col] += Number(y[col] || 0);
+            totals[col] += Number(y[col] || 0);
+          });
+        });
+        (d.funding?.external_fiscal_years || []).forEach(y => {
+          const k = y.fy;
+          fyByKey[k] = fyByKey[k] || {
+            fy: k, fed_grants: 0, ab_grants: 0, ab_contracts: 0, ab_sole_source: 0,
+          };
+          ['fed_grants','ab_grants','ab_contracts','ab_sole_source'].forEach(col => {
+            fyByKey[k][col] += Number(y[col] || 0);
+            totals[col] += Number(y[col] || 0);
+          });
+        });
+      });
+
+      const craYears = Object.values(craByYear).sort((a, b) => a.year - b.year);
+      const externalYears = Object.values(fyByKey).sort((a, b) => a.fy.localeCompare(b.fy));
+      return { craYears, externalYears, totals };
+    });
+    const fundingTotals = computed(() => fundingAgg.value.totals);
+    const grandTotal = computed(() => {
+      const t = fundingAgg.value.totals;
+      return t.cra_revenue + t.fed_grants + t.ab_grants + t.ab_contracts + t.ab_sole_source;
+    });
+
+    const externalFundingHasData = computed(() => {
+      const t = fundingTotals.value;
+      return (t.fed_grants + t.ab_grants + t.ab_contracts + t.ab_sole_source) > 0;
+    });
+    const craFundingHasData = computed(() => {
+      const t = fundingTotals.value;
+      return (t.cra_revenue + t.cra_expenditures) > 0;
+    });
+
+    function themeColors() {
+      return {
+        text: getComputedStyle(document.documentElement).getPropertyValue('--text').trim(),
+        grid: getComputedStyle(document.documentElement).getPropertyValue('--border').trim(),
+      };
+    }
+    function moneyTick(v) {
+      return '$' + (v >= 1e9 ? (v/1e9).toFixed(1)+'B'
+                  : v >= 1e6 ? (v/1e6).toFixed(1)+'M'
+                  : v >= 1e3 ? (v/1e3)+'K' : v);
+    }
+
+    async function renderChart() {
+      await nextTick();
+      const f = fundingAgg.value;
+      const { text: textColor, grid: gridColor } = themeColors();
+
+      // External chart — stacked bars, x-axis labels are fiscal-year strings
+      // like "2023-2024". Labels come straight from the data (AB format with
+      // spaces stripped; FED derived from agreement_start_date).
+      if (chartExternal) { chartExternal.destroy(); chartExternal = null; }
+      if (externalFundingHasData.value && chartExternalCanvas.value) {
+        const xs = f.externalYears.map(y => y.fy);
+        chartExternal = new Chart(chartExternalCanvas.value, {
+          type: 'bar',
+          data: {
+            labels: xs,
+            datasets: [
+              { label: 'FED grants',       data: f.externalYears.map(y => y.fed_grants),     backgroundColor: '#8250df' },
+              { label: 'AB grants',         data: f.externalYears.map(y => y.ab_grants),      backgroundColor: '#1a7f37' },
+              { label: 'AB contracts',      data: f.externalYears.map(y => y.ab_contracts),   backgroundColor: '#bf8700' },
+              { label: 'AB sole-source',    data: f.externalYears.map(y => y.ab_sole_source), backgroundColor: '#cf222e' },
+            ],
+          },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+              legend: { labels: { color: textColor } },
+              tooltip: { callbacks: { label: (ctx) => ctx.dataset.label + ': $' + Number(ctx.parsed.y).toLocaleString() } },
+            },
+            scales: {
+              x: { stacked: true, ticks: { color: textColor }, grid: { color: gridColor } },
+              y: { stacked: true, ticks: { color: textColor, callback: moneyTick }, grid: { color: gridColor } },
+            },
+          },
+        });
+      }
+
+      // CRA chart — side-by-side revenue / expenditures / gifts in / gifts out,
+      // x-axis labels are integer calendar years from fpe.
+      if (chartCra) { chartCra.destroy(); chartCra = null; }
+      if (craFundingHasData.value && chartCraCanvas.value) {
+        const xs = f.craYears.map(y => y.year);
+        chartCra = new Chart(chartCraCanvas.value, {
+          type: 'bar',
+          data: {
+            labels: xs,
+            datasets: [
+              { label: 'Revenue',        data: f.craYears.map(y => y.cra_revenue),      backgroundColor: '#0969da' },
+              { label: 'Expenditures',   data: f.craYears.map(y => y.cra_expenditures), backgroundColor: '#6e7681' },
+              { label: 'Gifts received', data: f.craYears.map(y => y.cra_gifts_in),     backgroundColor: '#1a7f37' },
+              { label: 'Gifts given',    data: f.craYears.map(y => y.cra_gifts_out),    backgroundColor: '#bf8700' },
+            ],
+          },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+              legend: { labels: { color: textColor } },
+              tooltip: { callbacks: { label: (ctx) => ctx.dataset.label + ': $' + Number(ctx.parsed.y).toLocaleString() } },
+            },
+            scales: {
+              x: { ticks: { color: textColor }, grid: { color: gridColor } },
+              y: { ticks: { color: textColor, callback: moneyTick }, grid: { color: gridColor } },
+            },
+          },
+        });
+      }
+    }
+
+    watch(tab, () => { if (tab.value === 'overview') renderChart(); });
+    watch(mergedInto, () => { renderChart(); }, { deep: true });
+
+    return {
+      q, results, searching, selected, entity, golden, sourceLinks, mergeHistory,
+      goldenYears, gifts, related, funding, accountability, international,
+      loadingCra, loadingGifts, loadingRelated, loadingFunding,
+      loadingAcc, loadingIntl, loadingFullExport,
+      tab, mergedInto, dark,
+      chartExternalCanvas, chartCraCanvas,
+      externalFundingHasData, craFundingHasData,
+      toggleTheme, doSearch, loadEntity, toggleMerge,
+      toggleSelect, openSingleFromSelection, mergeSelection,
+      downloadFullDossier, copyFullDossier, previewJson,
+      fmt, fmtMoney, designation,
+      totalLinks, totalAliases, grandTotal, allAliases, fundingTotals,
+    };
+  }
+}).mount('#app');
+</script>
+</body>
+</html>

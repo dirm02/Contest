@@ -1,0 +1,284 @@
+{
+  "exportedAt": "2026-04-15T16:20:36.700Z",
+  "schemas": {
+    "cra": {
+      "ddlFile": "schemas/cra.sql",
+      "tables": [
+        {
+          "table": "cra_activities_outside_countries",
+          "rows": 44683,
+          "file": "cra_activities_outside_countries.csv"
+        },
+        {
+          "table": "cra_activities_outside_details",
+          "rows": 25139,
+          "file": "cra_activities_outside_details.csv"
+        },
+        {
+          "table": "cra_category_lookup",
+          "rows": 30,
+          "file": "cra_category_lookup.csv"
+        },
+        {
+          "table": "cra_charitable_programs",
+          "rows": 478691,
+          "file": "cra_charitable_programs.csv"
+        },
+        {
+          "table": "cra_compensation",
+          "rows": 216380,
+          "file": "cra_compensation.csv"
+        },
+        {
+          "table": "cra_country_lookup",
+          "rows": 264,
+          "file": "cra_country_lookup.csv"
+        },
+        {
+          "table": "cra_designation_lookup",
+          "rows": 3,
+          "file": "cra_designation_lookup.csv"
+        },
+        {
+          "table": "cra_directors",
+          "rows": 2873624,
+          "file": "cra_directors.csv"
+        },
+        {
+          "table": "cra_disbursement_quota",
+          "rows": 22151,
+          "file": "cra_disbursement_quota.csv"
+        },
+        {
+          "table": "cra_exported_goods",
+          "rows": 4029,
+          "file": "cra_exported_goods.csv"
+        },
+        {
+          "table": "cra_financial_details",
+          "rows": 420849,
+          "file": "cra_financial_details.csv"
+        },
+        {
+          "table": "cra_financial_general",
+          "rows": 422683,
+          "file": "cra_financial_general.csv"
+        },
+        {
+          "table": "cra_foundation_info",
+          "rows": 422569,
+          "file": "cra_foundation_info.csv"
+        },
+        {
+          "table": "cra_gifts_in_kind",
+          "rows": 54575,
+          "file": "cra_gifts_in_kind.csv"
+        },
+        {
+          "table": "cra_identification",
+          "rows": 421866,
+          "file": "cra_identification.csv"
+        },
+        {
+          "table": "cra_non_qualified_donees",
+          "rows": 29270,
+          "file": "cra_non_qualified_donees.csv"
+        },
+        {
+          "table": "cra_political_activity_desc",
+          "rows": 313,
+          "file": "cra_political_activity_desc.csv"
+        },
+        {
+          "table": "cra_political_activity_funding",
+          "rows": 0,
+          "file": "cra_political_activity_funding.csv"
+        },
+        {
+          "table": "cra_political_activity_resources",
+          "rows": 234,
+          "file": "cra_political_activity_resources.csv"
+        },
+        {
+          "table": "cra_program_type_lookup",
+          "rows": 3,
+          "file": "cra_program_type_lookup.csv"
+        },
+        {
+          "table": "cra_province_state_lookup",
+          "rows": 73,
+          "file": "cra_province_state_lookup.csv"
+        },
+        {
+          "table": "cra_qualified_donees",
+          "rows": 1664343,
+          "file": "cra_qualified_donees.csv"
+        },
+        {
+          "table": "cra_resources_sent_outside",
+          "rows": 68028,
+          "file": "cra_resources_sent_outside.csv"
+        },
+        {
+          "table": "cra_sub_category_lookup",
+          "rows": 247,
+          "file": "cra_sub_category_lookup.csv"
+        },
+        {
+          "table": "cra_web_urls",
+          "rows": 169123,
+          "file": "cra_web_urls.csv"
+        },
+        {
+          "table": "identified_hubs",
+          "rows": 20,
+          "file": "identified_hubs.csv"
+        },
+        {
+          "table": "johnson_cycles",
+          "rows": 2128,
+          "file": "johnson_cycles.csv"
+        },
+        {
+          "table": "loop_edges",
+          "rows": 53771,
+          "file": "loop_edges.csv"
+        },
+        {
+          "table": "loop_participants",
+          "rows": 30003,
+          "file": "loop_participants.csv"
+        },
+        {
+          "table": "loop_universe",
+          "rows": 1501,
+          "file": "loop_universe.csv"
+        },
+        {
+          "table": "loops",
+          "rows": 5808,
+          "file": "loops.csv"
+        },
+        {
+          "table": "matrix_census",
+          "rows": 10177,
+          "file": "matrix_census.csv"
+        },
+        {
+          "table": "partitioned_cycles",
+          "rows": 108,
+          "file": "partitioned_cycles.csv"
+        },
+        {
+          "table": "scc_components",
+          "rows": 10177,
+          "file": "scc_components.csv"
+        },
+        {
+          "table": "scc_summary",
+          "rows": 347,
+          "file": "scc_summary.csv"
+        }
+      ],
+      "totalRows": 7453210
+    },
+    "fed": {
+      "ddlFile": "schemas/fed.sql",
+      "tables": [
+        {
+          "table": "agreement_type_lookup",
+          "rows": 3,
+          "file": "agreement_type_lookup.csv"
+        },
+        {
+          "table": "country_lookup",
+          "rows": 250,
+          "file": "country_lookup.csv"
+        },
+        {
+          "table": "currency_lookup",
+          "rows": 94,
+          "file": "currency_lookup.csv"
+        },
+        {
+          "table": "grants_contributions",
+          "rows": 1275521,
+          "file": "grants_contributions.csv"
+        },
+        {
+          "table": "province_lookup",
+          "rows": 13,
+          "file": "province_lookup.csv"
+        },
+        {
+          "table": "recipient_type_lookup",
+          "rows": 8,
+          "file": "recipient_type_lookup.csv"
+        }
+      ],
+      "totalRows": 1275889
+    },
+    "ab": {
+      "ddlFile": "schemas/ab.sql",
+      "tables": [
+        {
+          "table": "ab_contracts",
+          "rows": 67079,
+          "file": "ab_contracts.csv"
+        },
+        {
+          "table": "ab_grants",
+          "rows": 1772874,
+          "file": "ab_grants.csv"
+        },
+        {
+          "table": "ab_grants_fiscal_years",
+          "rows": 11,
+          "file": "ab_grants_fiscal_years.csv"
+        },
+        {
+          "table": "ab_grants_ministries",
+          "rows": 321,
+          "file": "ab_grants_ministries.csv"
+        },
+        {
+          "table": "ab_grants_programs",
+          "rows": 17435,
+          "file": "ab_grants_programs.csv"
+        },
+        {
+          "table": "ab_grants_recipients",
+          "rows": 420272,
+          "file": "ab_grants_recipients.csv"
+        },
+        {
+          "table": "ab_non_profit",
+          "rows": 69271,
+          "file": "ab_non_profit.csv"
+        },
+        {
+          "table": "ab_non_profit_status_lookup",
+          "rows": 16,
+          "file": "ab_non_profit_status_lookup.csv"
+        },
+        {
+          "table": "ab_sole_source",
+          "rows": 15533,
+          "file": "ab_sole_source.csv"
+        }
+      ],
+      "totalRows": 2362812
+    },
+    "general": {
+      "ddlFile": "schemas/general.sql",
+      "tables": [
+        {
+          "table": "ministries",
+          "rows": 27,
+          "file": "ministries.csv"
+        }
+      ],
+      "totalRows": 27
+    }
+  }
+}

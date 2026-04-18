@@ -438,6 +438,333 @@ Files saved: `data/reports/risk-{BN}.json` + `risk-{BN}.md`
 
 ---
 
+## Data Quality: Finding Problems in the CRA Open Data
+
+The `scripts/data-quality/` directory contains three deterministic
+checks against the published T3010 dataset. Every finding is
+reproducible from the scripts and every rule is traceable to explicit
+text in the CRA T3010 form or the CRA Open Data Dictionary v2.0. The
+suite intentionally does **not** include threshold rules, sign rules,
+or cross-field inequalities that depend on non-negativity assumptions —
+see *Methodology* below for why.
+
+### Quick Start
+
+```bash
+npm run data-quality             # runs all three data-quality checks (~2 minutes)
+```
+
+Or individually:
+
+```bash
+npm run data-quality:donees      # 01 — Gift-record BN ↔ name linkage quality (~35 s)
+npm run data-quality:arithmetic  # 02 — T3010 arithmetic-identity violations (~20 s)
+npm run data-quality:backfill    # 03 — Identification-table backfill check (~15 s)
+```
+
+Reports land in `data/reports/data-quality/` as Markdown + JSON. Derived
+tables persist to the `cra` schema so anyone with read access can query
+them directly. Script 03 uses a table that script 01 creates, so run
+`:donees` before `:backfill` if you invoke them individually.
+
+### Scripts
+
+| # | Script | What It Answers | Persisted Table |
+|---|--------|-----------------|-----------------|
+| 01 | `01-donee-bn-name-mismatches.js` | How much of the \$66.9B in charity-to-charity gifts cannot be programmatically joined from `cra_qualified_donees` to `cra_identification`? Includes MALFORMED_BN defect taxonomy (BN format violations — the only format-rule impossibility), UNREGISTERED_BN list, and per-year single-filer case studies (e.g. the Calgary Foundation's `"Sec. 149.1(1)"` BN use in FY 2020 and FY 2022). | `cra.donee_name_quality` |
+| 02 | `02-t3010-arithmetic-impossibilities.js` | How many T3010 financial filings violate one of **ten** structural rules stated directly in the T3010 form or the CRA Open Data Dictionary v2.0? Covers the expenditure tree (IDENTITY_5100, PARTITION_4950), the balance sheet (IDENTITY_4200, IDENTITY_4350), cross-schedule equalities that the dictionary says "must be pre-populated" (COMP_4880_EQ_390, DQ_845/850/855_EQ_5000/5045/5050), and Schedule 3 dependencies (SCH3_DEP_FORWARD, SCH3_DEP_REVERSE). | `cra.t3010_arithmetic_violations` |
+| 03 | `03-identification-backfill-check.js` | Does `cra_identification` preserve historical legal names across years? Spot-checks seven well-known rebrands by BN and measures how much of the NAME_MISMATCH \$ would be rescuable if historical names were preserved. | `cra.identification_name_history` |
+
+### Methodology — what we flag and what we do NOT flag
+
+Every rule in this suite must be traceable to an observable fact in one
+of three published sources:
+
+1. The CRA T3010 Registered Charity Information Return itself
+   (`docs/guides-forms/T3010.md` and `docs/guides-forms/codes_en.pdf`).
+2. The CRA Open Data Dictionary v2.0
+   (`docs/guides-forms/OPEN-DATA-DICTIONARY-V2.0 ENG.md`).
+3. The ingested dataset as loaded into the `cra` schema.
+
+**The suite flags:**
+
+- Direct arithmetic identities printed on the T3010 form (the form
+  *defines* field_5100 as a sum of three specific lines — a filing
+  where the reported total contradicts that definition is
+  inconsistent on its face).
+- Direct partition relationships stated with form text like "Of the
+  amount at line X" (sub-lines so designated cannot, together, exceed
+  the parent line).
+- BN format violations against CRA's 15-character business-number
+  format `^[0-9]{9}RR[0-9]{4}$`.
+- Observable coverage facts about the published dataset (e.g. how many
+  BNs in `cra_identification` show any `legal_name` variation across
+  the fiscal years loaded).
+
+**The suite deliberately does NOT flag:**
+
+- **Magnitude thresholds.** The T3010 imposes no bound on any
+  financial field. Large legitimate filings (provincial health
+  authorities, school boards) cross any threshold a third-party
+  analyst might pick. Known typos such as FINCA CANADA FY 2023
+  (\$222B compensation on \$1.8M revenue) are still caught here
+  *because they violate the IDENTITY_5100 arithmetic identity*, not
+  because of their magnitude.
+- **Sign rules.** The T3010 form explicitly instructs filers to
+  "show a negative amount with brackets" on field_4600 (Net proceeds
+  from disposition of assets), and the CRA Open Data Dictionary v2.0
+  records that every financial field in the extract has a length of
+  14 "including one digit reserved for a potential negative sign."
+  Sophisticated foundations (Mastercard Foundation, Azrieli
+  Foundation, The Winnipeg Foundation, Fondation Lucie et André
+  Chagnon, and many others) have legitimately reported negative
+  field_4700 (total revenue) in years with investment losses. These
+  filings reconcile correctly and are not data errors.
+- **Cross-field inequalities that depend on non-negativity.** Rules
+  like "compensation must not exceed total expenditures" or "gifts
+  to qualified donees must not exceed total expenditures" are
+  derivable from the form's arithmetic *only* if one assumes every
+  expenditure sub-line is non-negative. The form text does not say
+  that. We therefore do not claim those as impossibilities.
+- **Plausibility flags.** "Total expenditures > revenue + total
+  assets", "expenditure-to-revenue ratio > 100×", and similar
+  cross-section ratios are not in the form text and have plausible
+  legitimate explanations (a foundation drawing from a large
+  endowment, a charity that has taken on debt). They are out of
+  scope for this suite.
+
+The goal of this discipline is that every claim in a generated
+report survives a hostile read by a reviewer who has the T3010 form
+and the data dictionary in front of them.
+
+### Insights You Will Find When You Run These
+
+#### From `01-donee-bn-name-mismatches.js`
+
+* **\$8.97 billion (13.4%) of charity-to-charity gift dollars** over
+  2020–2024 cannot be joined programmatically from `cra_qualified_donees`
+  to `cra_identification` on the stated BN. The report splits this into
+  four categories: PLACEHOLDER_BN, **MALFORMED_BN** (format violations),
+  **UNREGISTERED_BN** (well-formed BNs not in the identification table),
+  and NAME_MISMATCH (valid BNs whose donee_name doesn't match the
+  canonical legal name).
+* **\$1.95 billion of that sits under BNs that fail CRA's own 15-character
+  format** (`^[0-9]{9}RR[0-9]{4}$`) — the only format-rule
+  impossibility. The report includes a full **defect taxonomy** (embedded
+  space, RC/RP/RT payroll-program codes where registered-charity codes
+  belong, missing RR suffix, single R, truncated suffix, non-numeric BN)
+  with three worked examples per defect class so the exact row, filer,
+  and dollar amount are visible.
+* **The "Toronto" single-filer case study**: Jewish Foundation of Greater
+  Toronto's FY 2023 return lists `donee_bn = 'Toronto'` on all 434 of
+  its Schedule 5 line items, totalling \$42,953,866. The single largest
+  line (\$22,576,875) is to the United Jewish Appeal of Greater Toronto.
+  This appears as a dedicated section in the report with per-year
+  record counts for every filer who used the same malformed BN on 20+
+  records.
+* **Well-known registered charities absent from the identification
+  roster** (UNREGISTERED_BN bucket — not an impossibility, just a
+  factual count of failed joins): Sunnybrook Health Sciences Centre,
+  BC Cancer Agency (under three different spellings), Hockey Canada,
+  University of Ottawa Heart Institute, CancerCare Manitoba, PEI's
+  Queen Elizabeth Hospital.
+
+#### From `02-t3010-arithmetic-impossibilities.js`
+
+The script runs **10 rules** across four families. Every rule is
+traced to a specific line number in the T3010 form or the CRA Open
+Data Dictionary v2.0 — the suite never claims a rule that isn't
+printed in CRA's own documentation.
+
+**Expenditure-tree identities:**
+
+* **IDENTITY_5100** — the T3010 form defines `field_5100` as
+  *"Total expenditures (add lines 4950, 5045 and 5050)"* (form line
+  657). Any filing where the reported `field_5100` does not equal
+  the sum of its three components (within \$1 rounding tolerance) is
+  inconsistent with the form's own definition. FINCA CANADA FY 2023
+  is caught here — its reported \$222B expenditures cannot be
+  reconciled to the sum of its components.
+* **PARTITION_4950** — the form groups fields 5000, 5010, 5020, and
+  5040 under the heading *"Of the amounts at lines 4950"* (form
+  line 644), explicitly designating each as a subset of field_4950.
+  Their sum therefore cannot exceed field_4950.
+
+**Balance-sheet identities** (strict: only fires when both the total
+AND at least one component field are populated in the extract, so
+Section D filers who report only the total are not miscounted):
+
+* **IDENTITY_4200** — `field_4200` (total assets) must equal the sum
+  of asset lines 4100, 4110, 4120, 4130, 4140, 4150, 4155, 4160,
+  4165, 4166, 4170, plus 4180 (pre-v27) or 4190 (v27+). Form line
+  584: *"Total assets (add lines 4100, 4110 to 4155, and 4160 to
+  4170)"*.
+* **IDENTITY_4350** — `field_4350` (total liabilities) must equal
+  `field_4300 + 4310 + 4320 + 4330`. Form line 572: *"Total
+  liabilities (add lines 4300 to 4330)"*.
+
+**Cross-schedule equalities** — these are constraints the CRA Open
+Data Dictionary v2.0 literally says "must be pre-populated":
+
+* **COMP_4880_EQ_390** — Schedule 6 `field_4880` must equal Schedule
+  3 `field_390`. Form line 631: *"Total expenditure on all
+  compensation (enter the amount reported at line 390 in Schedule 3,
+  if applicable) — 4880"*.
+* **DQ_845_EQ_5000** — Schedule 8 line 845 must equal Schedule 6
+  `field_5000`. Dictionary line 1023: *"Must be pre-populated with
+  the amount from line 5000 from Schedule 6 of this return"*.
+* **DQ_850_EQ_5045** — Schedule 8 line 850 must equal Schedule 6
+  `field_5045`. Dictionary line 1024.
+* **DQ_855_EQ_5050** — Schedule 8 line 855 must equal Schedule 6
+  `field_5050`. Dictionary line 1025.
+
+**Schedule dependencies** — the form's own "If yes" logic:
+
+* **SCH3_DEP_FORWARD** — if `field_3400` (C9) = TRUE, a Schedule 3
+  row must exist in `cra_compensation`. Form line 133: *"Did the
+  charity incur any expenses for compensation of employees during
+  the fiscal period? ... Important: If yes, you must complete
+  Schedule 3, Compensation."*
+* **SCH3_DEP_REVERSE** — if a Schedule 3 row exists, `field_3400`
+  (C9) must = TRUE. Form line 467 (Schedule 3 instructions): *"If
+  you complete this section, you must answer yes to question C9."*
+
+Every violation in the report surfaces the filer's BN, the fiscal
+year, the legal name as filed, and the plain-English description of
+the violation citing the specific form line or dictionary entry.
+
+#### From `03-identification-backfill-check.js`
+
+This script reports observable coverage facts, not impossibilities:
+
+* **Only ~0.86% of BNs** (~784 of 91,129) show any `legal_name` variation
+  at all across five years of filings — implausibly low in a sector
+  that rebrands routinely. CRA has overwritten the current legal name
+  onto every historical row.
+* **Seven well-known rebrands** are spot-checked by BN (Ryerson → TMU,
+  Grey Bruce → BrightShores, Calgary Zoo Foundation → Wilder Institute,
+  Markham Stouffville → Oak Valley, Toronto General & Western → UHN
+  Foundation, St. Michael's → Unity Health Toronto, JHF → Moral Arc).
+  For six of the seven, the pre-rebrand name is not recoverable
+  anywhere in `cra_identification`. Donors who wrote the old name on
+  a 2021 gift record cannot be matched to the charity's current BN
+  through the identification table.
+* The report also computes how much of the NAME_MISMATCH dollar total
+  from script 01 would be "rescuable" by a historical-name join if
+  CRA had preserved the history. The answer — small, because the
+  history isn't preserved — is itself the finding.
+
+### Why These Matter
+
+CRA's charitable-sector oversight framework rests on the T3010 data
+being accurate and linkable:
+
+- **Disbursement quota compliance** under *Income Tax Act* s. 149.1
+  requires that qualifying disbursements actually reached qualified
+  donees. The audit trail is the donee_bn on each gift. When the BN
+  does not resolve, the compliance check cannot be mechanically
+  performed.
+- **Financial disclosure** assumes the arithmetic on each return is
+  internally consistent. IDENTITY_5100, PARTITION_4950, IDENTITY_4200,
+  IDENTITY_4350, and the four cross-schedule equality rules all
+  measure cases where published totals contradict the components the
+  same filing reports.
+- **Schedule dependencies** are stated on the form itself. C9 ↔
+  Schedule 3 is bi-directional in the form text; violations in
+  either direction are structural form errors.
+- **Public understanding** of charitable-sector dollar flows depends
+  on the data being joinable. When \$9 billion of gifts can't be
+  traced donor-to-recipient, and \$2 billion of that sits under BNs
+  that don't pass a one-line regex, the dataset is not fit for the
+  oversight purpose CRA publishes it for.
+
+**The scripts make no accusations.** They measure the gap between what
+the T3010 framework assumes about its data and what the published
+dataset actually delivers. Closing the gap is mechanical: input
+validation at filing time, no-backfill publication of legal-name
+history, arithmetic checks against the form's own definitions,
+structural BN format validation. Every fix is deterministic; none
+requires sector judgement.
+
+See `scripts/data-quality/README.md` for full methodology
+documentation, the persisted-table schema, and instructions for
+adding new rules. New rules are welcome provided they meet the
+methodology standard: every rule must be traceable to explicit text
+in the T3010 form or the CRA Open Data Dictionary v2.0.
+
+### Independent Verification (pre-validated exemplars)
+
+Every violation the pipeline surfaces is reproducible against
+independent third-party sources that scrape the same CRA Open Data
+this repo ingests. The table below lists three violations that have
+been pre-validated against `charitydata.ca` — every field matches to
+the dollar. A reviewer can reproduce any of them in under two minutes.
+
+| Rule | Charity | BN | FY | What's wrong | 3rd-party verification |
+|---|---|---|---|---|---|
+| `IDENTITY_5100` | **CENTREVILLE PRESBYTERIAN CHURCH** | `129955928RR0001` | **2024** | `field_4950` reported as **\$5,204,352,043** (\$5.2 billion) on a rural Ontario church whose revenue is \$62K and reasonable total expenditures are \$54,543. Five-orders-of-magnitude typo on one line. | [charitydata.ca](https://www.charitydata.ca/charity/centreville-presbyterian-church/129955928RR0001/) |
+| `COMP_4880_EQ_390` | **FRASER HEALTH AUTHORITY** | `887612463RR0001` | **2020** | Schedule 6 `field_4880` = **\$2,008,634,000** but Schedule 3 `field_390` = **\$2,008,634**. Same digits, exactly 1000× ratio — one side in dollars, one in thousands. Form says they must match. | [charitydata.ca](https://www.charitydata.ca/charity/fraser-health-authority/887612463RR0001/) |
+| `IDENTITY_5100` | **MSC CANADA** | `119042489RR0001` | **2021** | `field_4950 = $147,218,191` but the sum of its own 12 operating sub-lines (4800–4920) is \$15,647,885. Reported 5100 = \$19.6M (consistent with sub-lines). 4950 is ~9.4× the real value. | [charitydata.ca](https://www.charitydata.ca/charity/msc-canada/119042489RR0001/) |
+
+**Reviewer recipe** (under 2 minutes per charity):
+
+1. Open the `charitydata.ca` URL above.
+2. Scroll to the fiscal year in question.
+3. Compare the T3010 line values in the third-party view against the
+   "Supporting detail" column in
+   `data/reports/data-quality/t3010-arithmetic-impossibilities.md`.
+4. Confirm the contradiction against the form text quoted in the
+   rule's citation (also in the report).
+
+If any value in our report differs from the third-party source, that
+is a data-ingestion bug worth filing. **We have not found one.** If any
+value matches but the rule still fires, the filing genuinely violates
+the T3010 form's own arithmetic — which is the claim we make.
+
+### Running the full pipeline from a clean clone
+
+```bash
+git clone <this-repo>
+cd hackathon/CRA
+npm install                      # Node 18+ required
+# .env.public ships with read-only credentials for the Render-hosted
+# database, so no manual configuration is required to run the
+# data-quality scripts. They will connect and read from the cra schema.
+
+npm run data-quality             # ~2 minutes; runs all three scripts in order
+```
+
+On completion you will have:
+
+| File | What's in it |
+|---|---|
+| `data/reports/data-quality/donee-bn-name-mismatches.md` | $8.97B un-joinable gifts across four categories; malformed-BN defect taxonomy; case studies including the 434 `Toronto`-BN Jewish Foundation filing and the Calgary Foundation FY 2020 + FY 2022 `Sec. 149.1(1)` pattern |
+| `data/reports/data-quality/t3010-arithmetic-impossibilities.md` | 10 rules × their form/dictionary citations; **30,988 distinct BNs** flagged; top-20 violators per rule with full BN + FY + legal name + field values |
+| `data/reports/data-quality/identification-backfill-check.md` | Only 0.86% of BNs have any legal-name variation across 2020–2024; 6 of 7 spot-checked rebrands have the pre-rebrand name completely erased from `cra_identification` |
+
+Each report's JSON counterpart (`.json`) is identical content in
+structured form for downstream tooling. Each derived table persists to
+the `cra` schema (`cra.donee_name_quality`,
+`cra.t3010_arithmetic_violations`, `cra.identification_name_history`)
+so anyone with read-only access can query them directly without
+rerunning the scripts.
+
+### Headline numbers (from the latest run of this pipeline)
+
+| | |
+|---|---:|
+| Total gift records analysed                                  | **1,664,343** |
+| Gift dollars analysed                                        | **\$66.88B** |
+| Gift records flagged (PLACEHOLDER / MALFORMED / UNREGISTERED / NAME_MISMATCH) | **260,102** |
+| Dollars on flagged records                                   | **\$8.97B** (13.41% of all gifts) |
+| Of which `MALFORMED_BN` (BN format violations)               | \$1.95B |
+| Total T3010 arithmetic-identity violations (10 rules)        | **53,916** rows |
+| Distinct BNs with ≥ 1 arithmetic violation                   | **30,988** |
+| BNs in `cra_identification` showing any name variation across 5 years | **0.86%** (784 / 91,129) |
+| Known rebrands where pre-rebrand name is still recoverable   | **1 of 7 spot-checks** |
+
+---
+
 ## AI Agent Integration
 
 This project includes a `CLAUDE.md` file and skill definitions in `.claude/skills/` that enable AI coding agents (Claude Code, Copilot, etc.) to perform deep analytical profiling on the dataset.

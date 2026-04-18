@@ -22,7 +22,7 @@ if (!connString) {
 
 const pool = new Pool({
   connectionString: connString,
-  max: 10,
+  max: parseInt(process.env.DB_POOL_MAX || '25', 10),
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 30000,
   ssl: connString.includes('render.com') ? { rejectUnauthorized: false } : undefined,

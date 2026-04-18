@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Entity Resolution Dashboard</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #e2e8f0; padding: 20px; }
+  h1 { font-size: 1.5rem; color: #38bdf8; margin-bottom: 4px; }
+  .subtitle { color: #64748b; font-size: 0.85rem; margin-bottom: 20px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 24px; }
+  .card { background: #1e293b; border-radius: 8px; padding: 16px; border: 1px solid #334155; }
+  .card .label { font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; }
+  .card .value { font-size: 1.8rem; font-weight: 700; color: #f1f5f9; margin-top: 4px; }
+  .card .sub { font-size: 0.8rem; color: #64748b; margin-top: 2px; }
+  .card.highlight .value { color: #38bdf8; }
+  .card.green .value { color: #4ade80; }
+  .card.amber .value { color: #fbbf24; }
+  .section { margin-bottom: 24px; }
+  .section h2 { font-size: 1.1rem; color: #cbd5e1; margin-bottom: 12px; border-bottom: 1px solid #334155; padding-bottom: 6px; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  th { text-align: left; padding: 8px 12px; color: #94a3b8; border-bottom: 1px solid #334155; font-weight: 500; }
+  td { padding: 8px 12px; border-bottom: 1px solid #1e293b; }
+  tr:hover td { background: #1e293b; }
+  .status-badge { padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
+  .status-pending { background: #422006; color: #fbbf24; }
+  .status-same { background: #052e16; color: #4ade80; }
+  .status-different { background: #450a0a; color: #f87171; }
+  .status-related { background: #172554; color: #60a5fa; }
+  .status-error { background: #451a03; color: #fb923c; }
+  .search-box { width: 100%; padding: 12px 16px; background: #1e293b; border: 1px solid #475569; border-radius: 8px; color: #f1f5f9; font-size: 1rem; outline: none; }
+  .search-box:focus { border-color: #38bdf8; box-shadow: 0 0 0 2px rgba(56,189,248,0.2); }
+  .search-results { margin-top: 12px; }
+  .entity-row { background: #1e293b; border-radius: 8px; padding: 12px 16px; margin-bottom: 8px; cursor: pointer; border: 1px solid #334155; transition: border-color 0.15s; }
+  .entity-row:hover { border-color: #38bdf8; }
+  .entity-name { font-weight: 600; color: #f1f5f9; }
+  .entity-meta { font-size: 0.8rem; color: #94a3b8; margin-top: 4px; }
+  .entity-datasets span { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 0.7rem; font-weight: 600; margin-right: 4px; }
+  .ds-cra { background: #172554; color: #60a5fa; }
+  .ds-fed { background: #052e16; color: #4ade80; }
+  .ds-ab { background: #422006; color: #fbbf24; }
+  .detail-panel { background: #1e293b; border-radius: 8px; padding: 20px; border: 1px solid #334155; margin-top: 16px; display: none; }
+  .detail-panel.open { display: block; }
+  .detail-section { margin-top: 16px; }
+  .detail-section h3 { font-size: 0.9rem; color: #94a3b8; margin-bottom: 8px; }
+  .alias-list { display: flex; flex-wrap: wrap; gap: 4px; }
+  .alias-tag { background: #334155; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; }
+  .financial-table { font-size: 0.8rem; }
+  .financial-table td { text-align: right; font-variant-numeric: tabular-nums; }
+  .financial-table td:first-child { text-align: left; }
+  .conn-status { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+  .conn-ok { background: #4ade80; }
+  .conn-err { background: #f87171; }
+  .conn-wait { background: #fbbf24; }
+  .pipeline-bar { height: 6px; background: #334155; border-radius: 3px; overflow: hidden; margin-top: 4px; }
+  .pipeline-fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
+  .fill-blue { background: #38bdf8; }
+  .fill-green { background: #4ade80; }
+  .fill-amber { background: #fbbf24; }
+  #timestamp { color: #475569; font-size: 0.75rem; }
+</style>
+</head>
+<body>
+
+<div style="display:flex; align-items:center; gap:12px; margin-bottom:4px;">
+  <h1>Entity Resolution Dashboard</h1>
+  <span id="connStatus"><span class="conn-status conn-wait"></span>Connecting...</span>
+</div>
+<div class="subtitle">Cross-dataset golden records across CRA, FED, and AB | <span id="timestamp">--</span></div>
+
+<!-- Stats Cards -->
+<div class="grid" id="statsGrid">
+  <div class="card highlight"><div class="label">Active Entities</div><div class="value" id="activeEntities">--</div><div class="sub" id="totalEntities"></div></div>
+  <div class="card green"><div class="label">Cross-Dataset</div><div class="value" id="crossDs">--</div><div class="sub">Appear in 2+ datasets</div></div>
+  <div class="card"><div class="label">Source Links</div><div class="value" id="sourceLinks">--</div><div class="sub">Records linked to entities</div></div>
+  <div class="card amber"><div class="label">Merges Completed</div><div class="value" id="mergeCount">--</div><div class="sub" id="mergedEntities"></div></div>
+  <div class="card"><div class="label">With BN</div><div class="value" id="withBN">--</div><div class="sub">CRA Business Number anchored</div></div>
+</div>
+
+<!-- Pipeline Status -->
+<div class="section">
+  <h2>Resolution Pipeline</h2>
+  <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));">
+    <div class="card"><div class="label">Resolution Log</div><div id="resLog" style="margin-top:8px; font-size:0.8rem;"></div></div>
+    <div class="card"><div class="label">Merge Candidates</div><div id="candStatus" style="margin-top:8px; font-size:0.8rem;"></div></div>
+  </div>
+</div>
+
+<!-- Search -->
+<div class="section">
+  <h2>Entity Search</h2>
+  <input type="text" class="search-box" id="searchInput" placeholder="Search by name (e.g. &quot;BOYLE STREET SOCIETY&quot;, &quot;UNIVERSITY OF ALBERTA&quot;)..." />
+  <div class="search-results" id="searchResults"></div>
+  <div class="detail-panel" id="detailPanel"></div>
+</div>
+
+<script>
+const fmt = n => n != null ? Number(n).toLocaleString() : '--';
+const fmtMoney = n => n != null ? '$' + Number(n).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0}) : 'N/A';
+
+// SSE Connection
+let evtSource;
+function connectSSE() {
+  evtSource = new EventSource('/api/progress');
+  evtSource.onmessage = (e) => {
+    const d = JSON.parse(e.data);
+    if (d.error) {
+      document.getElementById('connStatus').innerHTML = '<span class="conn-status conn-err"></span>DB Error';
+      return;
+    }
+    document.getElementById('connStatus').innerHTML = '<span class="conn-status conn-ok"></span>Live';
+    document.getElementById('timestamp').textContent = new Date(d.timestamp).toLocaleTimeString();
+
+    // Stats
+    document.getElementById('activeEntities').textContent = fmt(d.entities.active);
+    document.getElementById('totalEntities').textContent = `${fmt(d.entities.total)} total`;
+    document.getElementById('crossDs').textContent = fmt(d.entities.cross_ds);
+    document.getElementById('sourceLinks').textContent = fmt(d.source_links);
+    document.getElementById('mergeCount').textContent = fmt(d.merges);
+    document.getElementById('mergedEntities').textContent = `${fmt(d.entities.merged)} entities absorbed`;
+    document.getElementById('withBN').textContent = fmt(d.entities.with_bn);
+
+    // Resolution log
+    const logEl = document.getElementById('resLog');
+    logEl.innerHTML = Object.entries(d.resolution_log || {})
+      .map(([s, c]) => `<div style="display:flex;justify-content:space-between;"><span>${s}</span><span>${fmt(c)}</span></div>`)
+      .join('');
+
+    // Candidates
+    const candEl = document.getElementById('candStatus');
+    const cands = d.candidates || {};
+    candEl.innerHTML = Object.entries(cands)
+      .map(([s, c]) => `<div style="display:flex;justify-content:space-between;"><span class="status-badge status-${s}">${s}</span><span>${fmt(c)}</span></div>`)
+      .join('');
+  };
+  evtSource.onerror = () => {
+    document.getElementById('connStatus').innerHTML = '<span class="conn-status conn-err"></span>Disconnected';
+    setTimeout(connectSSE, 5000);
+  };
+}
+connectSSE();
+
+// Search
+let searchTimeout;
+document.getElementById('searchInput').addEventListener('input', (e) => {
+  clearTimeout(searchTimeout);
+  const q = e.target.value.trim();
+  if (q.length < 2) { document.getElementById('searchResults').innerHTML = ''; return; }
+  searchTimeout = setTimeout(async () => {
+    const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&limit=10`);
+    const data = await res.json();
+    const el = document.getElementById('searchResults');
+    if (data.error) { el.innerHTML = `<div style="color:#f87171">${data.error}</div>`; return; }
+    el.innerHTML = data.map(r => `
+      <div class="entity-row" onclick="showDetail(${r.id})">
+        <div class="entity-name">${esc(r.canonical_name)}</div>
+        <div class="entity-meta">
+          #${r.id} | ${r.bn_root ? 'BN:' + r.bn_root : 'No BN'} | ${r.source_count} sources | ${(r.sim * 100).toFixed(0)}% match
+          <div class="entity-datasets">
+            ${(r.dataset_sources || []).map(ds => `<span class="ds-${ds}">${ds.toUpperCase()}</span>`).join('')}
+          </div>
+        </div>
+      </div>
+    `).join('');
+  }, 300);
+});
+
+async function showDetail(id) {
+  const panel = document.getElementById('detailPanel');
+  panel.classList.add('open');
+  panel.innerHTML = '<div style="color:#94a3b8">Loading...</div>';
+
+  const res = await fetch(`/api/entity?id=${id}`);
+  const d = await res.json();
+  if (!d || d.error || !d.entity) { panel.innerHTML = '<div style="color:#f87171">Not found</div>'; return; }
+
+  const e = d.entity;
+  const uniqueAlts = [...new Set(e.alternate_names || [])].filter(n => n !== e.canonical_name);
+
+  let html = `
+    <h2 style="color:#38bdf8; margin-bottom:4px;">${esc(e.canonical_name)}</h2>
+    <div style="color:#94a3b8; font-size:0.85rem;">
+      #${e.id} | ${e.entity_type} | BN: ${e.bn_root || 'none'} | Confidence: ${e.confidence} | Status: ${e.status}
+      <div class="entity-datasets" style="margin-top:4px;">
+        ${(e.dataset_sources || []).map(ds => `<span class="ds-${ds}">${ds.toUpperCase()}</span>`).join('')}
+      </div>
+    </div>
+  `;
+
+  if (uniqueAlts.length > 0) {
+    html += `<div class="detail-section"><h3>Aliases (${uniqueAlts.length})</h3><div class="alias-list">${uniqueAlts.map(n => `<span class="alias-tag">${esc(n)}</span>`).join('')}</div></div>`;
+  }
+
+  if (d.links && d.links.length) {
+    html += `<div class="detail-section"><h3>Source Links</h3><table><tr><th>Schema</th><th>Table</th><th>Records</th></tr>`;
+    d.links.forEach(l => { html += `<tr><td>${l.source_schema}</td><td>${l.source_table}</td><td>${l.cnt}</td></tr>`; });
+    html += `</table></div>`;
+  }
+
+  if (d.financials && d.financials.length) {
+    html += `<div class="detail-section"><h3>CRA Financial History</h3><table class="financial-table"><tr><th>Year</th><th>Revenue</th><th>Expenditures</th><th>Programs</th><th>Gifts</th></tr>`;
+    d.financials.forEach(f => { html += `<tr><td>${f.yr}</td><td>${fmtMoney(f.revenue)}</td><td>${fmtMoney(f.expenditures)}</td><td>${fmtMoney(f.programs)}</td><td>${fmtMoney(f.gifts)}</td></tr>`; });
+    html += `</table></div>`;
+  }
+
+  if (d.fedTop && d.fedTop.length) {
+    html += `<div class="detail-section"><h3>Federal Grants (Top ${d.fedTop.length})</h3><table><tr><th>Value</th><th>Department</th><th>Program</th></tr>`;
+    d.fedTop.forEach(g => { html += `<tr><td>${fmtMoney(g.agreement_value)}</td><td>${esc((g.owner_org_title||'').slice(0,50))}</td><td>${esc((g.prog_name_en||'').slice(0,50))}</td></tr>`; });
+    html += `</table></div>`;
+  }
+
+  if (d.abSummary && d.abSummary.total) {
+    html += `<div class="detail-section"><h3>Alberta Grants</h3><p>${fmtMoney(d.abSummary.total)} across ${d.abSummary.cnt} payments</p></div>`;
+  }
+
+  if (d.related && d.related.length) {
+    html += `<div class="detail-section"><h3>Related Entities</h3>`;
+    d.related.forEach(r => { html += `<div class="entity-row" onclick="showDetail(${r.id})" style="margin-bottom:4px;"><span class="entity-name">${esc(r.canonical_name)}</span> <span class="status-badge status-${(r.llm_verdict||'').toLowerCase()}">${r.llm_verdict}</span> <span style="color:#64748b;font-size:0.8rem;">${esc(r.llm_reasoning||'')}</span></div>`; });
+    html += `</div>`;
+  }
+
+  panel.innerHTML = html;
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+</script>
+</body>
+</html>

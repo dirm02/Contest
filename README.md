@@ -92,35 +92,36 @@ cd general && npm install && npm run setup
 ```
 
 Key features:
-- **27 Alberta ministries** with codes, ministers, deputy ministers
-- **Universal fuzzy matching engine** with multi-layer entity resolution
-- **AI-assisted entity review** via Claude (Anthropic direct + Vertex AI fallback)
-- Cross-dataset matching (CRA charities vs FED recipients vs AB grants/contracts/non-profits)
+- **Cross-dataset entity resolution pipeline** — seven stages combining deterministic matching, Splink probabilistic record linkage, and LLM verdict/authoring to produce one golden record per real-world organization
+- **27 Alberta ministries** reference table (codes, ministers, deputy ministers)
+- **Real-time dashboard** at `localhost:3800` for controlling and observing the pipeline end to end
+- **AI-assisted matching** via Claude Sonnet 4.6 (Anthropic direct + Vertex AI, dual-provider parallel throughput)
 
 ## Entity Resolution
 
-The defining challenge across these datasets is fuzzy matching - the same organization can appear under dozens of name variations across CRA, FED, and AB. The `general` module provides a multi-layer resolution engine:
+The defining challenge across these datasets is that the same organization appears under dozens of name variations across CRA, FED, and AB. *"The Boyle Street Service Society"* shows up in source data as 11+ distinct name variants, spread across 6 different tables, with 4 different Business Number suffix variants — without reconciling them to one canonical entity, cross-dataset accountability analysis is impossible.
+
+The `general` module builds one canonical **golden record** per real-world organization, linked to every source row that contributed to it. The pipeline combines three complementary techniques:
+
+1. **Deterministic matching** — business-number anchoring + exact + normalized-name + trade-name extraction, walked across the six source tables in trust order (CRA first, federal next, Alberta last)
+2. **Probabilistic matching via [Splink](https://moj-analytical-services.github.io/splink/)** — the UK Ministry of Justice's open-source Fellegi-Sunter implementation, with feature weights learned from the data through expectation-maximization. Catches the cases rule-based matching misses: hierarchical organizations, truncated variants, no-BN cross-dataset pairs.
+3. **LLM verdict and authoring** — Claude Sonnet 4.6, running 100+100 concurrent against Anthropic's direct API and Google Vertex AI for parallel throughput. The LLM does two jobs in one call: decides SAME / RELATED / DIFFERENT for each candidate pair, and *authors the canonical golden record* (canonical name, entity type, exhaustive alias list) when the verdict is SAME.
+
+The output is a single `entity_golden_records` table with roughly 800,000 rows — one per real-world organization — each with a canonical name, every observed alias, the primary BN and all variants, per-dataset profiles (CRA registration + financials, federal grants summary, Alberta totals), addresses, merge history, and cross-references to related entities.
+
+Key design principles:
+- **BN is the primary identifier.** Every stage treats the 9-digit Canadian Business Number root as authoritative.
+- **Every stage is idempotent and resumable.** Interruptions pick up cleanly.
+- **Every stage is observable.** A browser dashboard at `localhost:3800` shows live metrics, streams each phase's output inline, and flags regressions on six test entities in real time.
+
+See [general/README.md](general/README.md) for the full pipeline documentation (six stages, libraries, outcomes, validation against the Splink reference implementation). Run end-to-end with:
 
 ```bash
 cd general
-
-# Deterministic resolution (no API key needed)
-node scripts/resolve-entity.js --name "Boyle Street Service" --bn 118814391
-
-# With AI second pass (needs ANTHROPIC_API_KEY or VERTEX credentials)
-node scripts/resolve-entity.js --name "Homeward Trust" --bn 834173627 --llm
-
-# Force a specific AI provider
-node scripts/resolve-entity.js --name "mustard seed society" --llm --provider vertex
+npm install
+npm run entities:splink:install       # one-time: Splink Python deps
+npm run entities:dashboard            # http://localhost:3800 — click through phases
 ```
-
-Resolution layers:
-1. **BN Anchor** - Business number root (first 9 digits) as gold standard
-2. **BN Negative Filter** - Reject candidates with different BN roots
-3. **Core Token Gate** - Require discriminating words to match
-4. **Trigram Similarity** - pg_trgm fuzzy matching with configurable threshold
-5. **Trade-Name Expansion** - Parse "TRADE NAME OF" and bilingual "|" patterns
-6. **AI Review** - Claude contextual judgment for ambiguous cases (Anthropic or Vertex)
 
 ## Environment Configuration
 
@@ -146,7 +147,11 @@ cd ../AB && npm run verify
 
 # Run analysis
 cd ../AB && npm run analyze:all
-cd ../general && node scripts/resolve-entity.js --name "Your Entity" --llm
+
+# Run the entity resolution pipeline (produces golden records across CRA+FED+AB)
+cd ../general
+npm run entities:splink:install     # one-time Splink Python deps
+npm run entities:dashboard          # open http://localhost:3800 to drive the pipeline visually
 ```
 
 ## Database Access
