@@ -17,10 +17,20 @@ const fs = require('fs');
 const path = require('path');
 const { pool } = require('../../../lib/db');
 
-const SPLINK_DIR = 'C:\\Users\\janak.alford\\Downloads\\splink-master-table';
+// Splink's reference master-table is distributed separately. Download its
+// zip from the Splink team's release page, extract it, and either set
+// SPLINK_MASTER_DIR to the extracted directory or place it next to this
+// repository root as `splink-master-table/` (sibling of the hackathon/ dir).
+const SPLINK_DIR = process.env.SPLINK_MASTER_DIR
+  || path.join(__dirname, '..', '..', '..', '..', '..', 'splink-master-table');
 const SPLINK_DB = path.join(SPLINK_DIR, 'entity-master.sqlite');
 const COMPARISON_JSON = path.join(SPLINK_DIR, 'matcher-comparison.json');
-const OUT_DIR = path.join(__dirname, '..', '..', '..', 'general', 'data', 'reports');
+if (!fs.existsSync(SPLINK_DB)) {
+  console.error(`Splink reference SQLite not found at ${SPLINK_DB}`);
+  console.error(`Set SPLINK_MASTER_DIR env var to the folder containing entity-master.sqlite + matcher-comparison.json.`);
+  process.exit(1);
+}
+const OUT_DIR = path.join(__dirname, '..', '..', '..', 'data', 'reports');
 const OUT_CSV = path.join(OUT_DIR, 'compare-500-vs-splink.csv');
 
 function openSplink() {

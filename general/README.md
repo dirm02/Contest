@@ -4,7 +4,7 @@ Part of the **AI For Accountability Hackathon** suite, alongside [CRA](../CRA/),
 
 The `general` module answers a seemingly simple question that is in fact extremely hard: **"Is this organization in the CRA charity database the same organization as this recipient of a federal grant, or this vendor on an Alberta contract?"**
 
-The same legal entity can appear under dozens of different names across the three datasets — sometimes with different registration numbers, sometimes with typos, sometimes only as a truncated trade name on an invoice. A real example: "The Boyle Street Service Society" appears in the source data with 11+ distinct name variants, 4 different Business Number suffixes (RR, RC, RP, different account types), and 256 source records spread across 6 tables. Without reconciling all of these to one canonical entity, cross-dataset accountability analysis is impossible.
+The same legal entity can appear under dozens of different names across the three datasets — sometimes with different registration numbers, sometimes with typos, sometimes only as a truncated trade name on an invoice. A representative mid-sized registered charity operating in all three datasets typically has 10+ distinct name variants, multiple Business Number suffix variants (the `RR` charity account, `RC` corporate tax account, `RP` payroll account), and hundreds of source records across 6 tables. Without reconciling all of these to one canonical entity, cross-dataset accountability analysis is impossible.
 
 This module builds one canonical **golden record** per real-world organization, linked to every source row that contributed to it.
 
@@ -47,7 +47,7 @@ The pipeline is six discrete stages. Each writes to its own Postgres table(s) an
 
 Creates the entity-resolution tables, indexes, and helper SQL functions in the `general` schema. Key helpers:
 
-- `general.norm_name()` — the canonical-name normalizer used everywhere downstream. Strips operational prefixes like *"TRADE NAME OF"*, *"O/A"*, *"DBA"*, *"DOING BUSINESS AS"*, *"AKA"*, *"FORMERLY"*, and *"F/K/A"* from names; strips trailing *"(THE)"* and leading *"THE"*; handles bilingual English-French names separated by pipe or slash; collapses punctuation and whitespace; uppercases everything. *"The Boyle Street Service Society"*, *"BOYLE STREET SERVICE SOCIETY (THE)"*, and *"Boyle Street Service Society, ."* all normalize to the same string.
+- `general.norm_name()` — the canonical-name normalizer used everywhere downstream. Strips operational prefixes like *"TRADE NAME OF"*, *"O/A"*, *"DBA"*, *"DOING BUSINESS AS"*, *"AKA"*, *"FORMERLY"*, and *"F/K/A"* from names; strips trailing *"(THE)"* and leading *"THE"*; handles bilingual English-French names separated by pipe or slash; collapses punctuation and whitespace; uppercases everything. So variants like *"ACME FOUNDATION"*, *"ACME FOUNDATION (THE)"*, and *"Acme Foundation, ."* all normalize to the same string.
 - `general.is_valid_bn_root()` — recognizes whether a 9-digit BN string is a real Canadian Business Number or a sentinel placeholder (all zeros, `100000000`, `200000000`, etc.). Placeholder BNs used to cause thousands of unrelated entities to collide.
 - `general.extract_bn_root()` — strips non-digit characters from a raw BN string (spaces, letters, dashes — the wild data has all of these) and returns a 9-digit root only if it's a real BN.
 
@@ -168,7 +168,7 @@ Two browser interfaces — one for running the pipeline, one for exploring its o
 - **Stage strip** showing the current state of the pipeline (inferred from the database — no manual coordination needed)
 - **Control panel** with one button per pipeline stage; clicking spawns the corresponding script server-side and streams its stdout into an inline log pane. Each log auto-scrolls to the latest line (but preserves scroll position if you scroll up to read history).
 - **Real-time metrics**: entity counts, source-link counts by table, Splink prediction stats with band breakdown, LLM progress with rate and ETA, dual-provider throughput split, candidates-by-method table
-- **Test-entity sanity cards** for six known organizations (Boyle Street, Homeward Trust, St Andrew's Presbyterian ×2, Bissell Centre, University of Alberta). These cards update every poll and show link count, alias count, and dataset coverage — regressions are visible instantly.
+- **Test-entity sanity cards** — a small set of known organizations (configurable in the dashboard source). Each card looks up the entity by Business Number and displays its current link count, alias count, and dataset coverage, so regressions in matching are visible the instant a pipeline stage completes. The default set includes University of Alberta (large, multi-dataset) plus a handful of mid-sized registered charities that exercise different matching paths (bilingual names, shared canonical names across different BNs, no-BN cross-dataset entities, etc.).
 - **Recent merges feed** showing the last ten entity merges with survivor/absorbed names
 - **Orphan recovery**: every phase spawn writes its PID to disk; on dashboard restart any still-running orphan phases are re-attached and can be stopped from the UI. A "Kill all pipeline processes" button provides a nuclear option that taskkills every Node/Python process matching our pipeline script names.
 
@@ -224,15 +224,15 @@ On a representative run with the current source data:
 - **~45,000 LLM-identified RELATED pairs** — cross-linked for contextual lookups (e.g., the University of Alberta's faculty of medicine is flagged as RELATED to the main University of Alberta entity, not merged)
 - **~1.1 million LLM DIFFERENT verdicts** — pairs the candidate-detection stages surfaced that turned out not to be the same organization, usefully recorded so they never get re-reviewed
 
-Six hand-curated test entities validate pipeline correctness after every run:
+Five test categories validate pipeline correctness after every run. The dashboard implements them as sanity cards that look up specific BNs on each poll:
 
-| Test | Expected |
-|------|----------|
-| The Boyle Street Service Society | Single entity with 11+ name variants, 250+ links across all three datasets |
-| Homeward Trust Edmonton | Distinct from Homeward Trust Holdings Ltd and Homeward Trust Charitable Foundation (three separate legal entities in the same corporate family) |
-| Two different "St Andrew's Presbyterian Church" charities | Kept as two entities (different CRA BNs → different registered charities despite identical names) |
-| Bissell Centre | Correct BN anchor; links to Alberta grants, contracts, sole-source, and non-profit registry |
-| University of Alberta | Single entity with 2,400+ links, 50+ aliases, across all three datasets |
+| Test category | Expected behavior |
+|---------------|-------------------|
+| Multi-dataset mid-sized charity (a single registered charity with a unique BN appearing in CRA + federal grants + AB data) | Resolves to a single entity with 200+ source links and 10+ name variants; `dataset_sources` contains all three |
+| Corporate family with multiple legal entities (a parent + holding corp + separate charitable foundation, all sharing a name stem) | Kept as three distinct entities (one per BN); LLM tags them RELATED but does not merge |
+| Same canonical name, different BNs (two different registered charities that share an identical legal name in different cities) | Kept as two separate entities; the BN-conflict guard prevents over-merging |
+| Cross-dataset entity with contracts + sole-source (a charity with line items in multiple Alberta tables) | Correct BN anchor; links include all 4 AB tables (grants, contracts, sole-source, non-profit registry) plus CRA + FED |
+| Large multi-dataset institution (e.g. a university registered as a CRA charity and receiving federal + Alberta funding) | Single entity with 2,000+ source links and 50+ aliases across all three datasets |
 
 Against Splink's independently-published 500-entity reference sample, our pipeline finds **98% of the same entities**, captures **4.6× more source links on average** (largely because we include Alberta grants data their reference omits), and matches their singleton count within 0.2%. The remaining gap is concentrated in probabilistic matches for hierarchical religious organizations — the specific case that motivates running Splink as a complementary tier.
 
@@ -267,17 +267,21 @@ Both browser tools can run simultaneously (different ports). Individual pipeline
 
 ### Verifying the pipeline ran correctly
 
-After a full rebuild, six hand-curated test cases should all pass. Either check the dashboard's test-entity sanity cards or use the dossier to search for each:
+After a full rebuild, the dashboard's sanity cards should all resolve without a `NOT FOUND` marker, with link counts and dataset-coverage matching expectations for each test category. See the "Outcomes" section above for the five categories the cards exercise.
 
-| Test | Expected |
-|------|----------|
-| Boyle Street Service Society | Single entity with 250+ source links across all three datasets, 10+ name variants |
-| Homeward Trust Edmonton | Distinct from Homeward Trust Holdings Ltd and Homeward Trust Charitable Foundation (three separate legal entities in the same corporate family) |
-| Two different "St Andrew's Presbyterian Church" charities (BNs 108004664, 108004474) | Kept as two entities (different CRA BNs → different registered charities despite identical names) |
-| Bissell Centre | Correct BN anchor; links to Alberta grants, contracts, sole-source, and non-profit registry |
-| University of Alberta | Single entity with 2,000+ links and 50+ aliases across all three datasets |
+For a structured quality check beyond the sanity cards, run:
 
-Regressions on any of these indicate a bug in a matching stage. Compare against the comparison tool: `npm run entities:compare:splink` runs a 500-entity sample against the Splink reference implementation and reports coverage + delta.
+```bash
+npm run entities:compare:splink
+```
+
+This runs the 500-entity reference sample from Splink's published master-table against our pipeline's current state and reports:
+
+- Coverage rate (how many of the reference entities we found)
+- Per-stratum comparison (BN-anchored vs no-BN, bilingual names, large orgs)
+- Link-count and alias-count deltas
+
+If coverage drops or specific strata regress, a recent pipeline stage is the likely culprit. The comparison's output is written to `data/reports/compare-500-vs-splink.csv` for offline analysis.
 
 ---
 

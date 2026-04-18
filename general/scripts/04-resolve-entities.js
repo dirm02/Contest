@@ -230,10 +230,9 @@ async function phase1(client) {
 //    - donee_name = the name the donor WROTE for the recipient on their T3010
 //
 //  That last field is gold: it captures how OTHER organisations refer to the
-//  entity in the wild. Boyle Street alone picks up 7+ extra name variants
-//  ("STREETWORKS - BOYLE STREET SERVICE SOCIETY", "1743 THE BOYLE STREET
-//  SERVICE SOCIETY", etc.) from donor-filed T3010s that don't appear in any
-//  other source table.
+//  entity in the wild. A typical mid-sized charity picks up 5-10 extra name variants
+//  from donor-filed T3010s — program-prefixed variants (e.g. "[PROGRAM] - [ORG]"),
+//  line-item numbering, spelling drift — that don't appear in any other source table.
 //
 //  Strategy (mirrors Phase 2 FED):
 //    1. BN-anchor donee_bn → existing entity from Phase 1

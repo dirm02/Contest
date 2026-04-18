@@ -283,9 +283,9 @@ In Canadian government data, the same organization often appears under many name
 - French/English bilingual names separated by "|"
 - Business Number (BN) format: 9-digit root + 2-letter program type (RR=charity, RP=pension, RC=corporate, RT=GST) + 4-digit account. Same root 9 digits = same organization regardless of suffix.
 
-However, entities with similar names can be COMPLETELY DIFFERENT organizations (e.g., "Mustard Seed Society" vs "Mustard Seed Foundation" vs "Mustard Seed Street Church" are three separate legal entities with different BNs).
+However, entities with similar names can be COMPLETELY DIFFERENT organizations. For example, three different registered charities might each call themselves "[NAME] Society", "[NAME] Foundation", and "[NAME] Community Church" — same name stem, different legal entities, different BNs, different purposes.
 
-Parent/subsidiary relationships (e.g., "Homeward Trust Foundation" vs "Homeward Trust Holdings Ltd.") are related but legally distinct entities - flag these as RELATED but not SAME.
+Parent/subsidiary relationships (e.g., an operating charity vs its holding corporation vs its separately-incorporated charitable foundation — all sharing a name stem, all with different BNs) are related but legally distinct entities. Flag these as RELATED but not SAME.
 `;
 
   if (bnAnchored.length > 0) {

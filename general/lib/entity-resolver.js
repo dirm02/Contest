@@ -1,10 +1,11 @@
 /**
  * Entity Resolver - Advanced multi-strategy entity resolution.
  *
- * The core problem: an entity like "The Boyle Street Service Society" appears
- * under 30+ aliases across CRA, FED, and AB datasets. Naive fuzzy matching
- * over-matches on other "Boyle Street" orgs (Education Centre, Community League,
- * MedX Drugs) while missing the trade name "Boyle Street Community Services".
+ * The core problem: a single mid-sized multi-dataset charity commonly appears
+ * under 10–30 name variants across CRA, FED, and AB datasets (legal names,
+ * bilingual pairs, trade names, typos). Naive fuzzy matching over-merges
+ * unrelated organizations that share a locality or institution name stem,
+ * while missing legitimate trade-name variants declared on T3010 filings.
  *
  * Resolution strategy (layered, in priority order):
  *
@@ -16,9 +17,10 @@
  *             (strip "THE", legal suffixes, punctuation, trade-name clauses).
  *
  *   Layer 3 - Core Token Matching: Extract "core tokens" (the discriminating
- *             words), require ALL core tokens to be present. For "Boyle Street
- *             Service Society", cores are {BOYLE, STREET, SERVICE, SOCIETY}.
- *             This rejects "Boyle Street Education Centre" (missing SERVICE, SOCIETY).
+ *             words), require ALL core tokens to be present. For a name like
+ *             "ACME SERVICE SOCIETY", cores are {ACME, SERVICE, SOCIETY}. This
+ *             rejects "ACME EDUCATION CENTRE" (missing SERVICE, SOCIETY) even
+ *             though it shares the ACME stem.
  *
  *   Layer 4 - Trigram with Core-Token Gate: pg_trgm similarity but only among
  *             candidates that pass the core-token filter.

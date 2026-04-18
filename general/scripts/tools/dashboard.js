@@ -315,12 +315,17 @@ async function gatherState() {
   // Fire every query in parallel so one slow query doesn't block the dashboard.
   // Each uses safeQ which returns null on timeout/error — the UI shows a dash.
   const TEST_CASES = [
-    { label: 'Boyle Street Service Society', bn: '118814391' },
-    { label: 'Homeward Trust Edmonton',       bn: '834173627' },
-    { label: "St Andrew's Presbyterian #1",   bn: '108004664' },
-    { label: "St Andrew's Presbyterian #2",   bn: '108004474' },
-    { label: 'Bissell Centre',                 bn: '118810829' },
-    { label: 'University of Alberta',          bn: '108102831' },
+    // Configurable sanity-card test entities. Each is a real Business Number
+    // exercising a different matching pattern; the card displays the entity's
+    // canonical name live from the database and flags regressions when a
+    // lookup returns NOT FOUND or dataset coverage drops. Replace with
+    // whatever BNs make sense for the deployment.
+    { label: 'Multi-dataset mid-size charity',  bn: '118814391' },  // CRA+FED+AB, many name variants
+    { label: 'Corporate family: operating org', bn: '834173627' },  // part of a multi-entity family
+    { label: 'Same-name distinct charity (A)',  bn: '108004664' },  // identical canonical name, different BN
+    { label: 'Same-name distinct charity (B)',  bn: '108004474' },  // paired with (A) to test BN-conflict guard
+    { label: 'Cross-dataset contracts/SS',      bn: '118810829' },  // exercises AB contracts + sole-source
+    { label: 'Large multi-dataset institution', bn: '108102831' },  // University of Alberta
   ];
 
   const [

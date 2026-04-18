@@ -6,18 +6,33 @@ A multi-dataset analysis platform for Canadian government transparency and accou
 
 This repository unifies four major sources of Canadian government open data into a single PostgreSQL database, with each dataset in its own schema so tables never collide. On top of that raw data sits a **cross-dataset entity resolution pipeline** that reconciles ~1 million source records into ~800,000 canonical organizations, each with a golden record linking every funding stream across CRA charity filings, federal grants, and Alberta grants/contracts/sole-source.
 
+All data is redistributed under the original publishers' open-government licences — Canada Revenue Agency T3010 filings, federal Grants & Contributions disclosures, and Alberta open data. See [ATTRIBUTIONS.md](ATTRIBUTIONS.md) for data sources and third-party library credits.
+
+## Prerequisites
+
+| Component | Version | Notes |
+|-----------|---------|-------|
+| **Node.js** | 18 or newer | Required by every module |
+| **Python** | 3.10 or newer | Required only for the Splink stage of the entity-resolution pipeline |
+| **PostgreSQL** | 14 or newer | With the `pg_trgm` extension enabled |
+| **Disk space** | ~2 GB | Full local database copy (CSV + loaded tables + indexes). Splink's intermediate parquet files add ~60 MB on top while that stage is running. |
+| **Memory** | 4 GB minimum, 8 GB recommended | The Splink + LLM-pipeline stages benefit from more RAM; everything else is light. |
+
 ## Architecture
 
 ```
 hackathon/
-├── CRA/          # CRA T3010 Charity Data (cra schema)
-├── FED/          # Federal Grants & Contributions (fed schema)
-├── AB/           # Alberta Open Data (ab schema)
-├── general/      # Cross-dataset entity resolution pipeline (general schema)
-├── .local-db/    # Recreate the hackathon database in your own Postgres
-├── index.html    # Landing page / documentation browser
-├── LICENSE       # MIT
-└── README.md     # This file
+├── CRA/             # CRA T3010 Charity Data (cra schema)
+├── FED/             # Federal Grants & Contributions (fed schema)
+├── AB/              # Alberta Open Data (ab schema)
+├── general/         # Cross-dataset entity resolution pipeline (general schema)
+├── .local-db/       # Recreate the hackathon database in your own Postgres
+├── index.html       # Landing page / documentation browser
+├── ATTRIBUTIONS.md  # Third-party libraries and data source citations
+├── SECURITY.md      # Credentials, .env convention, data sensitivity
+├── LICENSE          # MIT (covers source code — NOT the data, which follows
+│                      the original open-government licences)
+└── README.md        # This file
 ```
 
 All four data modules share the same PostgreSQL database on Render (`cra`, `fed`, `ab`, `general` schemas). Every module follows the same conventions:
@@ -83,7 +98,7 @@ See the [Entity Resolution](#entity-resolution) section below + [general/README.
 
 ## Entity Resolution
 
-The core challenge across these datasets: the same organization appears under dozens of name variations. *"The Boyle Street Service Society"* alone has 11+ distinct name variants in the source data, spread across 6 tables, with 4 different BN suffix variants. Without reconciling them to one canonical entity, cross-dataset accountability analysis is impossible.
+The core challenge across these datasets: the same organization appears under dozens of name variations. A typical mid-sized registered charity operating across all three datasets will have 10+ distinct name variants in the source data, spread across 6 tables, with multiple Business Number suffix variants (the `RR` charity account, the `RC` corporate-tax account, the `RP` payroll account). Without reconciling them to one canonical entity, cross-dataset accountability analysis is impossible.
 
 The `general` module combines three complementary techniques:
 
@@ -198,4 +213,6 @@ Use `.local-db/` to recreate the database in your own Postgres instance. Run `.l
 
 ## License
 
-MIT — see [LICENSE](LICENSE)
+Source code and pipeline: **MIT** — see [LICENSE](LICENSE).
+
+Data: redistributed under the original publishers' licences — **[Open Government Licence – Canada](https://open.canada.ca/en/open-government-licence-canada)** (CRA and federal data) and **[Open Government Licence – Alberta](https://open.alberta.ca/licence)** (Alberta data). The MIT licence on this repository covers the source code only and does not relicense the underlying data. See [ATTRIBUTIONS.md](ATTRIBUTIONS.md) for full source-attribution details and third-party library credits; see [SECURITY.md](SECURITY.md) for the credential-handling convention.
