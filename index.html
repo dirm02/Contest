@@ -192,7 +192,8 @@ for dir in CRA FED AB general; do (cd $dir &amp;&amp; npm install); done</pre>
 
       <div class="step"><div class="step-num">2</div><div class="step-content">
         <h4>Verify Database Access</h4>
-        <p>Each module ships with <code>.env.public</code> containing read-only credentials. Test connectivity:</p>
+        <p><strong>Credentials:</strong> the <code>.env.public</code> files for each module are <strong>distributed by the hackathon organizers in the info pack provided on event day (April 29, 2026)</strong>. They are gitignored and not in the clone &mdash; drop the info-pack files into <code>CRA/</code>, <code>FED/</code>, <code>AB/</code>, and <code>general/</code> before running anything that touches the database.</p>
+        <p>Once in place, test connectivity:</p>
         <pre>cd CRA &amp;&amp; npm run verify
 cd ../FED &amp;&amp; npm run verify
 cd ../AB &amp;&amp; npm run verify</pre>
@@ -243,10 +244,10 @@ npm run entities:dossier          # per-entity dossier explorer at localhost:380
       <div class="card">
         <p>All modules load environment variables consistently:</p>
         <ol>
-          <li><code>.env.public</code> loaded first (shared defaults for hackathon participants)</li>
+          <li><code>.env.public</code> loaded first &mdash; shared defaults. <strong>Gitignored</strong>; distributed by the hackathon organizers in the event-day info pack.</li>
           <li><code>.env</code> loaded second with <code>override: true</code> (personal overrides win)</li>
         </ol>
-        <p>Participants without a <code>.env</code> get the shared read-only credentials. Developers with a <code>.env</code> containing admin credentials automatically override for write operations (migrations, imports, drops).</p>
+        <p>Participants who drop the info-pack <code>.env.public</code> files into each module directory get read-only credentials automatically. Maintainers with a <code>.env</code> containing admin credentials automatically override for write operations (migrations, imports, drops).</p>
       </div>
     </section>
 

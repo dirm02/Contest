@@ -10,11 +10,12 @@ A complete, reproducible data pipeline that downloads, transforms, and loads **5
 
 | Metric | Value |
 |--------|-------|
-| **Total rows loaded** | 7,338,550 |
+| **Total rows loaded** | ~14M (including pre-computed analysis tables) |
+| **T3010 raw-data rows** | ~7.3M |
 | **Fiscal years** | 2020, 2021, 2022, 2023, 2024 |
-| **Registered charities per year** | ~72,000 - 85,000 |
+| **Registered charities per year** | ~72,000 – 85,000 |
 | **Dataset categories** | 19 per year (93 total, some years missing disbursement_quota) |
-| **Database tables** | 35 (6 lookup + 19 data + 10 analysis) + 3 views |
+| **Database tables** | 52 + 3 views (6 lookup + 19 raw-data + 27 pre-computed analysis) |
 | **Data source** | Canada Revenue Agency T3010 via Government of Canada Open Data API |
 
 ### Important Note on 2024 Data
@@ -34,7 +35,7 @@ This project uses a two-tier access model:
 | `.env.public` | Yes | **Read-only** (SELECT only) | Hackathon participants, AI agents |
 | `.env` | No (gitignored) | **Full admin** (read/write) | Data pipeline operators |
 
-**Participants:** The repo ships with `.env.public` containing read-only credentials. After `npm install`, you can immediately query 7.3M rows of charity data. No setup or data loading required.
+**Participants:** After obtaining a read-only `.env.public` (distributed out-of-band — see [SECURITY.md](../SECURITY.md)) and running `npm install`, you can immediately query ~14M rows of CRA data (T3010 raw data plus pre-computed accountability-analysis tables). No setup or data loading required.
 
 **Administrators:** Use `.env` with admin credentials to load data or manage the schema. To rotate the read-only credentials:
 ```bash

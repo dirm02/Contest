@@ -18,6 +18,10 @@ All data is redistributed under the original publishers' open-government licence
 | **Disk space** | ~2 GB | Full local database copy (CSV + loaded tables + indexes). Splink's intermediate parquet files add ~60 MB on top while that stage is running. |
 | **Memory** | 4 GB minimum, 8 GB recommended | The Splink + LLM-pipeline stages benefit from more RAM; everything else is light. |
 
+### Credentials
+
+> **Hackathon participants:** the `.env.public` files for each module (`CRA/`, `FED/`, `AB/`, `general/`) are **distributed by the hackathon organizers in the info pack provided on event day (April 29, 2026)**. Drop the info-pack files into their matching module directories before running any `npm run` commands that touch the database. Without them a fresh clone cannot connect to the shared database. See [SECURITY.md](SECURITY.md) for details and for what to do if you want to run against your own local Postgres instead (no info pack needed).
+
 ## Architecture
 
 ```
@@ -30,6 +34,7 @@ hackathon/
 ├── index.html       # Landing page / documentation browser
 ├── ATTRIBUTIONS.md  # Third-party libraries and data source citations
 ├── SECURITY.md      # Credentials, .env convention, data sensitivity
+├── tests/           # Cross-module unit + integration tests
 ├── LICENSE          # MIT (covers source code — NOT the data, which follows
 │                      the original open-government licences)
 └── README.md        # This file
@@ -37,7 +42,7 @@ hackathon/
 
 All four data modules share the same PostgreSQL database on Render (`cra`, `fed`, `ab`, `general` schemas). Every module follows the same conventions:
 
-- **`.env.public`** — shared read-only credentials, committed
+- **`.env.public`** — shared read-only credentials, **gitignored** (distributed by the hackathon organizers in the event-day info pack)
 - **`.env`** — personal admin overrides, gitignored
 - `.env.public` loads first; `.env` overrides
 
@@ -161,10 +166,10 @@ Re-running `export` regenerates the schemas, manifest, and CSV data for all four
 
 Each module loads environment variables in this order:
 
-1. **`.env.public`** loaded first (shared defaults, committed)
-2. **`.env`** loaded second with `override: true` (personal overrides, gitignored)
+1. **`.env.public`** loaded first — shared defaults. **Gitignored**, distributed by the hackathon organizers in the event-day info pack.
+2. **`.env`** loaded second with `override: true` — personal overrides, gitignored.
 
-Participants without a `.env` file get the shared read-only credentials automatically. Developers with a `.env` file (containing admin credentials) override for write operations like migrations and imports.
+Participants who drop the info-pack `.env.public` files into each module directory get read-only credentials automatically. Maintainers with a `.env` file (containing admin credentials) override for write operations like migrations and imports.
 
 ## Quick Start
 
@@ -203,13 +208,23 @@ npm run entities:dossier            # http://localhost:3801 — per-entity explo
 postgresql://hackathon_readonly:...@render.com:5432/database_database_w2a1
 ```
 
-Credentials are in each module's `.env.public`. Read-only: `SELECT` works; `INSERT`/`UPDATE`/`DELETE` blocked. Suitable for participants doing analysis without a local setup.
+Credentials are in each module's `.env.public`, distributed by the hackathon organizers in the event-day info pack. Read-only: `SELECT` works; `INSERT`/`UPDATE`/`DELETE` blocked. Suitable for participants doing analysis without a local setup.
 
 **Option B — local full copy** (for running the full pipeline or needing write access):
 
 Use `.local-db/` to recreate the database in your own Postgres instance. Run `.local-db/export.js` against the shared Render DB to produce fresh CSVs, then `.local-db/import.js` to reload into your local DB. See [.local-db/README.md](.local-db/README.md) for details.
 
 **Schemas:** `cra`, `fed`, `ab`, `general` (`search_path` set via each module's `lib/db.js`).
+
+## Running the tests
+
+Cross-module unit and integration tests live in `tests/end-to-end.test.js` — they cover the shared libraries (transformers, loggers, CSV parsers, fuzzy-match, entity-resolver, LLM-review), database pool connectivity, and key integration paths.
+
+```bash
+node --test tests/end-to-end.test.js
+```
+
+Pure-function tests run instantly. DB-dependent tests require the modules' `.env` / `.env.public` files to be in place (they connect via the same pool configuration as the rest of the pipeline).
 
 ## License
 

@@ -7,18 +7,23 @@ order via its `lib/db.js`:
 
 1. **`.env.public`** — loaded first. Contains shared read-only database
    credentials and any shared defaults. Despite the name, **this file is
-   `.gitignored` and is distributed out-of-band** (shared link, Slack,
-   instructor hand-out). It is not committed to the repository.
+   `.gitignored` and is not committed to the repository.**
 2. **`.env`** — loaded second with `override: true`. Personal admin
    credentials if you have them. Also gitignored.
 
-A fresh clone will **not work** until you obtain a `.env.public` for each
-module (`CRA/.env.public`, `FED/.env.public`, `AB/.env.public`,
-`general/.env.public`) from the team distributing them.
+### How to obtain `.env.public` (AI For Accountability Hackathon, 2026-04-29)
+
+The `.env.public` files for each module (`CRA/.env.public`,
+`FED/.env.public`, `AB/.env.public`, `general/.env.public`) are
+**distributed by the hackathon organizers in the info pack provided on
+event day (April 29, 2026)**. The info pack will contain the shared
+read-only database credentials and any LLM API keys allocated for the
+event. A fresh clone **will not connect to the shared database** until
+you drop the info-pack files into place.
 
 If you spin up your own PostgreSQL instance via `.local-db/import.js`,
 create your own `.env` or `.env.public` pointing at it and the pipeline
-will use that.
+will use that — no info pack required.
 
 ## What the files should contain
 
