@@ -17,6 +17,7 @@
 const { pool } = require('../../lib/db');
 
 const TABLES = [
+  'general.donee_trigram_candidates',
   'general.splink_aliases',
   'general.splink_predictions',
   'general.splink_build_metadata',

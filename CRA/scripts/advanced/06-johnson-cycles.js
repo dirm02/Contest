@@ -161,6 +161,28 @@ function johnsonEnumerate(graph, maxHops, yearWindow) {
           // Found a cycle: stack contains the path, s closes it
           if (stack.length >= 2 && stack.length <= maxHops) {
             const path = [...stack];
+
+            // Defensive simplicity check. The classical Johnson algorithm
+            // is supposed to produce simple cycles only, but in this graph
+            // the block/unblock chain can reach a vertex that is still on
+            // the stack (via stale blockMap entries from a prior failed
+            // circuit() call of that vertex). When that happens, the
+            // for-loop of the still-running outer call can re-enter the
+            // unblocked vertex and emit a non-simple cycle like
+            // A→B→X→B→D→A. The self-join in 01-detect-all-loops.js is
+            // immune because it enforces pairwise BN distinctness in SQL.
+            // See KNOWN-DATA-ISSUES.md C-12 for the 158-row diagnosis
+            // from the 2026-04-19 run.
+            //
+            // Rather than re-engineer the block/unblock invariants, we
+            // reject non-simple paths at the authoritative recording
+            // point. Cost: O(n) Set construction per candidate cycle,
+            // negligible vs the cycle enumeration itself.
+            if (new Set(path).size !== path.length) {
+              foundCycle = true; // still treat as a cycle for blocking purposes
+              continue;          // skip recording
+            }
+
             // Temporal check: compute year span across all edges in cycle
             let globalMin = Infinity, globalMax = -Infinity;
             let bottleneck = Infinity, totalFlow = 0;

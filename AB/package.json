@@ -7,6 +7,7 @@
     "migrate": "node scripts/01-migrate.js",
     "seed": "node scripts/02-seed-reference.js",
     "import:grants": "node scripts/03-import-grants.js",
+    "import:grants-csv": "node scripts/08-import-grants-csv.js",
     "import:contracts": "node scripts/04-import-contracts.js",
     "import:sole-source": "node scripts/05-import-sole-source.js",
     "import:non-profit": "node scripts/06-import-non-profit.js",

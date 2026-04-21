@@ -193,6 +193,11 @@ function parseJson(text) {
 
 async function applySame(survivorId, absorbedId, result, candidateId) {
   const client = await pool.connect();
+  // Render DB occasionally drops pooled connections. Without this listener the
+  // Client emits an unhandled 'error' event → node hard-exits. `once` avoids
+  // the MaxListeners warning on pooled clients that get recycled across many
+  // applySame() calls. The next query on this client rejects, handled below.
+  client.once('error', (e) => { console.error(`  [applySame client error suppressed]: ${e.message}`); });
   try {
     await client.query('BEGIN');
 
@@ -324,6 +329,7 @@ async function applySame(survivorId, absorbedId, result, candidateId) {
 
 async function applyRelated(idA, idB, result) {
   const client = await pool.connect();
+  client.once('error', (e) => { console.error(`  [applyRelated client error suppressed]: ${e.message}`); });
   try {
     await client.query('BEGIN');
 

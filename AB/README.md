@@ -6,12 +6,12 @@ Part of the **AI For Accountability Hackathon** suite, alongside the [CRA T3010]
 
 | Dataset | Source | Records | Format |
 |---------|--------|---------|--------|
-| **Alberta Grants** | Alberta Open Data Portal | ~1M+ | JSON (MongoDB export) |
-| **Contracts (Blue Book)** | Alberta Blue Book | ~67K | Excel |
-| **Sole-Source Contracts** | Alberta Procurement | ~15K | Excel |
-| **Non-Profit Registry** | Alberta Corporate Registry | ~69K | Excel |
+| **Alberta Grants** | Alberta Open Data Portal | 1,986,676 | JSON (MongoDB export) + CSV disclosures |
+| **Contracts (Blue Book)** | Alberta Blue Book | 67,079 | Excel |
+| **Sole-Source Contracts** | Alberta Procurement | 15,533 | Excel |
+| **Non-Profit Registry** | Alberta Corporate Registry | 69,271 | Excel |
 
-All data lives in the `ab` schema of the shared PostgreSQL database, completely isolated from the `cra` and `fed` schemas.
+All data lives in the `ab` schema of the shared PostgreSQL database, completely isolated from the `cra` and `fed` schemas. Grants cover fiscal years **2014-2015 through 2025-2026** (12 years). Fiscal 2024-2025 (139,816 rows, $47.08B) and 2025-2026 (180,468 rows, $50.22B) are sourced from TBF CSV disclosures loaded via `scripts/08-import-grants-csv.js`; earlier years come from the MongoDB JSON export.
 
 ## Quick Start
 
@@ -23,13 +23,14 @@ npm install
 npm run setup
 
 # Or run individual steps:
-npm run migrate           # Create schema and tables
-npm run seed              # Load lookup tables
-npm run import:grants     # Import grants (~5-10 min for 1.1GB file)
-npm run import:contracts  # Import Blue Book contracts
-npm run import:sole-source # Import sole-source contracts
-npm run import:non-profit  # Import non-profit registry
-npm run verify            # Run verification checks
+npm run migrate             # Create schema and tables
+npm run seed                # Load lookup tables
+npm run import:grants       # Import grants JSON (~5-10 min for 1.1GB file)
+npm run import:grants-csv   # Import fiscal 2024-25 + 2025-26 TBF CSV disclosures
+npm run import:contracts    # Import Blue Book contracts
+npm run import:sole-source  # Import sole-source contracts
+npm run import:non-profit   # Import non-profit registry
+npm run verify              # Run verification checks
 ```
 
 ## Configuration
@@ -58,8 +59,9 @@ Follows the same patterns as the CRA and FED pipelines:
 
 ## Data Notes
 
-- **Fiscal years** use "YYYY - YYYY" format with spaces (e.g., "2024 - 2025")
+- **Fiscal years** use "YYYY - YYYY" format with spaces (e.g., "2024 - 2025"); grants cover "2014 - 2015" through "2025 - 2026"
 - **Negative grant amounts** are reversals/corrections
-- The main grants JSON file is **1.1GB** and uses streaming parser
+- The main grants JSON file is **1.1GB** and uses a streaming parser
+- Fiscal 2024-2025 and 2025-2026 grants come from TBF disclosure CSVs; `config/grants-csv-crosswalk.json` defines the header-to-column mapping
 - Non-profit registry dates go back to **1979**
 - Sole-source dates are in M/D/YYYY format (parsed automatically)

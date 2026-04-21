@@ -15,14 +15,14 @@ The companion projects are `../CRA/` (CRA T3010 charity data in `cra` schema) an
 
 | Table | Description | Rows |
 |-------|-------------|------|
-| `ab.ab_grants` | Alberta grant payment records (2014-2025) | ~1M+ |
+| `ab.ab_grants` | Alberta grant payment records (2014-2026) | 1,986,676 |
 | `ab.ab_grants_fiscal_years` | Fiscal year aggregations | 11 |
 | `ab.ab_grants_ministries` | Ministry aggregations by fiscal year | ~321 |
 | `ab.ab_grants_programs` | Program aggregations by ministry/fiscal year | ~17K |
 | `ab.ab_grants_recipients` | Recipient aggregations | ~420K |
-| `ab.ab_contracts` | Blue Book contracts (supplies & services) | ~67K |
-| `ab.ab_sole_source` | Sole-source contracts | ~15K |
-| `ab.ab_non_profit` | Alberta Non-Profit Registry | ~69K |
+| `ab.ab_contracts` | Blue Book contracts (supplies & services) | 67,079 |
+| `ab.ab_sole_source` | Sole-source contracts | 15,533 |
+| `ab.ab_non_profit` | Alberta Non-Profit Registry | 69,271 |
 | `ab.ab_non_profit_status_lookup` | Non-profit status definitions | 13 |
 
 ### Views
@@ -71,31 +71,36 @@ The companion projects are `../CRA/` (CRA T3010 charity data in `cra` schema) an
 ## Pipeline Scripts
 
 ```bash
-npm run migrate         # Create ab schema, tables, indexes, views
-npm run seed            # Populate status definitions lookup
-npm run import:grants   # Import grants JSON data (streaming, ~5-10 min)
+npm run migrate             # Create ab schema, tables, indexes, views
+npm run seed                # Populate status definitions lookup
+npm run import:grants       # Import grants JSON data (streaming, ~5-10 min)
+npm run import:grants-csv   # Import grants CSV disclosures (2024-25, 2025-26)
 npm run import:contracts    # Import Blue Book Excel
 npm run import:sole-source  # Import sole-source Excel
 npm run import:non-profit   # Import non-profit registry Excel
-npm run import:all      # All four imports sequentially
-npm run verify          # Comprehensive verification checks
-npm run setup           # Full pipeline: migrate + seed + import:all + verify
-npm run drop            # Destructive: drop all AB tables and schema
-npm run reset           # Drop + setup
+npm run import:all          # All four imports sequentially
+npm run verify              # Comprehensive verification checks
+npm run setup               # Full pipeline: migrate + seed + import:all + verify
+npm run drop                # Destructive: drop all AB tables and schema
+npm run reset               # Drop + setup
 ```
 
 ## Data Sources
 
 All data is pre-downloaded (no API). Source files are in `data/`:
-- `data/grants/test.opendata*.json` - Alberta Grants (from MongoDB export)
+- `data/grants/test.opendata*.json` - Alberta Grants (MongoDB export, covers fiscal years 2014-2015 through 2023-2024)
+- `data/grants/tbf-grants-disclosure-2024-25.csv` - Fiscal 2024-2025 grants disclosure (CSV; loaded via `scripts/08-import-grants-csv.js`)
+- `data/grants/tbf-grants-disclosure-2025-26.csv` - Fiscal 2025-2026 grants disclosure (CSV; loaded via `scripts/08-import-grants-csv.js`)
 - `data/contracts/blue-book-master.xlsx` - Blue Book contracts
 - `data/sole-source/solesource.xlsx` - Sole-source contracts
 - `data/non-profit/non_profit_name_list_for_open_data_portal.xlsx` - Non-profit registry
 - `data/non-profit/non-profit-listing-status-definitions.xlsx` - Status definitions
 
+The `config/grants-csv-crosswalk.json` file defines the header-to-column mapping used by the CSV loader.
+
 ## Important Notes
 
-- **Fiscal year format**: All datasets use "YYYY - YYYY" with spaces (e.g., "2024 - 2025")
+- **Fiscal year format**: All datasets use "YYYY - YYYY" with spaces (e.g., "2024 - 2025"); grants now span "2014 - 2015" through "2025 - 2026"
 - **Negative amounts** in grants are reversals/corrections, not errors
 - **Non-profit dates** go back to 1979 (long-established organizations)
 - **Sole-source `special` field** contains boolean-like values

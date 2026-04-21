@@ -74,11 +74,11 @@ Features: 7-dimension risk scoring (0–35), provincial-equity analysis, amendme
 
 ### AB — Alberta Open Data
 
-**Schema:** `ab` · **Rows:** ~2.36M · **Tables:** 9 + 3 views · **Years:** 2014–2025
+**Schema:** `ab` · **Rows:** ~2.57M · **Tables:** 9 + 3 views · **Years:** 2014–2026
 
 | Dataset | Table | Rows |
 |---------|-------|------|
-| Alberta Grants | `ab_grants` | 1,772,874 |
+| Alberta Grants | `ab_grants` | 1,986,676 |
 | Blue Book Contracts | `ab_contracts` | 67,079 |
 | Sole-Source Contracts | `ab_sole_source` | 15,533 |
 | Non-Profit Registry | `ab_non_profit` | 69,271 |

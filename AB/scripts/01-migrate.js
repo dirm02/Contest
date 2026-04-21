@@ -24,7 +24,6 @@ const migrations = [
   // ── Grants: main payment records ───────────────────────────────────
   `CREATE TABLE IF NOT EXISTS ab.ab_grants (
     id SERIAL PRIMARY KEY,
-    mongo_id VARCHAR(255) UNIQUE,
     ministry TEXT,
     business_unit_name TEXT,
     recipient TEXT,
@@ -39,6 +38,7 @@ const migrations = [
     created_at TIMESTAMP,
     updated_at TIMESTAMP
   )`,
+  `ALTER TABLE ab.ab_grants DROP COLUMN IF EXISTS mongo_id`,
   `ALTER TABLE ab.ab_grants DROP COLUMN IF EXISTS data_quality`,
   `ALTER TABLE ab.ab_grants DROP COLUMN IF EXISTS data_quality_issues`,
   `CREATE INDEX IF NOT EXISTS idx_ab_grants_ministry ON ab.ab_grants(ministry)`,

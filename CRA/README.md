@@ -438,7 +438,7 @@ All results stored in the `cra` schema (queryable by hackathon participants):
 | `scc_summary` | 347 | Per-SCC statistics |
 | `partitioned_cycles` | 108 | Cycles from SCC-partitioned Johnson's |
 | `identified_hubs` | 20 | Mega-hub platforms identified in the giant SCC |
-| `johnson_cycles` | 4,759 | Johnson's algorithm results (cross-validation) |
+| `johnson_cycles` | 4,601 | Johnson's algorithm results (cross-validation; simple cycles only after the 2026-04-19 fix — see `KNOWN-DATA-ISSUES.md` C-12) |
 | `matrix_census` | 10,177 | Walk census results (cross-validation) |
 | `loop_financials` | 5,808 | Per-loop bottleneck + flow recomputed within the loop's year window |
 | `loop_edge_year_flows` | 30,003 | Per-edge gift totals restricted to each loop's year window |

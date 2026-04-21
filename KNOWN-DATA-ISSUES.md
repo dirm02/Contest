@@ -602,6 +602,84 @@ a minority are typos.
 analysts joining `cra_qualified_donees → cra_identification` silently
 drop ~1.2% of rows. Call this out in any query that performs that join.
 
+### C-12. `06-johnson-cycles.js` produced non-simple cycles — **resolved**
+
+**What was wrong.** The Johnson-algorithm implementation in
+`CRA/scripts/advanced/06-johnson-cycles.js` emitted cycles whose path
+contained the same vertex twice (e.g.
+`A→B→X→B→D→A`). Johnson's algorithm is defined to produce **simple**
+cycles only, so these were artifacts of the block/unblock invariants
+failing on this particular graph. The self-join in
+`01-detect-all-loops.js` is structurally immune because N-way joins
+enforce pairwise BN distinctness in SQL (`bn_i <> bn_j` across all pair
+combinations), so `cra.loops` never contained these.
+
+**Evidence (2026-04-19 initial run, pre-fix).**
+```sql
+-- Rows with a repeated intermediate node
+SELECT hops, COUNT(*)
+FROM cra.johnson_cycles j
+JOIN LATERAL (
+  SELECT COUNT(DISTINCT x) AS n_unique FROM unnest(j.path_bns) x
+) uq ON true
+WHERE uq.n_unique < j.hops
+GROUP BY hops;
+-- hops 5: 22 | hops 6: 136 | total 158
+```
+
+Concrete example: cycle id 13 was
+`105200471RR0001 → 896568417RR0001 → 793187881RR0001 → 896568417RR0001
+→ 888542198RR0001 → 136491875RR0001`, hops=6, with `896568417RR0001`
+appearing at positions 1 and 3. 137 of the 158 followed that same
+"sandwich" pattern (same node at positions i and i+2); the remaining
+21 had other repeat shapes. Top offenders were all high-degree hub
+BNs in the giant SCC — `748023538RR0001` (29 cycles),
+`107951618RR0451` Salvation Army branch (17),
+`793187881RR0001` (16), `118974294RR0001` (10),
+`896568417RR0001` (9) — so the bug was concentrated where Johnson's
+block chain does the most work.
+
+**Root cause.** Classical Johnson's blocks a vertex when it's pushed
+and unblocks it (plus a chain of dependent vertices via `blockMap`)
+when a cycle is found through it. On this graph, an unblock chain can
+reach a vertex that is **still on the current DFS stack** via stale
+`blockMap` entries populated by a prior failed `circuit()` call of
+that same vertex. Once the stack-resident vertex is unblocked, the
+outer for-loop is free to re-enter it through a different path, and
+when that re-entry closes back at `s`, the recorded stack contains
+the vertex twice.
+
+**Mitigation.** ✅ Resolved 2026-04-19. Two changes:
+
+1. `CRA/scripts/advanced/06-johnson-cycles.js` now rejects non-simple
+   paths at the authoritative recording point — a single
+   `if (new Set(path).size !== path.length) continue;` guard right
+   before `cycles.push(...)` in `circuit()`. The guard is O(n) per
+   candidate cycle, negligible vs the DFS itself. The invariant is
+   local and provable: whatever goes into `cra.johnson_cycles` is a
+   simple cycle by construction. The deeper block/unblock invariants
+   are not touched — fixing them would require re-engineering the
+   algorithm and the practical gain is zero since the guard catches
+   everything.
+2. Dropped `cra.johnson_cycles` (surgical, not via `drop:loops`) and
+   re-ran only `npm run analyze:johnson` (64 min). Row count went from
+   4,759 → 4,601; the 158 non-simple rows are gone. Cross-validation
+   now shows `Only in Johnson: 0` (was 158); `Only in Self-Join: 1,207`
+   (unchanged — these are cycles Johnson legitimately misses at
+   depth 6 on the giant SCC without hub partitioning, which is the
+   expected limitation and is why `05-partitioned-cycles.js` exists).
+
+**Verification query.**
+```sql
+SELECT COUNT(*) AS rows,
+       COUNT(*) FILTER (
+         WHERE array_length(path_bns, 1) =
+               (SELECT COUNT(DISTINCT x) FROM unnest(path_bns) x)
+       ) AS simple_rows
+FROM cra.johnson_cycles;
+-- rows 4,601 | simple_rows 4,601
+```
+
 ---
 
 ## AB — Alberta Open Data (`ab.*`)
@@ -609,25 +687,26 @@ drop ~1.2% of rows. Call this out in any query that performs that join.
 Every Alberta dataset is shipped as-is; no mitigation modifies source
 rows.
 
-### A-1. `ab_grants.fiscal_year` contaminated with calendar dates
+### A-1. `ab_grants.fiscal_year` is not a canonical format — do not group by it — ✅ RESOLVED 2026-04-19
 
-**What's wrong.** 118 rows in the `"2023 - 2024"` fiscal year have
-calendar-date strings in the `fiscal_year` column instead of the expected
-`"YYYY - YYYY"` pattern (e.g. `"2023-04-06"`, `"2023-05-02"`). The
-upstream MongoDB export shipped them this way.
+**Historical note.** Before the 2026-04-19 normalization sweep, the
+`fiscal_year` column held three different formats: `"YYYY - YYYY"` for
+most MongoDB-sourced rows, single-year `"2024"` for all 139,816 rows
+from `tbf-grants-disclosure-2024-25.csv`, and calendar-date strings
+(`"2023-04-06"` etc.) on 118 rows in FY 2023–24. Total non-canonical:
+139,934 rows.
 
-**Evidence.**
+**Resolution.** `AB/scripts/09-normalize-grants.js` overwrote
+`fiscal_year` with `display_fiscal_year` on every row (139,934 UPDATEs).
+`fiscal_year` and `display_fiscal_year` are now identical across all
+1,986,676 rows.
+
+**Verification.**
 ```sql
-SELECT COUNT(*) FROM ab.ab_grants WHERE fiscal_year ~ '^\d{4}-\d{2}-\d{2}$';
--- 118
+SELECT COUNT(*) FROM ab.ab_grants
+ WHERE fiscal_year IS DISTINCT FROM display_fiscal_year;
+-- 0
 ```
-
-**Count:** 118 rows.
-
-**Source.** DB observation; upstream MongoDB export.
-
-**Mitigation.** 📝 `AB/docs/DATA_DICTIONARY.md` tells analysts to use
-`display_fiscal_year` (correct for these rows) instead of `fiscal_year`.
 
 ### A-2. `ab_grants.lottery` is boolean-as-text with no CHECK constraint
 
@@ -701,7 +780,7 @@ SELECT aggregation_type, COUNT(*) FROM ab.ab_grants_ministries GROUP BY aggregat
 **Mitigation.** 📝 `AB/docs/DATA_DICTIONARY.md` explicitly warns to
 filter `aggregation_type = 'by_fiscal_year'` for period analyses.
 
-### A-6. `ab_grants.amount` — 43,604 negative rows totalling -$12B
+### A-6. `ab_grants.amount` — 50,381 negative rows totalling -$13.11B
 
 **What's wrong.** Alberta's publishing convention: negative amounts are
 reversals/corrections, not errors. That convention is documented by the
@@ -709,16 +788,285 @@ publisher. Analysts unaware of it will double-count reversals.
 
 **Evidence.**
 ```sql
-SELECT CASE WHEN amount<0 THEN 'neg' WHEN amount=0 THEN 'zero' ELSE 'pos' END,
+SELECT CASE WHEN amount<0 THEN 'neg' WHEN amount=0 THEN 'zero'
+            WHEN amount IS NULL THEN 'null' ELSE 'pos' END AS bucket,
        COUNT(*), ROUND(SUM(amount)::numeric,2)
 FROM ab.ab_grants GROUP BY 1;
--- neg 43,604 (-$12,038,606,848.62) | zero 2,355 | pos 1,726,915 ($429,298,883,009.02)
+-- neg  50,381    (-$13,113,304,419.02)
+-- zero  2,357    ($0.00)
+-- null      4    ($0.00)
+-- pos  1,933,934 ($492,371,029,631.96)
 ```
 
-**Count:** 43,604 negative rows summing to -$12.04B.
+**Count:** 50,381 negative rows summing to -$13.11B (counts as of the
+2026-04-19 reload that added FY 2024-25 + 2025-26 from CSV).
 
 **Mitigation.** 📝 Documented in `AB/README.md`, `AB/CLAUDE.md`, and
 `AB/docs/DATA_DICTIONARY.md`.
+
+### A-7. Per-period aggregate tables stale after the 2026-04-19 reload — ✅ RESOLVED 2026-04-19
+
+**Historical note.** Immediately after the TBF CSV reload, the
+pre-rolled aggregate tables still reflected the pre-reload MongoDB
+state: `ab_grants_fiscal_years` showed FY 2024-25 at 106,482 rows /
+$35.30B (actual: 139,816 / $47.08B) and had **no row** for FY 2025-26
+(actual: 180,468 / $50.22B). `ab_grants_ministries`, `_programs`, and
+`_recipients` were similarly stale.
+
+**Resolution.** `AB/scripts/09-normalize-grants.js` TRUNCATEs and
+repopulates all four aggregate tables directly from `ab_grants`. Both
+`by_fiscal_year` and `all_years` rollups are produced for `_ministries`
+and `_programs`. Resulting row counts: `ab_grants_fiscal_years` = 12,
+`ab_grants_ministries` = 352 (290 by_fiscal_year + 62 all_years),
+`ab_grants_programs` = 20,208 (13,834 + 6,374),
+`ab_grants_recipients` = 452,900.
+
+**Verification.**
+```sql
+-- agg sums match grants sums for every fiscal year
+SELECT g.display_fiscal_year, g.cnt AS grants_rows, f.count AS agg_rows,
+       g.total AS grants_sum, f.total_amount AS agg_sum
+FROM (SELECT display_fiscal_year, COUNT(*)::INT AS cnt,
+             ROUND(SUM(amount)::numeric,2) AS total
+      FROM ab.ab_grants GROUP BY display_fiscal_year) g
+JOIN ab.ab_grants_fiscal_years f USING (display_fiscal_year)
+ORDER BY g.display_fiscal_year;
+-- All 12 rows: grants_rows = agg_rows, grants_sum = agg_sum (exact).
+```
+
+### A-8. `ab_grants.mongo_id` breaks ON CONFLICT idempotency — ✅ RESOLVED 2026-04-19
+
+**Historical note.** The column carried a UNIQUE constraint and was
+used by `03-import-grants.js` for ON CONFLICT. All 320,284 CSV-loaded
+rows had `mongo_id = NULL`, making the CSV loader non-idempotent.
+
+**Resolution.** `mongo_id` column dropped entirely from `ab_grants`
+(including the `ab_grants_mongo_id_key` UNIQUE index). `01-migrate.js`
+updated: column removed from CREATE TABLE and a defensive
+`ALTER TABLE ... DROP COLUMN IF EXISTS mongo_id` added for existing
+environments. `03-import-grants.js` updated: `mongo_id` removed from
+the MongoDB-era transform and columns list, and the `ON CONFLICT
+(mongo_id) DO NOTHING` clause removed from the bulk-insert SQL. That
+loader now relies on its existing "skip if table has rows" guard for
+idempotency.
+
+**Verification.**
+```sql
+SELECT column_name FROM information_schema.columns
+ WHERE table_schema='ab' AND table_name='ab_grants' AND column_name='mongo_id';
+-- (empty)
+```
+
+Columns `data_quality` and `data_quality_issues` were dropped at the
+same time — they had been populated on 1,666,392 MongoDB-sourced rows
+but were never used by any analysis script.
+
+### A-9. CSV-sourced rows have NULL `lottery`, `lottery_fund`, `version`, `created_at`, `updated_at`
+
+**What's wrong.** The TBF CSV disclosures for FY 2024-25 and 2025-26
+ship only 9 columns (`Ministry`, `BUName`, `Recipient`, `Program`,
+`Amount`, `Lottery`, `PaymentDate`, `FiscalYear`, `DisplayFiscalYear`),
+and the `Lottery` column is **always empty** in both files. There is no
+analogue at all for `lottery_fund`, `version`, `createdAt`, `updatedAt`.
+All 320,284 CSV-sourced rows carry NULL for these five columns.
+
+This means **`lottery` cannot be used as a filter for FY 2023-24, 2024-25,
+or 2025-26**: the 2023-24 MongoDB data has numeric-string lottery values
+(see A-2 for format mess), and the CSV years have nothing at all.
+
+**Evidence.**
+```sql
+SELECT display_fiscal_year,
+       COUNT(*) FILTER (WHERE lottery IS NULL) AS null_lottery,
+       COUNT(*) AS rows
+FROM ab.ab_grants
+WHERE display_fiscal_year IN ('2024 - 2025','2025 - 2026')
+GROUP BY display_fiscal_year;
+-- 2024 - 2025 | 139,816 | 139,816
+-- 2025 - 2026 | 180,468 | 180,468
+```
+
+**Count:** 320,284 rows (100% of CSV-sourced) with NULL `lottery` +
+`lottery_fund` + `version` + `created_at` + `updated_at`.
+
+**Mitigation.** ⚠️ Unmitigated. Analysts needing lottery-funded totals
+must restrict to FY ≤ 2022-23 (where A-2's value-set risk also applies).
+The CSV crosswalk at `AB/config/grants-csv-crosswalk.json` does map
+`Lottery` → `lottery`, so if Alberta later ships a populated lottery
+column in future TBF CSVs, no loader change is required.
+
+### A-10. Publisher roll-up rows appear as `recipient IS NULL` + `payment_date IS NULL` with huge amounts
+
+**What's wrong.** Alberta publishes some programme-level aggregates as
+single rows with no recipient and no payment date — these are roll-ups
+from the upstream finance system, not missing data. A handful of these
+rows account for ~$25B of the two newest fiscal years' spend.
+
+| FY | Rows | Total amount |
+|----|------|--------------|
+| 2024 - 2025 | 196 | $12,031,247,348.06 |
+| 2025 - 2026 | 420 | $12,920,876,757.06 |
+
+Examples: `HEALTH / PRIMARY CARE PHYSICAN - FFS OP` = $5.08B on one row;
+`SENIORS, COMMUNITY AND SOCIAL SERVICES / AISH FINANCIAL ASSISTANCE
+GRANTS` = $1.62B; `JOBS, ECONOMY AND TRADE / CHILD CARE-CANADA-WIDE
+ELCC WORKER SUPP` = $466M. These are the individual-recipient pools
+that Alberta chooses not to disclose at the person level (AISH
+beneficiaries, per-physician FFS billings, income support recipients,
+etc.).
+
+**Evidence.**
+```sql
+SELECT display_fiscal_year, COUNT(*), ROUND(SUM(amount)::numeric,2) AS total
+FROM ab.ab_grants
+WHERE display_fiscal_year IN ('2024 - 2025','2025 - 2026')
+  AND recipient IS NULL
+GROUP BY display_fiscal_year;
+```
+
+**Count:** 616 rows / $24.95B for FY 2024-25 + 2025-26 alone. The
+pattern exists in earlier years too but the CSV-sourced years
+concentrate it visibly.
+
+**Mitigation.** ⚠️ Unmitigated in schema. Any recipient-level
+aggregation must either filter `recipient IS NOT NULL` (losing ~$25B of
+real spend) or treat the NULL bucket as a distinct "undisclosed
+individual recipients" category.
+
+### A-11. Ministry rename / comma-normalization drift across years — ✅ PARTIALLY RESOLVED 2026-04-19
+
+**Historical note.** The `ministry` column had three sources of drift:
+(1) commas inserted or removed across years for the same ministry
+(`"SENIORS COMMUNITY AND SOCIAL SERVICES"` vs `"SENIORS, COMMUNITY AND
+SOCIAL SERVICES"`), (2) multiple simultaneous JOBS-economy variants in
+FY 2025-26, (3) genuine cabinet reorganisations between years.
+
+**Resolution.** `AB/scripts/09-normalize-grants.js` performed two data
+normalizations across all fiscal years:
+
+* **Comma stripping.** All commas in `ministry` and `business_unit_name`
+  removed globally (7,713 rows updated in each column). Verification:
+  `SELECT COUNT(*) FROM ab_grants WHERE ministry LIKE '%,%' OR
+  business_unit_name LIKE '%,%'` → `0`.
+* **JOBS family canonicalization.** Every ministry/BU value matching
+  `UPPER(...) LIKE 'JOBS%ECONOMY%'` (`JOBS ECONOMY AND INNOVATION`,
+  `JOBS ECONOMY AND NORTHERN DEVELOPMENT`, `JOBS ECONOMY AND TRADE`,
+  `JOBS, ECONOMY AND TRADE`, `JOBS, ECONOMY, TRADE AND IMMIGRATION`,
+  `JOBS, ECONOMY, TRADE AND MULTICULTURALISM`) rewritten to
+  `JOBS ECONOMY TRADE AND IMMIGRATION` — 177,784 rows in `ministry`,
+  177,786 in `business_unit_name`. The older `JOBS SKILLS TRAINING AND
+  LABOUR` ministry (1,898 rows, pre-2016) was **not** folded in because
+  it is a semantically different ministry.
+
+**Remaining drift (unmitigated).** Genuine cabinet reorganisations still
+produce distinct ministry names across years — e.g. `SENIORS AND
+HOUSING` / `SENIORS COMMUNITY AND SOCIAL SERVICES` / `ASSISTED LIVING
+AND SOCIAL SERVICES`. Longitudinal joins on `ministry` across cabinet
+changes should still use `general/data/ministries-history.json` as the
+predecessor/successor crosswalk.
+
+**Evidence.**
+```sql
+SELECT ministry, display_fiscal_year, COUNT(*)
+FROM ab.ab_grants
+WHERE UPPER(ministry) LIKE 'SENIORS%SOCIAL SERVICES%'
+   OR UPPER(ministry) LIKE 'JOBS%ECONOMY%'
+GROUP BY ministry, display_fiscal_year
+ORDER BY ministry, display_fiscal_year DESC;
+```
+
+**Count:** ≥ 6 rename events between FY 2022-23 and FY 2025-26.
+
+**Mitigation.** 📝 `general/data/ministries-history.json` already tracks
+Alberta ministry predecessors/successors for 2015-2026; it needs to be
+cross-checked against the freshly loaded FY 2025-26 variants before
+downstream joins (`general/scripts/11-ministries-history.js` is the
+consumer).
+
+### A-12. `ministry` and `business_unit_name` swapped for `ALBERTA SOCIAL HOUSING CORPORATION` — ✅ RESOLVED 2026-04-19
+
+**Historical note.** `ALBERTA SOCIAL HOUSING CORPORATION` (ASHC) is a
+Crown corporation, historically shown as the `business_unit_name` under
+a parent ministry. The FY 2025-26 CSV introduced three problem patterns:
+1,043 rows with `ministry="ALBERTA SOCIAL HOUSING CORPORATION"` and
+`business_unit_name="ASSISTED LIVING AND SOCIAL SERVICES"` (swapped),
+2,093 rows with ASHC in both columns, and 1,421 rows with the columns
+in the historical orientation. Historical years (2020-21 through
+2024-25, ~16,566 rows) had ASHC only as the `business_unit_name`.
+
+**Resolution.** `AB/scripts/09-normalize-grants.js` folded every row
+referencing ASHC (either column) into the current parent ministry:
+`ministry = 'ASSISTED LIVING AND SOCIAL SERVICES'` and
+`business_unit_name = 'ASSISTED LIVING AND SOCIAL SERVICES'`. 18,963
+rows updated across FY 2020-21 through FY 2025-26.
+
+**Trade-off.** This collapses historical rows that previously carried
+the then-current parent ministry name (`SENIORS AND HOUSING`,
+`SENIORS COMMUNITY AND SOCIAL SERVICES`) into the FY 2025-26 name. Any
+longitudinal reconstruction of the original ministry-of-record requires
+joining against `general/data/ministries-history.json`, not
+`ab.ab_grants` alone.
+
+**Verification.**
+```sql
+SELECT COUNT(*) FROM ab.ab_grants
+ WHERE ministry = 'ALBERTA SOCIAL HOUSING CORPORATION'
+    OR business_unit_name = 'ALBERTA SOCIAL HOUSING CORPORATION';
+-- 0
+```
+
+### A-13. Exact-duplicate rows and perfect reversal pairs — `COUNT(*)` overstates distinct payments
+
+**What's wrong.** The TBF CSV disclosures ship two patterns that make
+raw row counts misleading:
+
+1. **Exact duplicates.** Multiple rows with the identical
+   `(ministry, business_unit_name, recipient, program, amount,
+   payment_date)` tuple. These are real repeated micro-payments in the
+   source system (e.g. 56× $82.50 `REMOTE AREA HEATING ALLOWANCE` to
+   `METIS NATION OF ALBERTA ASSOCIATION LOCAL #125 FORT CHIPEWYAN` on
+   2024-05-22). Not a loader bug, but `COUNT(DISTINCT ...)` versus
+   `COUNT(*)` diverges significantly.
+
+   | FY | Duplicate groups | Excess rows | Excess dollars if naive-summed |
+   |----|------------------|-------------|--------------------------------|
+   | 2024-25 | 1,270 | 2,269 | $604,249,782.45 |
+   | 2025-26 | 1,743 | 3,288 | $7,310,429,568.58 |
+
+2. **Perfect reversal pairs.** Same `(ministry, recipient, program)`
+   with a positive amount and an exactly-offsetting negative amount
+   (typical example: `-$7,000.00` and `+$7,000.00` posted on the same
+   day). These net to $0 but inflate `COUNT(*)` by double.
+
+   | FY | Matched pairs | ± magnitude (one-side) |
+   |----|---------------|------------------------|
+   | 2024-25 | 476 | $359,959,521.64 |
+   | 2025-26 | 475 | $171,033,983.65 |
+
+**Evidence (reversal pattern, 2025-26):**
+```sql
+WITH p AS (
+  SELECT recipient, program, ministry, amount FROM ab.ab_grants
+  WHERE display_fiscal_year = '2025 - 2026' AND amount > 0
+), n AS (
+  SELECT recipient, program, ministry, amount FROM ab.ab_grants
+  WHERE display_fiscal_year = '2025 - 2026' AND amount < 0
+)
+SELECT COUNT(*), SUM(p.amount)
+FROM p JOIN n USING (recipient, program, ministry)
+WHERE p.amount = -n.amount;
+-- 475 | 171,033,983.65
+```
+
+**Count:** 5,557 excess rows across the two years (2,269 + 3,288);
+951 reversal pairs.
+
+**Mitigation.** ⚠️ Unmitigated in the schema. Analysts producing
+payment-count metrics should decide case by case whether to dedupe on
+the full tuple or treat duplicates as real repeated micro-payments.
+`general/splink/` entity-resolution paths dedupe at the recipient name
+layer so are unaffected, but straight `COUNT(*)` on `ab_grants` is not
+a reliable "payment count" metric.
 
 ---
 
@@ -732,9 +1080,17 @@ FROM ab.ab_grants GROUP BY 1;
 - **C-6** `cra_directors` NULL rates for `at_arms_length` (5%), `start_date` (10%), `first_name` (0.1%) not surfaced.
 - ~~**C-9** Loop-detection output tables empty with orphan rollup IDs~~ — ✅ resolved 2026-04-19 (see Changelog).
 - **C-10** `cra_political_activity_funding` is empty — investigation needed.
+- ~~**A-1** `fiscal_year` non-canonical on 139,934 rows~~ — ✅ resolved 2026-04-19 (see Changelog).
 - **A-2** `lottery` CHECK constraint not yet added.
 - **A-3** `special` semantics still unsourced from Alberta.
 - **A-4** `permitted_situations` letter→number mapping is positional inference; needs Alberta confirmation.
+- ~~**A-7** Aggregate tables stale after CSV reload~~ — ✅ resolved 2026-04-19 (see Changelog).
+- ~~**A-8** `mongo_id` NULL on 320,284 CSV rows~~ — ✅ resolved 2026-04-19 (column dropped, see Changelog).
+- **A-9** CSV-sourced rows have NULL `lottery`/`lottery_fund`/`version`/`created_at`/`updated_at`; lottery filtering is unusable for FY ≥ 2023-24.
+- **A-10** Publisher roll-up rows (`recipient IS NULL`) hold ~$25B across FY 2024-25 + 2025-26 alone; recipient-level aggregates must decide how to treat them.
+- ~~**A-11** Comma / JOBS-variant drift across years~~ — ✅ partially resolved 2026-04-19; genuine cabinet-shuffle renames remain (use `general/data/ministries-history.json`).
+- ~~**A-12** ASHC ministry/BU swap in FY 2025-26~~ — ✅ resolved 2026-04-19 (folded into `ASSISTED LIVING AND SOCIAL SERVICES`).
+- **A-13** Exact-duplicate rows (5,557 excess across FY 2024-25 + 2025-26) and perfect reversal pairs (951 matched) make `COUNT(*)` unreliable as a "payment count".
 
 ## How to update this document
 
@@ -759,6 +1115,74 @@ Re-run paths:
 
 ## Changelog
 
+### 2026-04-19 (normalization sweep)
+
+- **`AB/scripts/09-normalize-grants.js` run against `ab.ab_grants`.**
+  All steps inside a single transaction. Row totals unchanged
+  (1,986,676 rows, SUM(amount) = $479,257,725,212.94).
+- **A-1 resolved.** `fiscal_year := display_fiscal_year` for 139,934
+  rows; `fiscal_year !~ '^[0-9]{4} - [0-9]{4}$'` now returns 0.
+- **A-7 resolved.** `ab_grants_fiscal_years` / `_ministries` /
+  `_programs` / `_recipients` TRUNCATE+rebuilt from `ab_grants`. New
+  row counts: 12 / 352 (290 by_fiscal_year + 62 all_years) / 20,208
+  (13,834 + 6,374) / 452,900. Agg sums = raw sums for every fiscal
+  year.
+- **A-8 resolved.** Dropped columns `mongo_id`, `data_quality`,
+  `data_quality_issues` from `ab_grants`. `01-migrate.js` updated to
+  match (column removed from CREATE TABLE; DROP IF EXISTS added for
+  existing environments). `03-import-grants.js` `mongo_id` and
+  `ON CONFLICT (mongo_id) DO NOTHING` removed from the bulk-insert
+  path; the loader now falls back on its "skip if table already
+  populated" guard for idempotency.
+- **A-11 partially resolved.** Stripped commas from every `ministry`
+  and `business_unit_name` value globally (7,713 + 7,713 rows).
+  Canonicalized every `JOBS%ECONOMY%` variant to `JOBS ECONOMY TRADE
+  AND IMMIGRATION` (177,784 ministry + 177,786 BU rows). `JOBS SKILLS
+  TRAINING AND LABOUR` (1,898 rows, 2014-2016) left intact as a
+  semantically different historical ministry. Genuine cabinet-shuffle
+  renames (`SENIORS AND HOUSING` → `SENIORS COMMUNITY AND SOCIAL
+  SERVICES` → `ASSISTED LIVING AND SOCIAL SERVICES`) still require the
+  `general/data/ministries-history.json` crosswalk.
+- **A-12 resolved.** Every row where either `ministry` or
+  `business_unit_name` was `ALBERTA SOCIAL HOUSING CORPORATION` (18,963
+  rows across FY 2020-21 through FY 2025-26) rewritten so both columns
+  read `ASSISTED LIVING AND SOCIAL SERVICES` — the current parent
+  ministry. Trade-off: historical rows no longer carry their
+  then-current parent-ministry name.
+
+### 2026-04-19 (later)
+
+- **AB grants reloaded for fiscal 2024-2025 and 2025-2026.** Deleted 106,482
+  `ab.ab_grants` rows where `display_fiscal_year IN ('2024 - 2025','2025 - 2026')`
+  (all 2024-2025 MongoDB-sourced; 2025-2026 had no prior rows). Re-imported
+  from `AB/data/grants/tbf-grants-disclosure-2024-25.csv` (139,816 rows,
+  SUM(amount)=$47,076,867,264.47) and `tbf-grants-disclosure-2025-26.csv`
+  (180,468 rows, SUM(amount)=$50,221,793,893.21) via the new
+  `AB/scripts/08-import-grants-csv.js` loader, which uses
+  `AB/config/grants-csv-crosswalk.json` to map CSV headers to columns and
+  normalises empty / whitespace-only values to NULL. Grants row count:
+  1,772,874 → **1,986,676**. Fiscal-year coverage extended from 2014-2015
+  through 2023-2024 (+2024-2025 reload) to 2014-2015 through **2025-2026**.
+- **Post-reload DQ sweep added A-7 through A-13 and expanded A-1/A-6.**
+  Findings: (A-1 expanded) `fiscal_year` column now holds three formats —
+  single-year `"2024"` for 139,816 FY 2024-25 CSV rows plus the 118
+  calendar-date contaminants from FY 2023-24, total 139,934 non-canonical
+  rows. (A-6 refreshed) negative rows now 50,381 totalling -$13.11B.
+  (A-7) aggregate tables stale: `ab_grants_fiscal_years` under-reports
+  FY 2024-25 by $11.78B and is missing FY 2025-26 entirely. (A-8) all
+  320,284 CSV rows have NULL `mongo_id` — `08-import-grants-csv.js` is
+  non-idempotent without pre-delete. (A-9) same rows have NULL
+  `lottery`/`lottery_fund`/`version`/`created_at`/`updated_at`; the
+  `Lottery` column in both TBF CSVs is entirely blank. (A-10) 616
+  publisher roll-up rows (`recipient IS NULL`) account for $24.95B
+  across the two new years. (A-11) ministry-name drift documented
+  (comma/no-comma variants + cabinet renames; 3 simultaneous
+  `JOBS, ECONOMY, TRADE ...` spellings in FY 2025-26). (A-12)
+  1,043 FY 2025-26 rows have `ministry`/`business_unit_name` swapped
+  for `ALBERTA SOCIAL HOUSING CORPORATION`, plus 2,093 both-ASHC
+  ambiguous rows. (A-13) 5,557 excess exact-duplicate rows and 951
+  perfect-reversal pairs across the two CSV years.
+
 ### 2026-04-19
 
 - Document created. Snapshot counts reflect the data as loaded on Render
@@ -780,6 +1204,13 @@ Re-run paths:
   `partitioned_cycles` 108, `identified_hubs` 20, `johnson_cycles`
   4,759, `matrix_census` 10,177, `scc_components` 10,177, `scc_summary`
   347. `loop_financials` now references `loops` 1:1 (no orphans).
+- **C-12 resolved.** `06-johnson-cycles.js` was emitting 158 non-simple
+  cycles (22 at 5-hop, 136 at 6-hop) due to the block/unblock invariant
+  failing on this graph's hub-dense giant SCC. Added an O(n)
+  simplicity guard at the authoritative cycle-recording point in
+  `circuit()`, then dropped `cra.johnson_cycles` (surgical, other
+  tables untouched) and re-ran `npm run analyze:johnson` (~64 min).
+  Row count 4,759 → 4,601; post-fix `Only in Johnson: 0` (was 158).
 - **Three permanent fixes landed so C-9 cannot recur silently.**
   (1) `migrate()` is now unconditional in `CRA/scripts/advanced/01`,
   `03`, `04`, `05`, `06` — removed the `--migrate` gate so future runs

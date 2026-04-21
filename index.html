@@ -167,7 +167,7 @@
         <tbody>
           <tr><td><strong>CRA T3010</strong></td><td><code>cra</code></td><td>~7.3M raw + ~1.3M analysis</td><td>2020-2024</td><td>Charity filings, circular gifting, risk scoring</td></tr>
           <tr><td><strong>Federal Grants</strong></td><td><code>fed</code></td><td>~1.3M</td><td>Multi-year</td><td>Government transfers, amendments, vendor concentration</td></tr>
-          <tr><td><strong>Alberta Open Data</strong></td><td><code>ab</code></td><td>~2.4M</td><td>2014-2025</td><td>Grants, contracts, sole-source, non-profit registry</td></tr>
+          <tr><td><strong>Alberta Open Data</strong></td><td><code>ab</code></td><td>~2.6M</td><td>2014-2026</td><td>Grants, contracts, sole-source, non-profit registry</td></tr>
           <tr><td><strong>General</strong></td><td><code>general</code></td><td>27</td><td>Current</td><td>Ministry reference, fuzzy matching, AI entity resolution</td></tr>
         </tbody>
       </table>
@@ -367,10 +367,10 @@ npm run test</pre>
     <!-- ═══════ AB ═══════ -->
     <section :class="{active: tab==='ab'}">
       <h2>Alberta Open Data</h2>
-      <p><strong>Schema:</strong> <code>ab</code> &nbsp;|&nbsp; <strong>Records:</strong> ~2.36M &nbsp;|&nbsp; <strong>Years:</strong> 2014-2025 &nbsp;|&nbsp; <strong>Datasets:</strong> 4</p>
+      <p><strong>Schema:</strong> <code>ab</code> &nbsp;|&nbsp; <strong>Records:</strong> ~2.57M &nbsp;|&nbsp; <strong>Years:</strong> 2014-2026 &nbsp;|&nbsp; <strong>Datasets:</strong> 4</p>
 
       <div class="stat-grid">
-        <div class="stat"><div class="number">1.77M</div><div class="label">Grant Payments</div></div>
+        <div class="stat"><div class="number">1.99M</div><div class="label">Grant Payments</div></div>
         <div class="stat"><div class="number">67K</div><div class="label">Blue Book Contracts</div></div>
         <div class="stat"><div class="number">15.5K</div><div class="label">Sole-Source Contracts</div></div>
         <div class="stat"><div class="number">69K</div><div class="label">Non-Profit Registry</div></div>
@@ -380,7 +380,7 @@ npm run test</pre>
       <table>
         <thead><tr><th>Dataset</th><th>Table</th><th>Records</th><th>Source</th></tr></thead>
         <tbody>
-          <tr><td>Alberta Grants</td><td><code>ab_grants</code></td><td>1,772,874</td><td>JSON (MongoDB export)</td></tr>
+          <tr><td>Alberta Grants</td><td><code>ab_grants</code></td><td>1,986,676</td><td>JSON + CSV disclosure</td></tr>
           <tr><td>Blue Book Contracts</td><td><code>ab_contracts</code></td><td>67,079</td><td>Excel</td></tr>
           <tr><td>Sole-Source Contracts</td><td><code>ab_sole_source</code></td><td>15,533</td><td>Excel</td></tr>
           <tr><td>Non-Profit Registry</td><td><code>ab_non_profit</code></td><td>69,271</td><td>Excel</td></tr>
@@ -673,13 +673,13 @@ npm run pipeline:rebuild              # reset + all stages in order</pre>
       </table>
 
       <!-- ── AB ── -->
-      <h3 style="color: var(--tab-ab)">AB &mdash; <code>ab</code> schema (9 tables + 3 views, ~2.4M rows)</h3>
+      <h3 style="color: var(--tab-ab)">AB &mdash; <code>ab</code> schema (9 tables + 3 views, ~2.6M rows)</h3>
 
       <h4>Primary data</h4>
       <table>
         <thead><tr><th>Table</th><th>Rows</th><th>Purpose</th></tr></thead>
         <tbody>
-          <tr><td><code>ab_grants</code></td><td>1.77M</td><td>Alberta government grant payments. Fields include ministry, business unit, recipient, program name, amount, payment date, fiscal year (<code>display_fiscal_year</code> format "YYYY - YYYY"), lottery-fund flag.</td></tr>
+          <tr><td><code>ab_grants</code></td><td>1.99M</td><td>Alberta government grant payments (fiscal years 2014-2015 through 2025-2026). Fields include ministry, business unit, recipient, program name, amount, payment date, fiscal year (<code>display_fiscal_year</code> format "YYYY - YYYY"), lottery-fund flag.</td></tr>
           <tr><td><code>ab_contracts</code></td><td>67K</td><td>Blue Book (open-procurement) contracts. Recipient, amount, ministry, fiscal year.</td></tr>
           <tr><td><code>ab_sole_source</code></td><td>15K</td><td>Sole-source (non-competitive) contracts. Vendor + department addresses, contract number, start/end dates, amount, permitted-situation justification.</td></tr>
           <tr><td><code>ab_non_profit</code></td><td>69K</td><td>Alberta non-profit societies registry: legal name, type, status, registration date, registered address.</td></tr>

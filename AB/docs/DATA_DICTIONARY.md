@@ -25,12 +25,18 @@ them as point-in-time registration dates, not period markers.
 
 ## Grants (`ab.ab_grants`)
 
-Payment-level records of Alberta government grants from 2014 onward.
+Payment-level records of Alberta government grants, **1,986,676 rows** spanning
+fiscal years 2014-2015 through 2025-2026. Fiscal years 2014-2015 through
+2023-2024 are sourced from the Alberta Open Data MongoDB export; 2024-2025
+(139,816 rows) and 2025-2026 (180,468 rows) are sourced from TBF disclosure
+CSVs (`data/grants/tbf-grants-disclosure-*.csv`) and loaded via
+`scripts/08-import-grants-csv.js` using the crosswalk in
+`config/grants-csv-crosswalk.json`.
 
 | Column | Type | Description |
 |--------|------|-------------|
 | `id` | INTEGER (PK) | Row PK (auto-generated at import) |
-| `mongo_id` | VARCHAR | `_id.$oid` from the upstream MongoDB export. Unique per source record. |
+| `mongo_id` | VARCHAR | `_id.$oid` from the upstream MongoDB export. Unique per source record. **NULL for CSV-sourced rows (fiscal 2024-2025 and 2025-2026).** |
 | `ministry`, `business_unit_name` | TEXT | Funding department and sub-unit |
 | `recipient` | TEXT | Organization or individual name as published. Not normalized. A single-space value (`' '`) appears in source data as the legitimate "unnamed recipient" aggregation key from the upstream MongoDB rollups — do not treat it as whitespace noise. |
 | `program` | TEXT | Grant program name |

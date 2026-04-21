@@ -34,7 +34,6 @@ const DATA_FILES = [
     table: 'ab.ab_grants',
     streaming: true,
     transform: (record) => ({
-      mongo_id: record._id?.$oid || null,
       ministry: record.ministry || null,
       business_unit_name: record.businessUnitName || null,
       recipient: record.recipient || null,
@@ -50,7 +49,7 @@ const DATA_FILES = [
       updated_at: record.updatedAt?.$date || null,
     }),
     columns: [
-      'mongo_id', 'ministry', 'business_unit_name', 'recipient', 'program', 'amount',
+      'ministry', 'business_unit_name', 'recipient', 'program', 'amount',
       'lottery', 'payment_date', 'fiscal_year', 'display_fiscal_year', 'lottery_fund',
       'version', 'created_at', 'updated_at',
     ],
@@ -139,8 +138,7 @@ function buildBulkInsertQuery(table, columns, batchSize) {
     valuePlaceholders.push(`(${rowPlaceholders})`);
   }
   return `INSERT INTO ${table} (${columnList})
-          VALUES ${valuePlaceholders.join(', ')}
-          ON CONFLICT (mongo_id) DO NOTHING`;
+          VALUES ${valuePlaceholders.join(', ')}`;
 }
 
 async function insertBatch(client, table, columns, batch) {
