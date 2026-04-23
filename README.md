@@ -1,5 +1,5 @@
 # AI For Accountability Hackathon
-
+https://github.com/GovAlta/agency-26-hackathon.git
 A multi-dataset analysis platform for Canadian government transparency and accountability research, built for the **AI For Accountability Hackathon** (April 29, 2026).
 
 ## Overview

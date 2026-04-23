@@ -16,7 +16,10 @@ const { Pool } = require('pg');
 
 const connString = process.env.DB_CONNECTION_STRING || '';
 if (!connString) {
-  console.error('No DB_CONNECTION_STRING found.');
+  console.error(
+    'No DB_CONNECTION_STRING found. Create general/.env or general/.env.public ' +
+      '(see general/.env.example) or set the variable in your shell before starting the server.',
+  );
   process.exit(1);
 }
 
