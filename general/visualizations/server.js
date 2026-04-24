@@ -2,10 +2,9 @@
 /**
  * visualizations/server.js — Dossier API server.
  *
- * Serves the dossier.html single-page app and exposes the API endpoints that
- * render a complete business overview for any entity in the golden-record
- * table. Runs on port 3801 by default so it can coexist with the pipeline
- * dashboard (3800).
+ * Dossier JSON API only (no bundled HTML UI). Use the AccountibilityMax React
+ * app or any other client against these endpoints. Runs on port 3801 by default
+ * so it can coexist with the pipeline dashboard (3800).
  *
  * Endpoints:
  *   GET  /api/search?q=...               — find entities by name or BN
@@ -28,14 +27,12 @@
  *   PORT=3801 node scripts/tools/dashboard.js  # dashboard on separate port
  */
 const express = require('express');
-const path = require('path');
 const { pool } = require('../lib/db');
 
 const PORT = parseInt(process.env.PORT || '3801', 10);
 
 const app = express();
 app.use(express.json());
-app.use(express.static(__dirname));
 
 // ────────────────────────────────────────────────────────────────────────────
 // /api/search — find entities by name or BN.
@@ -761,10 +758,22 @@ app.get('/api/entity/:id/international', async (req, res) => {
 });
 
 // ────────────────────────────────────────────────────────────────────────────
-// Index → dossier.html
+// Root — small JSON only (browser UI lives in accountibilitymax-app or similar).
 // ────────────────────────────────────────────────────────────────────────────
 
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'dossier.html')));
+app.get('/', (req, res) => {
+  res.json({
+    service: 'dossier-api',
+    endpoints: [
+      'GET /api/search?q=…',
+      'GET /api/entity/:id',
+      'GET /api/entity/:id/funding-by-year',
+      'GET /api/entity/:id/accountability',
+      'GET /api/entity/:id/related',
+      '…see server.js header for full list',
+    ],
+  });
+});
 
 app.listen(PORT, () => {
   console.log(`[dossier] http://localhost:${PORT}`);

@@ -188,30 +188,9 @@ Two browser interfaces — one for running the pipeline, one for exploring its o
 
 The dashboard is the primary operator interface. Run it, click Reset → Migrate → Resolve → Splink → Detect → Smart-match → LLM → Build-golden in sequence, observe each stage to completion, and the pipeline is done.
 
-### Dossier explorer (port 3801)
+### Dossier JSON API (port 3801)
 
-`http://localhost:3801` (`npm run entities:dossier`) — per-entity forensic analysis. Once the pipeline has built its golden records, the dossier tool is what an analyst uses to actually investigate a specific organization.
-
-Features:
-
-- **Search** — by name (fuzzy trigram match against canonical names + aliases) or Business Number. Search runs only on Enter or the Search button (no auto-search) so the database isn't hammered on every keystroke. GIN trigram indexes keep typical searches under ~200 ms even against 800K entities.
-- **Multi-select merge** — tick checkboxes on any number of result rows, click *"Merge N entities → temporary combined dossier"*, and the tool pulls all of them into one in-browser virtual dossier. Aliases, funding totals, charts, and the JSON download combine all selected entities. Nothing is written to the database — close the tab and the merge is gone. This is the tool analysts use when they suspect the pipeline should have merged two entities but didn't, and want to see what the combined view would look like before proposing a change.
-- **Per-entity dossier** — seven tabs:
-  - **Overview** — identity card, all name variants, addresses, LLM-authored reasoning, and two separate funding charts:
-    - *External funding* (stacked: FED grants + AB grants + AB contracts + AB sole-source)
-    - *CRA T3010 self-reported* (grouped: revenue vs expenditures vs gifts-in vs gifts-out)
-    These are kept separate because CRA Section D revenue already *includes* federal/provincial funding internally; combining them on one chart would double-count.
-  - **CRA T3010 (by year)** — per-fiscal-year cards showing total revenue, expenditures, program spending, gifts to donees, assets, liabilities, detailed revenue breakdown (receipted/non-receipted/charities/government/investment/other), registration details, compensation, board roster with arm's-length flags, program descriptions.
-  - **Qualified donees** — both sides of the T3010 gift ledger:
-    - Gifts *received* — every registered charity that gifted to this entity, with the name the donor wrote
-    - Gifts *given* — every registered charity this entity gifted to, aggregated by recipient + year
-  - **Source links** — every source table contributing to this entity, link counts, and distinct-name counts
-  - **Related / maybe-merge** — pipeline-surfaced candidates the LLM reviewed but didn't merge (RELATED verdicts, uncertain verdicts, pending pairs) + Splink probabilistic matches ≥0.50. Each has a button to merge into the current dossier in-browser.
-  - **Accountability** — hub-entity classification (if present), circular-gifting loop participation counts, overhead ratio by year (strict + broad, color-coded red over 35%), government funding breakdown (federal/provincial/municipal), name history with year ranges, T3010 data-quality violation flags (sanity/arithmetic/impossibility) with severity.
-  - **International** — countries of operation, resources sent outside Canada, exported goods, non-qualified donee recipients.
-  - **Merge history** — every entity absorbed into this one during the pipeline, with timestamps and methods.
-  - **Raw JSON** — full-dossier download button that packages *everything* (entity row + golden record + source links + merge history + funding-by-year + CRA-T3010-by-year + qualified donees + accountability + international + related entities + any browser-merged entities' complete payloads) into a single timestamped JSON file. Also a copy-to-clipboard button.
-- **Light / dark mode** toggle (top right). Persists in `localStorage`. Chart.js picks up theme colors automatically.
+`http://localhost:3801` (`npm run entities:dossier`) exposes **REST JSON** for per-entity investigation (`/api/search`, `/api/entity/:id`, `/api/entity/:id/funding-by-year`, `/api/entity/:id/accountability`, `/api/entity/:id/related`, and additional routes documented in `visualizations/server.js`). The bundled HTML dossier explorer was removed from this repository; build a UI separately (for example the AccountibilityMax React app) or call the API from scripts and notebooks.
 
 ### Year alignment across datasets
 
@@ -274,7 +253,7 @@ npm run setup                             # create base schema + ministries
 npm run pipeline:rebuild                  # destructive: reset + run full pipeline end to end
 
 npm run entities:dashboard                # http://localhost:3800 — pipeline control
-npm run entities:dossier                  # http://localhost:3801 — per-entity explorer
+npm run entities:dossier                  # http://localhost:3801 — dossier JSON API
 ```
 
 Both browser tools can run simultaneously (different ports). Individual pipeline stages can be invoked via `entities:migrate`, `entities:resolve`, `entities:splink`, `entities:detect`, `entities:smart-match`, `entities:llm`, `entities:build-golden`. Full reset via `entities:reset:force`.

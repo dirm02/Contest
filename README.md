@@ -113,10 +113,10 @@ The `general` module combines three complementary techniques:
 
 The output is a single `entity_golden_records` table — one row per real-world organization — with canonical name, every observed alias, primary BN + all variants, per-dataset profiles (CRA registration + financials, federal grants summary, Alberta totals), addresses, merge history, and cross-references to related entities.
 
-### Two browser tools (run both simultaneously)
+### Pipeline dashboard + dossier API (run both simultaneously when needed)
 
 - **Pipeline Dashboard** at `http://localhost:3800` (`npm run entities:dashboard`) — operator interface. Reset, migrate, and run each pipeline stage with one-click buttons; streaming log for each. Real-time metrics on entity counts, source links, Splink build status, LLM progress + ETA. Six test-entity sanity cards flag regressions instantly.
-- **Dossier Explorer** at `http://localhost:3801` (`npm run entities:dossier`) — analyst interface. Search by name or BN, view the complete per-entity dossier (7 tabs: Overview, CRA T3010 by year, Qualified Donees, Source Links, Related / maybe-merge, Accountability flags, International, Merge History, Raw JSON). Multi-select merge from search results. Full-dossier JSON download including pre-aggregated combined view across any browser-merged entities.
+- **Dossier JSON API** at `http://localhost:3801` (`npm run entities:dossier`) — REST endpoints under `/api/...` for search, entity dossier, funding-by-year, accountability, related entities, etc. The legacy bundled HTML explorer was removed; use your own client (e.g. the AccountibilityMax React app) against this server.
 
 Key design principles:
 
@@ -197,7 +197,7 @@ cd ../general
 npm install
 npm run entities:splink:install     # one-time: Splink Python dependencies
 npm run entities:dashboard          # http://localhost:3800 — pipeline control
-npm run entities:dossier            # http://localhost:3801 — per-entity explorer
+npm run entities:dossier            # http://localhost:3801 — dossier JSON API (GET /api/…)
 ```
 
 ## Database Access

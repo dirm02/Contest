@@ -229,7 +229,7 @@ cd ../AB &amp;&amp; npm run analyze:all
 # General: Run the full entity-resolution pipeline (CRA + FED + AB)
 cd ../general
 npm run entities:dashboard        # browser dashboard at localhost:3800
-npm run entities:dossier          # per-entity dossier explorer at localhost:3801</pre>
+npm run entities:dossier          # dossier JSON API at localhost:3801 (GET /api/…)</pre>
       </div></div>
 
       <div class="step"><div class="step-num">5</div><div class="step-content">
@@ -898,7 +898,7 @@ DB_CONNECTION_STRING=postgresql://user:pass@localhost/hackathon npm run import</
       </table>
 
       <h3>General &mdash; entity-resolution pipeline</h3>
-      <p>The <code>general</code> pipeline persists everything to tables, not report files. Pipeline state lives in <code>entities</code>, <code>entity_source_links</code>, <code>entity_merge_candidates</code>, <code>entity_merges</code>, <code>entity_golden_records</code>, and the <code>splink_*</code> tables. Operate the pipeline through <code>npm run entities:dashboard</code> (port 3800) and investigate specific organizations through <code>npm run entities:dossier</code> (port 3801). A reference-sample validator is also available:</p>
+      <p>The <code>general</code> pipeline persists everything to tables, not report files. Pipeline state lives in <code>entities</code>, <code>entity_source_links</code>, <code>entity_merge_candidates</code>, <code>entity_merges</code>, <code>entity_golden_records</code>, and the <code>splink_*</code> tables. Operate the pipeline through <code>npm run entities:dashboard</code> (port 3800) and query per-entity data through the <code>npm run entities:dossier</code> JSON API (port 3801, <code>/api/…</code>). A reference-sample validator is also available:</p>
       <pre>npm run entities:compare:splink   # 500-entity reference sample against the live pipeline</pre>
     </section>
 
