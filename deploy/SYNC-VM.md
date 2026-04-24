@@ -50,6 +50,40 @@ rsync -avz --delete dist/ azureuser@YOUR_VM_IP:/var/www/accountibilitymax/dist/
 
 Or zip `dist/` and `scp` it, then unzip on the VM into `/var/www/accountibilitymax/dist/`.
 
+### Windows (no `rsync`): `scp` + SSH key
+
+If `azureuser` cannot write `/var/www/...` directly, upload to `/tmp` then move with `sudo` on the VM.
+
+1. Use your deploy key (example path):
+
+   `%USERPROFILE%\.ssh\id_ed25519_accountibilitymax`
+
+2. After `npm run build`:
+
+   ```powershell
+   scp -i $env:USERPROFILE\.ssh\id_ed25519_accountibilitymax -r dist/* azureuser@YOUR_VM_IP:/tmp/accountibilitymax-dist-new/
+   ```
+
+3. On the VM (or one SSH line):
+
+   ```bash
+   sudo rm -rf /var/www/accountibilitymax/dist/*
+   sudo cp -a /tmp/accountibilitymax-dist-new/. /var/www/accountibilitymax/dist/
+   sudo chown -R www-data:www-data /var/www/accountibilitymax/dist
+   rm -rf /tmp/accountibilitymax-dist-new
+   ```
+
+Optional `~/.ssh/config` host block:
+
+```
+Host prod3-accountibilitymax
+  HostName YOUR_VM_IP
+  User azureuser
+  IdentityFile ~/.ssh/id_ed25519_accountibilitymax
+```
+
+Then: `scp -r dist/* prod3-accountibilitymax:/tmp/accountibilitymax-dist-new/`
+
 ---
 
 ## Track B — Backend (`agency-26-hackathon` / `AccountabilityMax-` on VM)
