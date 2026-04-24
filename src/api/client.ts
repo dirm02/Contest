@@ -1,7 +1,13 @@
 import type {
   AccountabilityResponseApi,
+  EntityGovernanceResponseApi,
   EntityResponseApi,
   FundingByYearResponseApi,
+  GovernanceGraphResponseApi,
+  GovernancePairsFilter,
+  GovernancePairsResponseApi,
+  PersonProfileResponseApi,
+  PersonSearchResponseApi,
   RelatedResponseApi,
   SearchResponseApi,
 } from './types';
@@ -33,6 +39,11 @@ export const queryKeys = {
   funding: (id: number) => ['funding', id] as const,
   accountability: (id: number) => ['accountability', id] as const,
   related: (id: number) => ['related', id] as const,
+  governancePairs: (filters: GovernancePairsFilter) => ['governance', 'pairs', filters] as const,
+  governancePairGraph: (a: number, b: number) => ['governance', 'pair-graph', a, b] as const,
+  governancePeopleSearch: (query: string) => ['governance', 'people', 'search', query] as const,
+  governancePersonProfile: (personNorm: string) => ['governance', 'person', personNorm] as const,
+  governanceEntityPeople: (id: number) => ['governance', 'entity', id, 'people'] as const,
 };
 
 export function searchEntities(query: string) {
@@ -53,4 +64,47 @@ export function fetchAccountability(id: number) {
 
 export function fetchRelated(id: number) {
   return getJson<RelatedResponseApi>(`/api/entity/${id}/related`);
+}
+
+function buildGovernancePairsQuery(filters: GovernancePairsFilter): string {
+  const params = new URLSearchParams();
+  if (filters.limit != null) params.set('limit', String(filters.limit));
+  if (filters.offset != null) params.set('offset', String(filters.offset));
+  if (filters.minShared != null) params.set('min_shared', String(filters.minShared));
+  if (filters.minScore != null) params.set('min_score', String(filters.minScore));
+  if (filters.minFunding != null) params.set('min_funding', String(filters.minFunding));
+  if (filters.interpretation) params.set('interpretation', filters.interpretation);
+  if (filters.entityType) params.set('entity_type', filters.entityType);
+  const qs = params.toString();
+  return qs ? `?${qs}` : '';
+}
+
+export function fetchGovernancePairs(filters: GovernancePairsFilter = {}) {
+  return getJson<GovernancePairsResponseApi>(
+    `/api/governance/pairs${buildGovernancePairsQuery(filters)}`,
+  );
+}
+
+export function fetchGovernancePairGraph(entityA: number, entityB: number) {
+  return getJson<GovernanceGraphResponseApi>(
+    `/api/governance/pairs/${entityA}/${entityB}/graph`,
+  );
+}
+
+export function searchGovernancePeople(query: string, limit = 30) {
+  return getJson<PersonSearchResponseApi>(
+    `/api/governance/people/search?q=${encodeURIComponent(query)}&limit=${limit}`,
+  );
+}
+
+export function fetchGovernancePersonProfile(personNorm: string) {
+  return getJson<PersonProfileResponseApi>(
+    `/api/governance/people/${encodeURIComponent(personNorm)}`,
+  );
+}
+
+export function fetchGovernanceEntityPeople(entityId: number) {
+  return getJson<EntityGovernanceResponseApi>(
+    `/api/governance/entity/${entityId}/people`,
+  );
 }

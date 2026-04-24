@@ -1,18 +1,51 @@
-import { Link, Route, Routes } from 'react-router-dom';
+import { Link, NavLink, Route, Routes } from 'react-router-dom';
 import SearchPage from './routes/SearchPage';
 import DossierPage from './routes/DossierPage';
+import GovernanceLandingPage from './routes/GovernanceLandingPage';
+import GovernancePairDetailPage from './routes/GovernancePairDetailPage';
+import PeopleSearchPage from './routes/PeopleSearchPage';
+import PersonDetailPage from './routes/PersonDetailPage';
+
+const NAV_ITEMS: Array<{ to: string; label: string; end?: boolean }> = [
+  { to: '/', label: 'Search', end: true },
+  { to: '/governance', label: 'Governance Networks' },
+  { to: '/people', label: 'People' },
+];
 
 export default function App() {
   return (
     <div className="app-shell">
       <header className="border-b border-[var(--color-border)] bg-[var(--color-surface)]/95 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-          <Link to="/" className="text-lg font-semibold tracking-tight text-[var(--color-ink)]">
-            AccountibilityMax.app
-          </Link>
-          <span className="rounded-full border border-[var(--color-border)] bg-white/70 px-3 py-1 text-xs uppercase tracking-[0.2em] text-[var(--color-muted)]">
-            Investigative MVP
-          </span>
+        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:gap-6 lg:py-5 lg:px-8">
+          <div className="flex items-center justify-between gap-3">
+            <Link to="/" className="text-lg font-semibold tracking-tight text-[var(--color-ink)]">
+              AccountibilityMax.app
+            </Link>
+            <span className="rounded-full border border-[var(--color-border)] bg-white/70 px-3 py-1 text-xs uppercase tracking-[0.2em] text-[var(--color-muted)] lg:hidden">
+              Investigative MVP
+            </span>
+          </div>
+          <nav className="flex flex-wrap items-center gap-2 text-sm">
+            {NAV_ITEMS.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.end}
+                className={({ isActive }) =>
+                  `rounded-full border px-3 py-1.5 transition ${
+                    isActive
+                      ? 'border-transparent bg-[var(--color-accent)] text-white'
+                      : 'border-[var(--color-border)] bg-white/70 text-[var(--color-muted)] hover:bg-white'
+                  }`
+                }
+              >
+                {item.label}
+              </NavLink>
+            ))}
+            <span className="hidden rounded-full border border-[var(--color-border)] bg-white/70 px-3 py-1 text-xs uppercase tracking-[0.2em] text-[var(--color-muted)] lg:inline">
+              Investigative MVP
+            </span>
+          </nav>
         </div>
       </header>
 
@@ -20,6 +53,13 @@ export default function App() {
         <Routes>
           <Route path="/" element={<SearchPage />} />
           <Route path="/entity/:id" element={<DossierPage />} />
+          <Route path="/governance" element={<GovernanceLandingPage />} />
+          <Route
+            path="/governance/pair/:entityA/:entityB"
+            element={<GovernancePairDetailPage />}
+          />
+          <Route path="/people" element={<PeopleSearchPage />} />
+          <Route path="/people/:personNorm" element={<PersonDetailPage />} />
         </Routes>
       </main>
     </div>

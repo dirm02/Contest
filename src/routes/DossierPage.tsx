@@ -1,14 +1,16 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { useQueries } from '@tanstack/react-query';
+import { useQueries, useQuery } from '@tanstack/react-query';
 import {
   fetchAccountability,
   fetchEntity,
   fetchFundingByYear,
+  fetchGovernanceEntityPeople,
   fetchRelated,
   queryKeys,
 } from '../api/client';
 import {
+  mapEntityGovernancePeople,
   mapEvidenceSections,
   mapFundingSeries,
   mapGraph,
@@ -21,6 +23,7 @@ import SignalCards from '../components/dossier/SignalCards';
 import RelationshipGraph from '../components/graph/RelationshipGraph';
 import GraphFocusPanel from '../components/graph/GraphFocusPanel';
 import EvidencePanel from '../components/dossier/EvidencePanel';
+import DossierGovernanceSection from '../components/governance/DossierGovernanceSection';
 import type { GraphNodeData } from '../api/types';
 
 function LoadingSection({ label }: { label: string }) {
@@ -66,6 +69,17 @@ export default function DossierPage() {
       },
     ],
   });
+
+  const governanceQuery = useQuery({
+    queryKey: queryKeys.governanceEntityPeople(entityId),
+    queryFn: () => fetchGovernanceEntityPeople(entityId),
+    enabled: Number.isFinite(entityId) && entityId > 0,
+  });
+
+  const governancePeople = useMemo(
+    () => (governanceQuery.data ? mapEntityGovernancePeople(governanceQuery.data) : []),
+    [governanceQuery.data],
+  );
 
   const isLoading =
     entityQuery.isLoading ||
@@ -186,6 +200,14 @@ export default function DossierPage() {
           }}
         />
       </section>
+
+      <DossierGovernanceSection
+        entityId={entityId}
+        rows={governancePeople}
+        isLoading={governanceQuery.isLoading}
+        isError={governanceQuery.isError}
+        errorMessage={governanceQuery.error instanceof Error ? governanceQuery.error.message : undefined}
+      />
 
       <EvidencePanel sections={viewModel.evidence} />
     </section>

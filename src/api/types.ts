@@ -239,3 +239,231 @@ export interface EvidenceSection {
   title: string;
   items: EvidenceItem[];
 }
+
+// ────────────────────────────────────────────────────────────────────────────
+// Challenge 6 — Governance lens types
+// ────────────────────────────────────────────────────────────────────────────
+
+export type GovernanceInterpretation =
+  | 'review'
+  | 'likely_normal_university_affiliate'
+  | 'likely_normal_foundation_operator'
+  | 'likely_normal_denominational_network'
+  | string;
+
+export interface GovernancePairApi {
+  entity_a_id: number;
+  entity_a_name: string;
+  entity_a_bn_root: string | null;
+  entity_a_type: string | null;
+  entity_a_datasets: string[] | null;
+  entity_b_id: number;
+  entity_b_name: string;
+  entity_b_bn_root: string | null;
+  entity_b_type: string | null;
+  entity_b_datasets: string[] | null;
+
+  shared_person_count: number;
+  shared_people: string[];
+  overlap_first_year: number | null;
+  overlap_last_year: number | null;
+  overlapping_year_count: number | null;
+  any_non_arms_length_signal: boolean;
+
+  entity_a_total_public_funding: number | string | null;
+  entity_b_total_public_funding: number | string | null;
+  entity_a_fed_total_grants: number | string | null;
+  entity_b_fed_total_grants: number | string | null;
+  entity_a_ab_total_grants: number | string | null;
+  entity_b_ab_total_grants: number | string | null;
+  entity_a_ab_total_contracts: number | string | null;
+  entity_b_ab_total_contracts: number | string | null;
+  entity_a_ab_total_sole_source: number | string | null;
+  entity_b_ab_total_sole_source: number | string | null;
+
+  challenge6_score: number;
+  network_interpretation: GovernanceInterpretation;
+}
+
+export interface GovernancePairsResponseApi {
+  filters: {
+    limit: number;
+    offset: number;
+    min_shared: number;
+    min_score: number;
+    min_funding: number;
+    interpretation: string | null;
+    entity_type: string | null;
+  };
+  pairs: GovernancePairApi[];
+}
+
+export interface GovernancePairsFilter {
+  limit?: number;
+  offset?: number;
+  minShared?: number;
+  minScore?: number;
+  minFunding?: number;
+  interpretation?: string | null;
+  entityType?: string | null;
+}
+
+export interface GovernanceGraphNodeApi {
+  id: string;
+  kind: 'entity' | 'person';
+  label: string;
+  entity_id?: number;
+  bn_root?: string | null;
+  dataset_sources?: string[] | null;
+  total_public_funding?: number | string | null;
+  person_name_norm?: string;
+  overlap_first_year?: number | null;
+  overlap_last_year?: number | null;
+}
+
+export interface GovernanceGraphEdgeApi {
+  id: string;
+  source: string;
+  target: string;
+  label: string;
+}
+
+export interface GovernanceGraphResponseApi {
+  entity_a_id: number;
+  entity_b_id: number;
+  nodes: GovernanceGraphNodeApi[];
+  edges: GovernanceGraphEdgeApi[];
+  shared_person_count: number;
+}
+
+export interface PersonSearchResultApi {
+  person_name_display: string;
+  person_name_norm: string;
+  linked_entity_count: number;
+  linked_public_funding: number | string | null;
+  first_year_seen: number | null;
+  last_year_seen: number | null;
+  ever_non_arms_length: boolean | null;
+  linked_entities_preview: string[] | null;
+}
+
+export interface PersonSearchResponseApi {
+  query: string;
+  normalized: string;
+  results: PersonSearchResultApi[];
+}
+
+export interface PersonLinkedEntityApi {
+  entity_id: number;
+  entity_name: string;
+  bn_root: string | null;
+  entity_type: string | null;
+  dataset_sources: string[] | null;
+  person_name_norm: string;
+  person_name_display: string;
+  positions: string[] | null;
+  first_year_seen: number | null;
+  last_year_seen: number | null;
+  active_year_count: number | null;
+  ever_non_arms_length: boolean | null;
+  total_public_funding: number | string | null;
+  fed_total_grants: number | string | null;
+  ab_total_grants: number | string | null;
+  ab_total_contracts: number | string | null;
+  ab_total_sole_source: number | string | null;
+  cra_total_revenue: number | string | null;
+}
+
+export interface PersonProfileResponseApi {
+  person_name_norm: string;
+  person_name_display: string;
+  positions: string[] | null;
+  first_year_seen: number | null;
+  last_year_seen: number | null;
+  active_year_count: number | null;
+  ever_non_arms_length: boolean | null;
+  linked_entity_count: number;
+  linked_public_funding: number;
+  entities: PersonLinkedEntityApi[];
+}
+
+export interface EntityGovernancePersonApi {
+  person_name_norm: string;
+  person_name_display: string;
+  positions: string[] | null;
+  first_year_seen: number | null;
+  last_year_seen: number | null;
+  active_year_count: number | null;
+  ever_non_arms_length: boolean | null;
+  other_linked_entity_count: number;
+}
+
+export interface EntityGovernanceResponseApi {
+  entity: {
+    id: number;
+    canonical_name: string;
+    bn_root: string | null;
+  } | null;
+  people: EntityGovernancePersonApi[];
+}
+
+// View models used by governance UI components.
+export interface GovernancePairRow {
+  pairId: string;
+  entityA: { id: number; name: string; bnRoot: string | null; type: string | null; datasets: DatasetTag[] };
+  entityB: { id: number; name: string; bnRoot: string | null; type: string | null; datasets: DatasetTag[] };
+  sharedPersonCount: number;
+  sharedPeople: string[];
+  overlapFirstYear: number | null;
+  overlapLastYear: number | null;
+  overlappingYearCount: number;
+  anyNonArmsLengthSignal: boolean;
+  combinedPublicFunding: number;
+  entityATotalPublicFunding: number;
+  entityBTotalPublicFunding: number;
+  challenge6Score: number;
+  networkInterpretation: GovernanceInterpretation;
+  interpretationLabel: string;
+  whyFlagged: string[];
+}
+
+export interface GovernanceGraphModel {
+  nodes: GovernanceGraphNodeApi[];
+  edges: GovernanceGraphEdgeApi[];
+  sharedPersonCount: number;
+}
+
+export interface PersonSearchRow {
+  personNameDisplay: string;
+  personNameNorm: string;
+  linkedEntityCount: number;
+  linkedPublicFunding: number;
+  firstYearSeen: number | null;
+  lastYearSeen: number | null;
+  everNonArmsLength: boolean;
+  linkedEntitiesPreview: string[];
+}
+
+export interface PersonProfileModel {
+  personNameNorm: string;
+  personNameDisplay: string;
+  positions: string[];
+  firstYearSeen: number | null;
+  lastYearSeen: number | null;
+  activeYearCount: number;
+  everNonArmsLength: boolean;
+  linkedEntityCount: number;
+  linkedPublicFunding: number;
+  entities: PersonLinkedEntityApi[];
+}
+
+export interface EntityGovernancePersonRow {
+  personNameNorm: string;
+  personNameDisplay: string;
+  positions: string[];
+  firstYearSeen: number | null;
+  lastYearSeen: number | null;
+  activeYearCount: number;
+  everNonArmsLength: boolean;
+  otherLinkedEntityCount: number;
+}

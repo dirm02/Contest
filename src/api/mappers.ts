@@ -2,13 +2,23 @@ import type {
   AccountabilityResponseApi,
   CraFundingPoint,
   DatasetTag,
+  EntityGovernancePersonRow,
+  EntityGovernanceResponseApi,
   EntityResponseApi,
   EvidenceSection,
   ExternalFundingPoint,
   FundingByYearResponseApi,
+  GovernanceInterpretation,
+  GovernancePairApi,
+  GovernancePairRow,
+  GovernancePairsResponseApi,
   GraphEdgeData,
   GraphNodeData,
   HeaderSummary,
+  PersonProfileModel,
+  PersonProfileResponseApi,
+  PersonSearchResponseApi,
+  PersonSearchRow,
   RelatedResponseApi,
   SearchResponseApi,
   SearchResult,
@@ -452,4 +462,141 @@ export function mapEvidenceSections(
       })),
     },
   ].filter((section) => section.items.length > 0);
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Challenge 6 — Governance mappers
+// ────────────────────────────────────────────────────────────────────────────
+
+const INTERPRETATION_LABELS: Record<string, string> = {
+  review: 'Needs review',
+  likely_normal_university_affiliate: 'Likely normal · university affiliate',
+  likely_normal_foundation_operator: 'Likely normal · foundation / operator',
+  likely_normal_denominational_network: 'Likely normal · denominational network',
+};
+
+export function interpretationLabel(value: GovernanceInterpretation): string {
+  return INTERPRETATION_LABELS[value] ?? 'Needs review';
+}
+
+function buildWhyFlagged(pair: GovernancePairApi, combinedFunding: number): string[] {
+  const reasons: string[] = [];
+  if (pair.shared_person_count >= 5) {
+    reasons.push(`${pair.shared_person_count} shared people across both entities`);
+  } else if (pair.shared_person_count >= 2) {
+    reasons.push(`${pair.shared_person_count} shared people (low-to-moderate overlap)`);
+  }
+
+  if (pair.overlap_first_year && pair.overlap_last_year) {
+    const span = (pair.overlap_last_year - pair.overlap_first_year) + 1;
+    reasons.push(`Overlapping years ${pair.overlap_first_year}–${pair.overlap_last_year} (${span} year${span === 1 ? '' : 's'})`);
+  }
+
+  if (combinedFunding >= 100_000_000) {
+    reasons.push(`Combined public funding ≥ ${formatCurrency(combinedFunding)}`);
+  } else if (combinedFunding >= 10_000_000) {
+    reasons.push(`Combined public funding ~${formatCurrency(combinedFunding)}`);
+  } else if (combinedFunding > 0) {
+    reasons.push(`Combined public funding ${formatCurrency(combinedFunding)}`);
+  }
+
+  if (pair.any_non_arms_length_signal) {
+    reasons.push('At least one side has a non-arms-length director signal');
+  }
+
+  if (pair.network_interpretation && pair.network_interpretation !== 'review') {
+    reasons.push(`Context: ${interpretationLabel(pair.network_interpretation)}`);
+  }
+
+  return reasons;
+}
+
+export function mapGovernancePair(pair: GovernancePairApi): GovernancePairRow {
+  const entityAFunding = toNumber(pair.entity_a_total_public_funding);
+  const entityBFunding = toNumber(pair.entity_b_total_public_funding);
+  const combined = entityAFunding + entityBFunding;
+
+  return {
+    pairId: `${pair.entity_a_id}-${pair.entity_b_id}`,
+    entityA: {
+      id: pair.entity_a_id,
+      name: pair.entity_a_name,
+      bnRoot: pair.entity_a_bn_root,
+      type: pair.entity_a_type,
+      datasets: mapDatasets(pair.entity_a_datasets),
+    },
+    entityB: {
+      id: pair.entity_b_id,
+      name: pair.entity_b_name,
+      bnRoot: pair.entity_b_bn_root,
+      type: pair.entity_b_type,
+      datasets: mapDatasets(pair.entity_b_datasets),
+    },
+    sharedPersonCount: pair.shared_person_count,
+    sharedPeople: pair.shared_people ?? [],
+    overlapFirstYear: pair.overlap_first_year,
+    overlapLastYear: pair.overlap_last_year,
+    overlappingYearCount:
+      pair.overlapping_year_count ??
+      (pair.overlap_first_year && pair.overlap_last_year
+        ? pair.overlap_last_year - pair.overlap_first_year + 1
+        : 0),
+    anyNonArmsLengthSignal: Boolean(pair.any_non_arms_length_signal),
+    combinedPublicFunding: combined,
+    entityATotalPublicFunding: entityAFunding,
+    entityBTotalPublicFunding: entityBFunding,
+    challenge6Score: pair.challenge6_score,
+    networkInterpretation: pair.network_interpretation,
+    interpretationLabel: interpretationLabel(pair.network_interpretation),
+    whyFlagged: buildWhyFlagged(pair, combined),
+  };
+}
+
+export function mapGovernancePairs(response: GovernancePairsResponseApi): GovernancePairRow[] {
+  return response.pairs.map(mapGovernancePair);
+}
+
+export function mapPersonSearchResults(response: PersonSearchResponseApi): PersonSearchRow[] {
+  return response.results.map((row) => ({
+    personNameDisplay: row.person_name_display,
+    personNameNorm: row.person_name_norm,
+    linkedEntityCount: row.linked_entity_count,
+    linkedPublicFunding: toNumber(row.linked_public_funding),
+    firstYearSeen: row.first_year_seen,
+    lastYearSeen: row.last_year_seen,
+    everNonArmsLength: Boolean(row.ever_non_arms_length),
+    linkedEntitiesPreview: row.linked_entities_preview ?? [],
+  }));
+}
+
+export function mapPersonProfile(response: PersonProfileResponseApi): PersonProfileModel {
+  return {
+    personNameNorm: response.person_name_norm,
+    personNameDisplay: response.person_name_display,
+    positions: response.positions ?? [],
+    firstYearSeen: response.first_year_seen,
+    lastYearSeen: response.last_year_seen,
+    activeYearCount: response.active_year_count ?? 0,
+    everNonArmsLength: Boolean(response.ever_non_arms_length),
+    linkedEntityCount: response.linked_entity_count,
+    linkedPublicFunding: toNumber(response.linked_public_funding),
+    entities: response.entities,
+  };
+}
+
+export function mapEntityGovernancePeople(response: EntityGovernanceResponseApi): EntityGovernancePersonRow[] {
+  return response.people.map((row) => ({
+    personNameNorm: row.person_name_norm,
+    personNameDisplay: row.person_name_display,
+    positions: row.positions ?? [],
+    firstYearSeen: row.first_year_seen,
+    lastYearSeen: row.last_year_seen,
+    activeYearCount: row.active_year_count ?? 0,
+    everNonArmsLength: Boolean(row.ever_non_arms_length),
+    otherLinkedEntityCount: row.other_linked_entity_count,
+  }));
+}
+
+export function formatCurrencyAmount(amount: number): string {
+  return formatCurrency(amount);
 }
