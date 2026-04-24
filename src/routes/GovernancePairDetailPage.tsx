@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useQueries } from '@tanstack/react-query';
 import {
   fetchGovernancePairGraph,
@@ -61,9 +61,11 @@ function EntityCard({
 export default function GovernancePairDetailPage() {
   const params = useParams<{ entityA: string; entityB: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const entityA = Number(params.entityA);
   const entityB = Number(params.entityB);
+  const statePair = (location.state as { pair?: GovernancePairRow } | null)?.pair ?? null;
 
   const [lookupQuery, graphQuery] = useQueries({
     queries: [
@@ -75,7 +77,7 @@ export default function GovernancePairDetailPage() {
         }),
         queryFn: () =>
           fetchGovernancePairs({ minShared: 2, minScore: 0, limit: 500 }),
-        enabled: Number.isFinite(entityA) && Number.isFinite(entityB),
+        enabled: Number.isFinite(entityA) && Number.isFinite(entityB) && !statePair,
         staleTime: 60_000,
       },
       {
@@ -88,6 +90,13 @@ export default function GovernancePairDetailPage() {
   });
 
   const pairRow: GovernancePairRow | null = useMemo(() => {
+    if (
+      statePair &&
+      ((statePair.entityA.id === entityA && statePair.entityB.id === entityB) ||
+        (statePair.entityA.id === entityB && statePair.entityB.id === entityA))
+    ) {
+      return statePair;
+    }
     if (!lookupQuery.data) return null;
     const match = lookupQuery.data.pairs.find(
       (p) =>
@@ -95,7 +104,7 @@ export default function GovernancePairDetailPage() {
         (p.entity_a_id === entityB && p.entity_b_id === entityA),
     );
     return match ? mapGovernancePair(match) : null;
-  }, [lookupQuery.data, entityA, entityB]);
+  }, [statePair, lookupQuery.data, entityA, entityB]);
 
   if (!Number.isFinite(entityA) || !Number.isFinite(entityB)) {
     return (
@@ -108,8 +117,8 @@ export default function GovernancePairDetailPage() {
     );
   }
 
-  const isLoading = lookupQuery.isLoading || graphQuery.isLoading;
-  const isError = lookupQuery.isError || graphQuery.isError;
+  const isLoading = (!statePair && lookupQuery.isLoading) || graphQuery.isLoading;
+  const isError = (!statePair && lookupQuery.isError) || graphQuery.isError;
 
   if (isLoading) {
     return (

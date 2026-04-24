@@ -158,6 +158,7 @@ export default function GovernancePairTable({
             <div className="flex flex-col items-end gap-2">
               <Link
                 to={`/governance/pair/${row.entityA.id}/${row.entityB.id}`}
+                state={{ pair: row }}
                 className="btn rounded-xl border border-transparent bg-[var(--color-accent)] px-4 py-2.5 text-sm font-medium text-white hover:opacity-90"
               >
                 Open pair detail

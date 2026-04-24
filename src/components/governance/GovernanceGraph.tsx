@@ -12,6 +12,8 @@ import type {
   GovernanceGraphNodeApi,
 } from '../../api/types';
 
+const MAX_VISIBLE_PEOPLE = 24;
+
 interface GovernanceGraphProps {
   nodes: GovernanceGraphNodeApi[];
   edges: GovernanceGraphEdgeApi[];
@@ -26,10 +28,16 @@ function nodePosition(
   total: number,
   kind: 'entity-a' | 'entity-b' | 'person',
 ) {
-  if (kind === 'entity-a') return { x: -420, y: 0 };
-  if (kind === 'entity-b') return { x: 420, y: 0 };
-  const offset = total <= 1 ? 0 : (index / (total - 1)) * 2 - 1;
-  return { x: 0, y: offset * 260 };
+  if (kind === 'entity-a') return { x: -520, y: 0 };
+  if (kind === 'entity-b') return { x: 520, y: 0 };
+
+  const columnCount = total <= 8 ? 1 : total <= 16 ? 2 : 3;
+  const rowsPerColumn = Math.ceil(total / columnCount);
+  const column = Math.floor(index / rowsPerColumn);
+  const row = index % rowsPerColumn;
+  const x = (column - (columnCount - 1) / 2) * 180;
+  const y = (row - (rowsPerColumn - 1) / 2) * 96;
+  return { x, y };
 }
 
 function nodeColor(kind: 'entity-a' | 'entity-b' | 'person') {
@@ -47,10 +55,15 @@ export default function GovernanceGraph({
   onSelectPerson,
 }: GovernanceGraphProps) {
   const { flowNodes, flowEdges } = useMemo(() => {
-    const personNodes = nodes.filter((node) => node.kind === 'person');
+    const allPersonNodes = nodes.filter((node) => node.kind === 'person');
+    const personNodes = allPersonNodes.slice(0, MAX_VISIBLE_PEOPLE);
+    const visiblePersonIds = new Set(personNodes.map((node) => node.id));
     const totalPeople = personNodes.length;
+    const visibleNodes = nodes.filter(
+      (node) => node.kind === 'entity' || visiblePersonIds.has(node.id),
+    );
 
-    const resolvedNodes: Node[] = nodes.map((node) => {
+    const resolvedNodes: Node[] = visibleNodes.map((node) => {
       let kind: 'entity-a' | 'entity-b' | 'person' = 'person';
       let position = { x: 0, y: 0 };
       if (node.kind === 'entity') {
@@ -97,7 +110,9 @@ export default function GovernanceGraph({
       };
     });
 
-    const resolvedEdges: Edge[] = edges.map((edge) => ({
+    const resolvedEdges: Edge[] = edges
+      .filter((edge) => visiblePersonIds.has(edge.source) || visiblePersonIds.has(edge.target))
+      .map((edge) => ({
       id: edge.id,
       source: edge.source,
       target: edge.target,
@@ -107,7 +122,11 @@ export default function GovernanceGraph({
       labelStyle: { fill: '#6b645c', fontSize: 11 },
     }));
 
-    return { flowNodes: resolvedNodes, flowEdges: resolvedEdges };
+    return {
+      flowNodes: resolvedNodes,
+      flowEdges: resolvedEdges,
+      hiddenPeopleCount: Math.max(0, allPersonNodes.length - personNodes.length),
+    };
   }, [nodes, edges, entityAId, entityBId]);
 
   if (nodes.length === 0) {
@@ -119,11 +138,18 @@ export default function GovernanceGraph({
   }
 
   return (
-    <div className="h-[480px] rounded-2xl border border-[var(--color-border)] bg-white/80">
+    <div className="space-y-3">
+      {Math.max(0, nodes.filter((node) => node.kind === 'person').length - MAX_VISIBLE_PEOPLE) > 0 && (
+        <div className="rounded-2xl border border-[var(--color-border)] bg-white/80 px-4 py-3 text-sm text-[var(--color-muted)]">
+          Showing the first {MAX_VISIBLE_PEOPLE} shared people for readability. Open the person list below for the full set.
+        </div>
+      )}
+      <div className="h-[680px] rounded-2xl border border-[var(--color-border)] bg-white/80">
       <ReactFlow
         nodes={flowNodes}
         edges={flowEdges}
         fitView
+        fitViewOptions={{ padding: 0.2, minZoom: 0.35 }}
         onNodeClick={(_, node) => {
           const raw = nodes.find((n) => n.id === node.id);
           if (!raw) return;
@@ -138,6 +164,7 @@ export default function GovernanceGraph({
         <Controls />
         <Background gap={20} />
       </ReactFlow>
+      </div>
     </div>
   );
 }
