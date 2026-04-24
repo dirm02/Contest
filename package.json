@@ -24,6 +24,7 @@
     "react-dom": "^19.2.5",
     "react-router-dom": "^7.14.2",
     "recharts": "^3.8.1",
+    "rss-parser": "^3.13.0",
     "tailwindcss": "^4.2.4"
   }
 }
