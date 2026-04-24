@@ -1,0 +1,455 @@
+import type {
+  AccountabilityResponseApi,
+  CraFundingPoint,
+  DatasetTag,
+  EntityResponseApi,
+  EvidenceSection,
+  ExternalFundingPoint,
+  FundingByYearResponseApi,
+  GraphEdgeData,
+  GraphNodeData,
+  HeaderSummary,
+  RelatedResponseApi,
+  SearchResponseApi,
+  SearchResult,
+  SignalCard,
+  SignalSeverity,
+} from './types';
+
+function toNumber(value: number | string | null | undefined): number {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+  if (typeof value === 'string') {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  return 0;
+}
+
+function toBoolean(value: boolean | string | null | undefined): boolean {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'string') return value.toLowerCase() === 'true' || value === '1' || value === 'Y';
+  return false;
+}
+
+function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat('en-CA', {
+    style: 'currency',
+    currency: 'CAD',
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
+export function mapDatasets(raw?: string[] | null): DatasetTag[] {
+  const values = (raw ?? []).map((item) => item.toUpperCase());
+  const tags: DatasetTag[] = [];
+  if (values.some((item) => item.includes('CRA'))) tags.push('CRA');
+  if (values.some((item) => item.includes('FED'))) tags.push('FED');
+  if (values.some((item) => item === 'AB' || item.includes('AB_'))) tags.push('AB');
+  return tags;
+}
+
+export function mapSearchResults(response: SearchResponseApi): SearchResult[] {
+  return response.results.map((result) => ({
+    id: result.id,
+    canonicalName: result.canonical_name,
+    bnRoot: result.bn_root ?? null,
+    datasets: mapDatasets(result.dataset_sources),
+    aliasCount: result.alias_count ?? 0,
+    linkCount: result.link_count ?? 0,
+  }));
+}
+
+export function mapHeaderSummary(
+  entityResponse: EntityResponseApi,
+  relatedResponse: RelatedResponseApi,
+): HeaderSummary {
+  const aliasCount =
+    entityResponse.golden?.aliases?.length ??
+    entityResponse.entity.alternate_names?.length ??
+    0;
+
+  const relatedIds = new Set<number>();
+  for (const item of relatedResponse.candidates) relatedIds.add(item.other_id);
+  for (const item of relatedResponse.splink) relatedIds.add(item.other_id);
+
+  return {
+    id: entityResponse.entity.id,
+    canonicalName: entityResponse.golden?.canonical_name ?? entityResponse.entity.canonical_name,
+    bnRoot: entityResponse.entity.bn_root ?? null,
+    aliasCount,
+    datasets: mapDatasets(
+      entityResponse.golden?.dataset_sources ?? entityResponse.entity.dataset_sources,
+    ),
+    relatedCount: relatedIds.size,
+    linkCount:
+      entityResponse.entity.source_count ??
+      entityResponse.links.reduce((total, link) => total + toNumber(link.c), 0),
+  };
+}
+
+export function mapFundingSeries(response: FundingByYearResponseApi): {
+  external: ExternalFundingPoint[];
+  cra: CraFundingPoint[];
+} {
+  return {
+    external: (response.external_fiscal_years ?? []).map((row) => ({
+      fiscalYear: row.fy,
+      fedGrants: toNumber(row.fed_grants),
+      abGrants: toNumber(row.ab_grants),
+      abContracts: toNumber(row.ab_contracts),
+      abSoleSource: toNumber(row.ab_sole_source),
+    })),
+    cra: (response.cra_calendar_years ?? []).map((row) => ({
+      year: row.year,
+      revenue: toNumber(row.cra_revenue),
+      expenditures: toNumber(row.cra_expenditures),
+      giftsIn: toNumber(row.cra_gifts_in),
+      giftsOut: toNumber(row.cra_gifts_out),
+    })),
+  };
+}
+
+function severityForCount(count: number, mediumThreshold: number, highThreshold: number): SignalSeverity {
+  if (count >= highThreshold) return 'high';
+  if (count >= mediumThreshold) return 'medium';
+  if (count > 0) return 'low';
+  return 'info';
+}
+
+export function mapSignalCards(
+  accountability: AccountabilityResponseApi,
+  related: RelatedResponseApi,
+): SignalCard[] {
+  const cards: SignalCard[] = [];
+  const latestGovFunding = accountability.govt_funding?.[0];
+  if (latestGovFunding) {
+    const share = toNumber(latestGovFunding.govt_share_of_rev);
+    cards.push({
+      id: 'government-funding',
+      title: 'Government Funding Dependence',
+      severity: share >= 0.6 ? 'high' : share >= 0.3 ? 'medium' : share > 0 ? 'low' : 'info',
+      reason:
+        share > 0
+          ? `${Math.round(share * 100)}% of recent revenue came from government sources.`
+          : 'No recent government funding dependence signal was found.',
+      metrics: [
+        `Latest year: ${latestGovFunding.fiscal_year ?? 'n/a'}`,
+        `Total government funding: ${formatCurrency(toNumber(latestGovFunding.total_govt))}`,
+      ],
+    });
+  }
+
+  const totalLoops = toNumber(accountability.loop_universe?.total_loops);
+  cards.push({
+    id: 'loop-participation',
+    title: 'Funding Loop Participation',
+    severity: severityForCount(totalLoops, 1, 5),
+    reason:
+      totalLoops > 0
+        ? `This entity appears in ${totalLoops} detected circular funding loop(s).`
+        : 'No circular funding loop participation was surfaced.',
+    metrics: [
+      `2-hop loops: ${toNumber(accountability.loop_universe?.loops_2hop)}`,
+      `3-hop loops: ${toNumber(accountability.loop_universe?.loops_3hop)}`,
+    ],
+  });
+
+  const hasHub = Boolean(accountability.hub?.hub_type);
+  const totalDegree = toNumber(accountability.hub?.total_degree);
+  cards.push({
+    id: 'network-presence',
+    title: 'Hub / Network Presence',
+    severity: hasHub ? (totalDegree >= 20 ? 'high' : 'medium') : 'info',
+    reason: hasHub
+      ? `${accountability.hub?.hub_type} hub classification suggests notable network centrality.`
+      : 'No hub classification was surfaced for this entity.',
+    metrics: [
+      `Total degree: ${totalDegree}`,
+      `Total inflow: ${formatCurrency(toNumber(accountability.hub?.total_inflow))}`,
+    ],
+  });
+
+  const latestOverhead = accountability.overhead?.[0];
+  if (latestOverhead) {
+    const strictOverhead = toNumber(latestOverhead.strict_overhead_pct);
+    cards.push({
+      id: 'overhead-outlier',
+      title: 'Overhead Outlier',
+      severity: toBoolean(latestOverhead.outlier_flag)
+        ? 'high'
+        : strictOverhead >= 35
+          ? 'medium'
+          : strictOverhead > 0
+            ? 'low'
+            : 'info',
+      reason: toBoolean(latestOverhead.outlier_flag)
+        ? 'The backend flagged this entity as an overhead outlier.'
+        : strictOverhead > 0
+          ? `Strict overhead is ${strictOverhead.toFixed(1)}% in the latest year.`
+          : 'No recent overhead outlier signal was surfaced.',
+      metrics: [
+        `Latest year: ${latestOverhead.fiscal_year ?? 'n/a'}`,
+        `Broad overhead: ${toNumber(latestOverhead.broad_overhead_pct).toFixed(1)}%`,
+      ],
+    });
+  }
+
+  const violationCount =
+    (accountability.violations?.sanity?.length ?? 0) +
+    (accountability.violations?.arithmetic?.length ?? 0) +
+    (accountability.violations?.impossibility?.length ?? 0);
+  cards.push({
+    id: 'data-quality',
+    title: 'Data Quality Issues',
+    severity: severityForCount(violationCount, 1, 5),
+    reason:
+      violationCount > 0
+        ? `${violationCount} recent data-quality issue(s) were surfaced across sanity and arithmetic checks.`
+        : 'No recent data-quality violations were surfaced.',
+    metrics: [
+      `Sanity: ${accountability.violations?.sanity?.length ?? 0}`,
+      `Arithmetic/impossibility: ${(accountability.violations?.arithmetic?.length ?? 0) + (accountability.violations?.impossibility?.length ?? 0)}`,
+    ],
+  });
+
+  const relatedCount = new Set([
+    ...related.candidates.map((item) => item.other_id),
+    ...related.splink.map((item) => item.other_id),
+  ]).size;
+  cards.push({
+    id: 'related-entities',
+    title: 'Related Entity Complexity',
+    severity: severityForCount(relatedCount, 2, 6),
+    reason:
+      relatedCount > 0
+        ? `${relatedCount} direct related or candidate entities were surfaced for review.`
+        : 'No direct related entities were surfaced.',
+    metrics: [
+      `Candidate links: ${related.candidates.length}`,
+      `Splink suggestions: ${related.splink.length}`,
+    ],
+  });
+
+  return cards;
+}
+
+export function mapGraph(
+  entityResponse: EntityResponseApi,
+  relatedResponse: RelatedResponseApi,
+): { nodes: GraphNodeData[]; edges: GraphEdgeData[] } {
+  const centerNode: GraphNodeData = {
+    id: `entity-${entityResponse.entity.id}`,
+    entityId: entityResponse.entity.id,
+    label: entityResponse.golden?.canonical_name ?? entityResponse.entity.canonical_name,
+    bnRoot: entityResponse.entity.bn_root ?? null,
+    datasets: mapDatasets(
+      entityResponse.golden?.dataset_sources ?? entityResponse.entity.dataset_sources,
+    ),
+    relation: 'center',
+    meta: [`${entityResponse.entity.source_count ?? entityResponse.links.length} linked source groups`],
+  };
+
+  const nodeMap = new Map<string, GraphNodeData>([[centerNode.id, centerNode]]);
+  const edges: GraphEdgeData[] = [];
+
+  for (const candidate of relatedResponse.candidates) {
+    const id = `entity-${candidate.other_id}`;
+    const existing = nodeMap.get(id);
+    const relation: GraphNodeData['relation'] =
+      candidate.status === 'related' ? 'related' : 'candidate';
+    const nextNode: GraphNodeData = {
+      id,
+      entityId: candidate.other_id,
+      label: candidate.other_name ?? `Entity ${candidate.other_id}`,
+      bnRoot: candidate.other_bn ?? null,
+      datasets: mapDatasets(candidate.other_ds),
+      relation,
+      meta: [
+        candidate.candidate_method ? `Method: ${candidate.candidate_method}` : 'Candidate entity',
+        candidate.other_link_count ? `${candidate.other_link_count} linked sources` : 'Linked source count unavailable',
+      ],
+    };
+    nodeMap.set(id, existing && existing.relation === 'related' ? existing : nextNode);
+    edges.push({
+      id: `edge-center-${candidate.other_id}`,
+      source: centerNode.id,
+      target: id,
+      label: relation === 'related' ? 'Related' : 'Candidate',
+      relation,
+    });
+  }
+
+  for (const splink of relatedResponse.splink) {
+    const id = `entity-${splink.other_id}`;
+    if (!nodeMap.has(id)) {
+      nodeMap.set(id, {
+        id,
+        entityId: splink.other_id,
+        label: splink.other_name ?? `Entity ${splink.other_id}`,
+        bnRoot: splink.other_bn ?? null,
+        datasets: mapDatasets(splink.other_ds),
+        relation: 'splink',
+        meta: [splink.prob ? `Splink probability ${(splink.prob * 100).toFixed(0)}%` : 'Splink suggestion'],
+      });
+    }
+
+    if (!edges.some((edge) => edge.target === id)) {
+      edges.push({
+        id: `edge-splink-${splink.other_id}`,
+        source: centerNode.id,
+        target: id,
+        label: 'Splink',
+        relation: 'splink',
+      });
+    }
+  }
+
+  return {
+    nodes: [...nodeMap.values()],
+    edges,
+  };
+}
+
+export function mapEvidenceSections(
+  entityResponse: EntityResponseApi,
+  fundingResponse: FundingByYearResponseApi,
+  accountabilityResponse: AccountabilityResponseApi,
+  relatedResponse: RelatedResponseApi,
+): EvidenceSection[] {
+  const fundingItems = [
+    ...fundingResponse.external_fiscal_years.flatMap((row) => [
+      row.fed_grants
+        ? {
+            label: 'Federal grants',
+            yearOrPeriod: row.fy,
+            sourceDataset: 'FED',
+            amount: formatCurrency(toNumber(row.fed_grants)),
+            note: 'External public funding',
+            sourceRef: '/api/entity/:id/funding-by-year',
+          }
+        : null,
+      row.ab_grants
+        ? {
+            label: 'Alberta grants',
+            yearOrPeriod: row.fy,
+            sourceDataset: 'AB',
+            amount: formatCurrency(toNumber(row.ab_grants)),
+            note: 'External public funding',
+            sourceRef: '/api/entity/:id/funding-by-year',
+          }
+        : null,
+      row.ab_contracts
+        ? {
+            label: 'Alberta contracts',
+            yearOrPeriod: row.fy,
+            sourceDataset: 'AB',
+            amount: formatCurrency(toNumber(row.ab_contracts)),
+            note: 'Procurement contract value',
+            sourceRef: '/api/entity/:id/funding-by-year',
+          }
+        : null,
+      row.ab_sole_source
+        ? {
+            label: 'Alberta sole source',
+            yearOrPeriod: row.fy,
+            sourceDataset: 'AB',
+            amount: formatCurrency(toNumber(row.ab_sole_source)),
+            note: 'Sole-source procurement value',
+            sourceRef: '/api/entity/:id/funding-by-year',
+          }
+        : null,
+    ]),
+    ...fundingResponse.cra_calendar_years.flatMap((row) => [
+      {
+        label: 'CRA revenue',
+        yearOrPeriod: String(row.year),
+        sourceDataset: 'CRA',
+        amount: formatCurrency(toNumber(row.cra_revenue)),
+        note: 'Self-reported annual revenue',
+        sourceRef: '/api/entity/:id/funding-by-year',
+      },
+      {
+        label: 'CRA expenditures',
+        yearOrPeriod: String(row.year),
+        sourceDataset: 'CRA',
+        amount: formatCurrency(toNumber(row.cra_expenditures)),
+        note: 'Self-reported annual expenditures',
+        sourceRef: '/api/entity/:id/funding-by-year',
+      },
+    ]),
+  ].filter((item): item is NonNullable<typeof item> => Boolean(item));
+
+  const accountabilityItems = [
+    accountabilityResponse.loop_universe?.total_loops
+      ? {
+          label: 'Loop participation',
+          yearOrPeriod: 'Current view',
+          sourceDataset: 'CRA',
+          note: `${toNumber(accountabilityResponse.loop_universe.total_loops)} detected loop(s).`,
+          sourceRef: '/api/entity/:id/accountability',
+        }
+      : null,
+    accountabilityResponse.hub?.hub_type
+      ? {
+          label: 'Hub classification',
+          yearOrPeriod: 'Current view',
+          sourceDataset: 'CRA',
+          note: `${accountabilityResponse.hub.hub_type} hub with degree ${toNumber(accountabilityResponse.hub.total_degree)}.`,
+          sourceRef: '/api/entity/:id/accountability',
+        }
+      : null,
+    ...(accountabilityResponse.violations?.sanity ?? []).slice(0, 3).map((item) => ({
+      label: item.rule_code ?? 'Sanity issue',
+      yearOrPeriod: item.fiscal_year ? String(item.fiscal_year) : 'Unknown period',
+      sourceDataset: 'CRA',
+      note: item.details ?? 'Sanity violation surfaced by backend.',
+      sourceRef: '/api/entity/:id/accountability',
+    })),
+  ].filter((item): item is NonNullable<typeof item> => Boolean(item));
+
+  const relatedItems = [
+    ...relatedResponse.candidates.slice(0, 5).map((item) => ({
+      label: item.other_name ?? `Entity ${item.other_id}`,
+      yearOrPeriod: item.status ?? 'Candidate',
+      sourceDataset: 'GENERAL',
+      note: item.llm_reasoning ?? item.candidate_method ?? 'Related entity candidate',
+      sourceRef: '/api/entity/:id/related',
+    })),
+    ...relatedResponse.splink.slice(0, 3).map((item) => ({
+      label: item.other_name ?? `Entity ${item.other_id}`,
+      yearOrPeriod: 'Splink',
+      sourceDataset: 'GENERAL',
+      note: item.prob ? `Probability ${(item.prob * 100).toFixed(0)}%` : 'Splink surfaced entity',
+      sourceRef: '/api/entity/:id/related',
+    })),
+  ];
+
+  return [
+    {
+      id: 'funding',
+      title: 'Funding Evidence',
+      items: fundingItems,
+    },
+    {
+      id: 'accountability',
+      title: 'Network / Accountability Evidence',
+      items: accountabilityItems,
+    },
+    {
+      id: 'related',
+      title: 'Related Entity Evidence',
+      items: relatedItems,
+    },
+    {
+      id: 'sources',
+      title: 'Source Coverage',
+      items: entityResponse.links.map((link) => ({
+        label: `${link.source_schema}.${link.source_table}`,
+        yearOrPeriod: `${toNumber(link.c)} linked records`,
+        sourceDataset: link.source_schema.toUpperCase(),
+        note: `${link.names?.slice(0, 2).join(', ') ?? 'Source names not available'}${(link.names?.length ?? 0) > 2 ? '…' : ''}`,
+        sourceRef: '/api/entity/:id',
+      })),
+    },
+  ].filter((section) => section.items.length > 0);
+}

@@ -1,0 +1,16 @@
+[Unit]
+Description=AccountibilityMax dossier API (hackathon general/visualizations/server.js)
+After=network.target
+
+[Service]
+Type=simple
+User=azureuser
+WorkingDirectory=/var/www/AccountabilityMax-/general
+Environment=NODE_ENV=production
+EnvironmentFile=-/var/www/AccountabilityMax-/general/.env
+ExecStart=/usr/bin/node visualizations/server.js
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

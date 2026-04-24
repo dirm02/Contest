@@ -1,0 +1,113 @@
+@import "tailwindcss";
+@import "basecoat-css";
+@import "@xyflow/react/dist/style.css";
+
+:root {
+  --color-bg: #f5f0e8;
+  --color-surface: #fcfaf6;
+  --color-surface-strong: #ffffff;
+  --color-ink: #1f1a17;
+  --color-muted: #6b645c;
+  --color-border: #d8d0c7;
+  --color-accent: #2551b0;
+  --color-accent-soft: #e7eefc;
+  --color-relationship: #0f766e;
+  --color-relationship-soft: #dff6f2;
+  --color-risk-high: #b42318;
+  --color-risk-high-soft: #fef3f2;
+  --color-risk-medium: #b54708;
+  --color-risk-medium-soft: #fffaeb;
+  --color-risk-low: #027a48;
+  --color-risk-low-soft: #ecfdf3;
+  --shadow-card: 0 10px 30px rgba(31, 26, 23, 0.06);
+}
+
+html,
+body,
+#app {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(circle at top left, rgba(37, 81, 176, 0.05), transparent 22%),
+    var(--color-bg);
+  color: var(--color-ink);
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.app-shell {
+  min-height: 100vh;
+  color: var(--color-ink);
+}
+
+.app-card {
+  border: 1px solid var(--color-border);
+  background: color-mix(in srgb, var(--color-surface-strong) 92%, white);
+  box-shadow: var(--shadow-card);
+}
+
+.section-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.metric-value {
+  font-size: clamp(1.5rem, 2vw, 2.25rem);
+  font-weight: 700;
+  line-height: 1.05;
+  color: var(--color-ink);
+}
+
+.dataset-badge {
+  border: 1px solid var(--color-border);
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--color-ink);
+}
+
+.signal-badge-high {
+  background: var(--color-risk-high-soft);
+  color: var(--color-risk-high);
+}
+
+.signal-badge-medium {
+  background: var(--color-risk-medium-soft);
+  color: var(--color-risk-medium);
+}
+
+.signal-badge-low {
+  background: var(--color-risk-low-soft);
+  color: var(--color-risk-low);
+}
+
+.signal-badge-info {
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+
+.evidence-row + .evidence-row {
+  border-top: 1px solid color-mix(in srgb, var(--color-border) 72%, white);
+}
+
+.react-flow__background {
+  background: color-mix(in srgb, var(--color-surface) 88%, white);
+}
+
+.react-flow__controls {
+  border-color: var(--color-border);
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.react-flow__attribution {
+  display: none;
+}
