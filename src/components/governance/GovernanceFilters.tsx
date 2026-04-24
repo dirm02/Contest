@@ -1,5 +1,7 @@
 import type { GovernancePairsFilter } from '../../api/types';
 
+const MAX_CHALLENGE6_SCORE = 14;
+
 interface GovernanceFiltersProps {
   value: GovernancePairsFilter;
   onChange: (next: GovernancePairsFilter) => void;
@@ -27,6 +29,7 @@ export default function GovernanceFilters({
             min={2}
             step={1}
             value={value.minShared ?? 2}
+            onWheel={(event) => event.currentTarget.blur()}
             onChange={(event) =>
               onChange({ ...value, minShared: Math.max(2, Number(event.target.value) || 2) })
             }
@@ -39,12 +42,23 @@ export default function GovernanceFilters({
             className="input rounded-xl border border-[var(--color-border)] bg-white px-3 py-2 text-sm text-[var(--color-ink)] shadow-none outline-none"
             type="number"
             min={0}
+            max={MAX_CHALLENGE6_SCORE}
             step={1}
             value={value.minScore ?? 0}
+            onWheel={(event) => event.currentTarget.blur()}
             onChange={(event) =>
-              onChange({ ...value, minScore: Math.max(0, Number(event.target.value) || 0) })
+              onChange({
+                ...value,
+                minScore: Math.min(
+                  MAX_CHALLENGE6_SCORE,
+                  Math.max(0, Number(event.target.value) || 0),
+                ),
+              })
             }
           />
+          <span className="pl-1 text-[11px] text-[var(--color-muted)]">
+            Score range: 0-{MAX_CHALLENGE6_SCORE}
+          </span>
         </label>
 
         <label className="flex flex-col gap-1 text-sm">
@@ -55,6 +69,7 @@ export default function GovernanceFilters({
             min={0}
             step={100000}
             value={value.minFunding ?? 0}
+            onWheel={(event) => event.currentTarget.blur()}
             onChange={(event) =>
               onChange({ ...value, minFunding: Math.max(0, Number(event.target.value) || 0) })
             }

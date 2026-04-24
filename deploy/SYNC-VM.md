@@ -2,7 +2,7 @@
 
 Your production VM serves **only the built frontend** from:
 
-`/var/www/accountibilitymax/dist`
+`/var/www/Contest/dist`
 
 The hackathon backend API lives separately (today: `/var/www/AccountabilityMax-/general`).
 
@@ -10,12 +10,12 @@ Treat sync as **two tracks**: **frontend bundle** and **backend repo**.
 
 ---
 
-## Track A — Frontend (`accountibilitymax-app`)
+## Track A — Frontend (`Contest`)
 
 ### 1. Local (source of truth)
 
 ```bash
-cd accountibilitymax-app
+cd Contest
 npm ci
 npm run build
 git add -A && git commit -m "..." && git push
@@ -31,11 +31,11 @@ git add -A && git commit -m "..." && git push
 **Option A — app lives in a git clone on the VM** (recommended long term)
 
 ```bash
-cd /path/to/accountibilitymax-app   # same repo as GitHub
+cd /path/to/Contest   # same repo as GitHub
 git pull
 npm ci
 npm run build
-sudo rsync -a --delete dist/ /var/www/accountibilitymax/dist/
+sudo rsync -a --delete dist/ /var/www/Contest/dist/
 # nginx serves files from disk; optional: sudo systemctl reload nginx
 ```
 
@@ -45,7 +45,7 @@ From your **laptop** (replace host and path):
 
 ```bash
 npm run build
-rsync -avz --delete dist/ azureuser@YOUR_VM_IP:/var/www/accountibilitymax/dist/
+rsync -avz --delete dist/ azureuser@YOUR_VM_IP:/var/www/Contest/dist/
 ```
 
 Or zip `dist/` and `scp` it, then unzip on the VM into `/var/www/accountibilitymax/dist/`.
@@ -61,28 +61,57 @@ If `azureuser` cannot write `/var/www/...` directly, upload to `/tmp` then move 
 2. After `npm run build`:
 
    ```powershell
-   scp -i $env:USERPROFILE\.ssh\id_ed25519_accountibilitymax -r dist/* azureuser@YOUR_VM_IP:/tmp/accountibilitymax-dist-new/
+   scp -i $env:USERPROFILE\.ssh\id_ed25519_accountibilitymax -r dist/* azureuser@YOUR_VM_IP:/tmp/contest-dist-new/
    ```
 
 3. On the VM (or one SSH line):
 
    ```bash
-   sudo rm -rf /var/www/accountibilitymax/dist/*
-   sudo cp -a /tmp/accountibilitymax-dist-new/. /var/www/accountibilitymax/dist/
-   sudo chown -R www-data:www-data /var/www/accountibilitymax/dist
-   rm -rf /tmp/accountibilitymax-dist-new
+   sudo rm -rf /var/www/Contest/dist/*
+   sudo cp -a /tmp/contest-dist-new/. /var/www/Contest/dist/
+   sudo chown -R www-data:www-data /var/www/Contest/dist
+   rm -rf /tmp/contest-dist-new
    ```
 
 Optional `~/.ssh/config` host block:
 
 ```
-Host prod3-accountibilitymax
+Host prod3-contest
   HostName YOUR_VM_IP
   User azureuser
   IdentityFile ~/.ssh/id_ed25519_accountibilitymax
 ```
 
-Then: `scp -r dist/* prod3-accountibilitymax:/tmp/accountibilitymax-dist-new/`
+Then: `scp -r dist/* prod3-contest:/tmp/contest-dist-new/`
+
+---
+
+## One-command deploy (recommended)
+
+Use the new script from `Contest/deploy/deploy-prod3.ps1`.
+
+```powershell
+cd C:\Users\LocalAccountHPT25\Desktop\newsaas\Contest
+powershell -ExecutionPolicy Bypass -File .\deploy\deploy-prod3.ps1
+```
+
+What it does:
+- builds frontend (`npm run build`)
+- uploads `dist` to VM temp path
+- publishes to `/var/www/Contest/dist`
+- syncs backend `general/visualizations/server.js` to VM
+- restarts `accountibilitymax-api`
+- runs quick health checks (API root + governance pairs)
+
+Useful flags:
+
+```powershell
+# Skip frontend build (if dist already built)
+powershell -ExecutionPolicy Bypass -File .\deploy\deploy-prod3.ps1 -SkipBuild
+
+# Frontend-only deploy (no backend file sync/restart)
+powershell -ExecutionPolicy Bypass -File .\deploy\deploy-prod3.ps1 -SyncBackend:$false
+```
 
 ---
 
@@ -108,4 +137,4 @@ Ensure `general/.env` exists on the VM (not in git) with `DB_CONNECTION_STRING`.
 
 ## Optional: single `git pull` on the VM
 
-Put `accountibilitymax-app` **inside** the hackathon repository (e.g. `agency-26-hackathon/web/accountibilitymax-app/`) so one `git pull` on `/var/www/AccountabilityMax-` updates both; add a small `Makefile` or script there that runs `npm run build` in the web folder and copies `dist/` to `/var/www/accountibilitymax/dist/`. That is a structural change—do it when you are ready.
+Put `Contest` **inside** the hackathon repository (e.g. `agency-26-hackathon/web/Contest/`) so one `git pull` on `/var/www/AccountabilityMax-` updates both; add a small `Makefile` or script there that runs `npm run build` in the web folder and copies `dist/` to `/var/www/Contest/dist/`. That is a structural change—do it when you are ready.
