@@ -11,6 +11,7 @@ import ZombiesLandingPage from './routes/ZombiesLandingPage';
 import ZombieDetailPage from './routes/ZombieDetailPage';
 import GhostCapacityLandingPage from './routes/GhostCapacityLandingPage';
 import GhostCapacityDetailPage from './routes/GhostCapacityDetailPage';
+import MediaFinderPage from './routes/MediaFinderPage';
 
 const NAV_ITEMS: Array<{ to: string; label: string; end?: boolean }> = [
   { to: '/', label: 'Search', end: true },
@@ -19,6 +20,7 @@ const NAV_ITEMS: Array<{ to: string; label: string; end?: boolean }> = [
   { to: '/zombies', label: 'Zombie Recipients' },
   { to: '/ghost-capacity', label: 'Ghost Capacity' },
   { to: '/people', label: 'People' },
+  { to: '/media-finder', label: 'Media Finder' },
 ];
 
 export default function App() {
@@ -78,6 +80,7 @@ export default function App() {
           />
           <Route path="/people" element={<PeopleSearchPage />} />
           <Route path="/people/:personNorm" element={<PersonDetailPage />} />
+          <Route path="/media-finder" element={<MediaFinderPage />} />
         </Routes>
       </main>
     </div>
