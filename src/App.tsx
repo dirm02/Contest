@@ -3,8 +3,6 @@ import SearchPage from './routes/SearchPage';
 import DossierPage from './routes/DossierPage';
 import GovernanceLandingPage from './routes/GovernanceLandingPage';
 import GovernancePairDetailPage from './routes/GovernancePairDetailPage';
-import LoopsLandingPage from './routes/LoopsLandingPage';
-import LoopDetailPage from './routes/LoopDetailPage';
 import PeopleSearchPage from './routes/PeopleSearchPage';
 import PersonDetailPage from './routes/PersonDetailPage';
 
@@ -12,7 +10,6 @@ import PersonDetailPage from './routes/PersonDetailPage';
 const NAV_ITEMS: Array<{ to: string; label: string; end?: boolean }> = [
   { to: '/', label: 'Search', end: true },
   { to: '/governance', label: 'Governance Networks' },
-  { to: '/loops', label: 'Funding Loops' },
   { to: '/people', label: 'People' },
 ];
 
@@ -62,8 +59,6 @@ export default function App() {
             path="/governance/pair/:entityA/:entityB"
             element={<GovernancePairDetailPage />}
           />
-          <Route path="/loops" element={<LoopsLandingPage />} />
-          <Route path="/loops/:loopId" element={<LoopDetailPage />} />
           <Route path="/people" element={<PeopleSearchPage />} />
           <Route path="/people/:personNorm" element={<PersonDetailPage />} />
         </Routes>

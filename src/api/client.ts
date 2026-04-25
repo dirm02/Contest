@@ -6,9 +6,6 @@ import type {
   GovernanceGraphResponseApi,
   GovernancePairsFilter,
   GovernancePairsResponseApi,
-  LoopDetailResponseApi,
-  LoopFilters,
-  LoopsResponseApi,
   PersonProfileResponseApi,
   PersonSearchResponseApi,
   RelatedResponseApi,
@@ -48,8 +45,6 @@ export const queryKeys = {
   governancePeopleSearch: (query: string) => ['governance', 'people', 'search', query] as const,
   governancePersonProfile: (personNorm: string) => ['governance', 'person', personNorm] as const,
   governanceEntityPeople: (id: number) => ['governance', 'entity', id, 'people'] as const,
-  loops: (filters: LoopFilters) => ['loops', filters] as const,
-  loopDetail: (loopId: number) => ['loops', 'detail', loopId] as const,
 };
 
 export function searchEntities(query: string) {
@@ -117,26 +112,4 @@ export function fetchGovernanceEntityPeople(entityId: number) {
   return getJson<EntityGovernanceResponseApi>(
     `/api/governance/entity/${entityId}/people`,
   );
-}
-
-function buildLoopsQuery(filters: LoopFilters): string {
-  const params = new URLSearchParams();
-  if (filters.limit != null) params.set('limit', String(filters.limit));
-  if (filters.offset != null) params.set('offset', String(filters.offset));
-  if (filters.minHops != null) params.set('min_hops', String(filters.minHops));
-  if (filters.sameYearOnly != null) params.set('same_year_only', String(filters.sameYearOnly));
-  if (filters.minTotalFlow != null) params.set('min_total_flow', String(filters.minTotalFlow));
-  if (filters.minBottleneck != null) params.set('min_bottleneck', String(filters.minBottleneck));
-  if (filters.minCraScore != null) params.set('min_cra_score', String(filters.minCraScore));
-  if (filters.interpretation) params.set('interpretation', filters.interpretation);
-  const qs = params.toString();
-  return qs ? `?${qs}` : '';
-}
-
-export function fetchLoops(filters: LoopFilters = {}) {
-  return getJson<LoopsResponseApi>(`/api/loops${buildLoopsQuery(filters)}`);
-}
-
-export function fetchLoopDetail(loopId: number) {
-  return getJson<LoopDetailResponseApi>(`/api/loops/${loopId}`);
 }
