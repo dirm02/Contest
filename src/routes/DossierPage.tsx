@@ -177,7 +177,7 @@ export default function DossierPage() {
         <span className="section-title">Entity #{viewModel.summary.id}</span>
       </div>
 
-      <HeaderSummary summary={viewModel.summary} />
+      <HeaderSummary summary={viewModel.summary} signals={viewModel.signals} />
 
       <FundingCharts external={viewModel.funding.external} cra={viewModel.funding.cra} />
 
