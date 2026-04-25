@@ -39,6 +39,7 @@ export const queryKeys = {
   funding: (id: number) => ['funding', id] as const,
   accountability: (id: number) => ['accountability', id] as const,
   related: (id: number) => ['related', id] as const,
+  detailedLinks: (id: number) => ['detailed-links', id] as const,
   governancePairs: (filters: GovernancePairsFilter) => ['governance', 'pairs', filters] as const,
   governancePairGraph: (a: number, b: number) => ['governance', 'pair-graph', a, b] as const,
   governancePeopleSearch: (query: string) => ['governance', 'people', 'search', query] as const,
@@ -89,6 +90,10 @@ export function fetchGovernancePairGraph(entityA: number, entityB: number) {
   return getJson<GovernanceGraphResponseApi>(
     `/api/governance/pairs/${entityA}/${entityB}/graph`,
   );
+}
+
+export function fetchDetailedLinks(entityId: number) {
+  return getJson<Record<string, any[]>>(`/api/entity/${entityId}/links/detailed`);
 }
 
 export function searchGovernancePeople(query: string, limit = 30) {
