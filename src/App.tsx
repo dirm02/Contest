@@ -8,6 +8,7 @@ import LoopDetailPage from './routes/LoopDetailPage';
 import PeopleSearchPage from './routes/PeopleSearchPage';
 import PersonDetailPage from './routes/PersonDetailPage';
 
+// Example Usage:
 const NAV_ITEMS: Array<{ to: string; label: string; end?: boolean }> = [
   { to: '/', label: 'Search', end: true },
   { to: '/governance', label: 'Governance Networks' },

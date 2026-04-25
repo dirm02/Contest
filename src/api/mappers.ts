@@ -465,6 +465,8 @@ export function mapEvidenceSections(
         sourceDataset: link.source_schema.toUpperCase(),
         note: `${link.names?.slice(0, 2).join(', ') ?? 'Source names not available'}${(link.names?.length ?? 0) > 2 ? '…' : ''}`,
         sourceRef: '/api/entity/:id',
+        sourceSchema: link.source_schema,
+        sourceTable: link.source_table,
       })),
     },
   ].filter((section) => section.items.length > 0);

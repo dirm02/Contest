@@ -232,6 +232,9 @@ export interface EvidenceItem {
   amount?: string;
   note: string;
   sourceRef: string;
+  // Metadata for foldouts
+  sourceSchema?: string;
+  sourceTable?: string;
 }
 
 export interface EvidenceSection {

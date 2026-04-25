@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useQueries, useQuery } from '@tanstack/react-query';
 import {
   fetchAccountability,
+  fetchDetailedLinks,
   fetchEntity,
   fetchFundingByYear,
   fetchGovernanceEntityPeople,
@@ -73,6 +74,12 @@ export default function DossierPage() {
   const governanceQuery = useQuery({
     queryKey: queryKeys.governanceEntityPeople(entityId),
     queryFn: () => fetchGovernanceEntityPeople(entityId),
+    enabled: Number.isFinite(entityId) && entityId > 0,
+  });
+
+  const detailedLinksQuery = useQuery({
+    queryKey: queryKeys.detailedLinks(entityId),
+    queryFn: () => fetchDetailedLinks(entityId),
     enabled: Number.isFinite(entityId) && entityId > 0,
   });
 
@@ -209,7 +216,7 @@ export default function DossierPage() {
         errorMessage={governanceQuery.error instanceof Error ? governanceQuery.error.message : undefined}
       />
 
-      <EvidencePanel sections={viewModel.evidence} />
+      <EvidencePanel sections={viewModel.evidence} detailedLinks={detailedLinksQuery.data} />
     </section>
   );
 }
