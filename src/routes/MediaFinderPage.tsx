@@ -7,6 +7,8 @@ export default function MediaFinderPage() {
   const [results, setResults] = useState<AdverseEvent[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [processingTime, setProcessingTime] = useState<number | undefined>();
+  const [searched, setSearched] = useState(false);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -14,10 +16,15 @@ export default function MediaFinderPage() {
 
     setLoading(true);
     setError(null);
+    setSearched(false);
+    const start = performance.now();
     try {
       const scanner = new AdverseMediaScanner();
       const news = await scanner.scan(query);
+      const end = performance.now();
+      setProcessingTime(end - start);
       setResults(news);
+      setSearched(true);
     } catch (err) {
       setError('Failed to fetch media results. Please try again.');
       console.error(err);
@@ -35,23 +42,31 @@ export default function MediaFinderPage() {
         </p>
       </div>
 
-      <div className="app-card rounded-2xl p-6">
-        <form onSubmit={handleSearch} className="flex gap-4">
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Enter company name..."
-            className="flex-1 rounded-xl border border-[var(--color-border)] bg-white px-4 py-3 text-[var(--color-ink)] focus:border-[var(--color-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/20"
-          />
-          <button
-            type="submit"
-            disabled={loading}
-            className="rounded-xl bg-[var(--color-accent)] px-8 py-3 font-semibold text-white transition hover:bg-[var(--color-accent)]/90 disabled:opacity-50"
-          >
-            {loading ? 'Scanning...' : 'Search'}
-          </button>
-        </form>
+      <div className="space-y-2">
+        <div className="app-card rounded-2xl p-6">
+          <form onSubmit={handleSearch} className="flex gap-4">
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Enter company name..."
+              className="flex-1 rounded-xl border border-[var(--color-border)] bg-white px-4 py-3 text-[var(--color-ink)] focus:border-[var(--color-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/20"
+            />
+            <button
+              type="submit"
+              disabled={loading}
+              className="rounded-xl bg-[var(--color-accent)] px-8 py-3 font-semibold text-white transition hover:bg-[var(--color-accent)]/90 disabled:opacity-50"
+            >
+              {loading ? 'Scanning...' : 'Search'}
+            </button>
+          </form>
+        </div>
+        
+        {searched && processingTime !== undefined && !loading && (
+          <p className="px-1 text-xs text-[var(--color-muted)]">
+            Found {results.length} {results.length === 1 ? 'article' : 'articles'} in {processingTime.toFixed(0)}ms
+          </p>
+        )}
       </div>
 
       {error && (
