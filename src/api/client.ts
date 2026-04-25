@@ -1,5 +1,10 @@
 import type {
   AccountabilityResponseApi,
+  AdverseMediaResponse,
+  AmendmentCreepDetailResponse,
+  AmendmentCreepFilters,
+  AmendmentCreepResponse,
+  ChallengeReviewResponse,
   EntityGovernanceResponseApi,
   EntityResponseApi,
   FundingByYearResponseApi,
@@ -60,6 +65,10 @@ export const queryKeys = {
   governanceEntityPeople: (id: number) => ['governance', 'entity', id, 'people'] as const,
   loops: (filters: LoopFilters) => ['loops', filters] as const,
   loopDetail: (loopId: number) => ['loops', 'detail', loopId] as const,
+  adverseMedia: (query: string) => ['adverse-media', query] as const,
+  amendmentCreep: (filters: AmendmentCreepFilters) => ['amendment-creep', filters] as const,
+  amendmentCreepDetail: (caseId: string) => ['amendment-creep', 'detail', caseId] as const,
+  challengeReview: () => ['challenge-review'] as const,
 };
 
 export function searchEntities(query: string) {
@@ -203,4 +212,39 @@ export function fetchGovernanceEntityPeople(entityId: number) {
   return getJson<EntityGovernanceResponseApi>(
     `/api/governance/entity/${entityId}/people`,
   );
+}
+
+export function fetchAdverseMedia(query: string) {
+  return getJson<AdverseMediaResponse>(`/api/adverse-media?q=${encodeURIComponent(query)}`);
+}
+
+function buildAmendmentCreepQuery(filters: AmendmentCreepFilters): string {
+  const params = new URLSearchParams();
+  if (filters.limit != null) params.set('limit', String(filters.limit));
+  if (filters.offset != null) params.set('offset', String(filters.offset));
+  if (filters.source) params.set('source', filters.source);
+  if (filters.minScore != null) params.set('min_score', String(filters.minScore));
+  if (filters.minCreepRatio != null) {
+    params.set('min_creep_ratio', String(filters.minCreepRatio));
+  }
+  if (filters.department) params.set('department', filters.department);
+  if (filters.vendor) params.set('vendor', filters.vendor);
+  const qs = params.toString();
+  return qs ? `?${qs}` : '';
+}
+
+export function fetchAmendmentCreep(filters: AmendmentCreepFilters = {}) {
+  return getJson<AmendmentCreepResponse>(
+    `/api/amendment-creep${buildAmendmentCreepQuery(filters)}`,
+  );
+}
+
+export function fetchAmendmentCreepDetail(caseId: string) {
+  return getJson<AmendmentCreepDetailResponse>(
+    `/api/amendment-creep/${encodeURIComponent(caseId)}`,
+  );
+}
+
+export function fetchChallengeReview() {
+  return getJson<ChallengeReviewResponse>('/api/challenge-review');
 }

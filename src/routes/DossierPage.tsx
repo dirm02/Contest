@@ -3,6 +3,8 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useQueries, useQuery } from '@tanstack/react-query';
 import {
   fetchAccountability,
+  fetchAdverseMedia,
+  fetchAmendmentCreep,
   fetchDetailedLinks,
   fetchEntity,
   fetchFundingByYear,
@@ -128,6 +130,29 @@ export default function DossierPage() {
     return { summary, funding, signals, graph, evidence };
   }, [accountabilityQuery.data, entityQuery.data, fundingQuery.data, relatedQuery.data]);
 
+  const adverseMediaQuery = useQuery({
+    queryKey: queryKeys.adverseMedia(viewModel?.summary.canonicalName ?? ''),
+    queryFn: () => fetchAdverseMedia(viewModel?.summary.canonicalName ?? ''),
+    enabled: Boolean(viewModel?.summary.canonicalName),
+    staleTime: 30 * 60 * 1000,
+  });
+
+  const amendmentCreepQuery = useQuery({
+    queryKey: queryKeys.amendmentCreep({
+      vendor: viewModel?.summary.canonicalName ?? '',
+      limit: 1,
+      minCreepRatio: 0,
+    }),
+    queryFn: () =>
+      fetchAmendmentCreep({
+        vendor: viewModel?.summary.canonicalName ?? '',
+        limit: 1,
+        minCreepRatio: 0,
+      }),
+    enabled: Boolean(viewModel?.summary.canonicalName),
+    staleTime: 30 * 60 * 1000,
+  });
+
   if (!Number.isFinite(entityId) || entityId <= 0) {
     return (
       <div className="app-card rounded-2xl p-6">
@@ -177,7 +202,17 @@ export default function DossierPage() {
         <span className="section-title">Entity #{viewModel.summary.id}</span>
       </div>
 
-      <HeaderSummary summary={viewModel.summary} />
+      <HeaderSummary
+        summary={viewModel.summary}
+        signals={viewModel.signals}
+        adverseMediaCount={adverseMediaQuery.data?.total}
+        isAdverseMediaLoading={adverseMediaQuery.isLoading}
+        isAdverseMediaError={adverseMediaQuery.isError}
+        amendmentCreepCount={amendmentCreepQuery.data?.total}
+        amendmentCreepMaxScore={amendmentCreepQuery.data?.results[0]?.risk_score}
+        isAmendmentCreepLoading={amendmentCreepQuery.isLoading}
+        isAmendmentCreepError={amendmentCreepQuery.isError}
+      />
 
       <FundingCharts external={viewModel.funding.external} cra={viewModel.funding.cra} />
 

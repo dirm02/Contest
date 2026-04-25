@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import {
   Background,
   Controls,
@@ -6,6 +6,8 @@ import {
   ReactFlow,
   type Edge,
   type Node,
+  useEdgesState,
+  useNodesState,
 } from '@xyflow/react';
 import type { CrossDatasetContextModel, RecipientRiskRow } from '../../api/types';
 import { formatCurrencyAmount, recipientRiskSignalLabel } from '../../api/mappers';
@@ -18,12 +20,25 @@ interface RecipientRiskGraphProps {
 
 const NODE_POSITIONS = {
   recipient: { x: 0, y: 0 },
-  entity: { x: -330, y: -140 },
-  identity: { x: 330, y: -140 },
-  departments: { x: -330, y: 190 },
-  programs: { x: 0, y: 245 },
-  signals: { x: 330, y: 190 },
+  entity: { x: -540, y: -230 },
+  identity: { x: 540, y: -230 },
+  departments: { x: -540, y: 260 },
+  programs: { x: 0, y: 350 },
+  signals: { x: 540, y: 260 },
 };
+
+function abbreviateName(value: string, maxLength = 34) {
+  const normalized = value.replace(/\s+/g, ' ').trim();
+  if (normalized.length <= maxLength) return normalized;
+
+  const shortened = normalized
+    .replace(/\b(incorporated|foundation|association|organization|organisation|corporation|company|limited|society)\b\.?/gi, (match) => `${match[0].toUpperCase()}.`)
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (shortened.length <= maxLength) return shortened;
+  return `${shortened.slice(0, maxLength - 1).trim()}...`;
+}
 
 function trimList(items: string[], count: number) {
   const visible = items.slice(0, count);
@@ -50,13 +65,14 @@ function makeNode(
   return {
     id,
     position,
+    draggable: true,
     data: {
       label: (
-        <div className="min-w-[210px] max-w-[250px]">
+        <div className="min-w-[210px] max-w-[250px]" title={title}>
           <div className="text-[10px] font-bold uppercase tracking-[0.14em] opacity-70">
             {eyebrow}
           </div>
-          <div className="mt-1 text-sm font-semibold leading-snug">{title}</div>
+          <div className="mt-1 text-sm font-semibold leading-snug">{abbreviateName(title)}</div>
           <div className="mt-2 space-y-1 text-[11px] leading-snug opacity-85">
             {lines.map((line) => (
               <div key={line}>{line}</div>
@@ -78,7 +94,8 @@ function makeNode(
 }
 
 export default function RecipientRiskGraph({ summary, context, mode }: RecipientRiskGraphProps) {
-  const { nodes, edges } = useMemo(() => {
+  const graphKey = `${mode}:${summary.recipientKey}:${context.resolvedEntityId ?? 'none'}`;
+  const graph = useMemo(() => {
     const graphNodes: Node[] = [
       makeNode(
         'recipient',
@@ -140,7 +157,7 @@ export default function RecipientRiskGraph({ summary, context, mode }: Recipient
           'Cross-dataset context',
           [
             `Entity ${context.resolvedEntityId ?? 'unresolved'}`,
-            `Sources ${context.datasetSources.join(', ') || 'none'}`,
+            `Sources ${abbreviateName(context.datasetSources.join(', ') || 'none', 28)}`,
             `All funding ${formatCurrencyAmount(context.totalAllFunding)}`,
           ],
           context.resolvedEntityId ? 'entity' : 'context',
@@ -198,9 +215,27 @@ export default function RecipientRiskGraph({ summary, context, mode }: Recipient
     };
   }, [context, mode, summary]);
 
+  const [nodes, setNodes, onNodesChange] = useNodesState(graph.nodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(graph.edges);
+
+  useEffect(() => {
+    setNodes(graph.nodes);
+    setEdges(graph.edges);
+  }, [graphKey, graph.nodes, graph.edges, setEdges, setNodes]);
+
   return (
-    <div className="h-[620px] overflow-hidden rounded-2xl border border-[var(--color-border)] bg-white">
-      <ReactFlow nodes={nodes} edges={edges} fitView fitViewOptions={{ padding: 0.16, minZoom: 0.55 }}>
+    <div className="h-[680px] overflow-hidden rounded-2xl border border-[var(--color-border)] bg-white">
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        nodesDraggable
+        panOnDrag
+        elevateNodesOnSelect
+        fitView
+        fitViewOptions={{ padding: 0.18, minZoom: 0.68, maxZoom: 1 }}
+      >
         <Controls />
         <Background gap={24} color="#cbd5e1" />
       </ReactFlow>
