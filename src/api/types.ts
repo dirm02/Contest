@@ -467,3 +467,185 @@ export interface EntityGovernancePersonRow {
   everNonArmsLength: boolean;
   otherLinkedEntityCount: number;
 }
+
+export type LoopInterpretation =
+  | 'review'
+  | 'likely_normal_denominational_network'
+  | 'likely_normal_foundation_operator'
+  | 'likely_normal_federated_network'
+  | string;
+
+export interface LoopListRowApi {
+  loop_id: number;
+  hops: number;
+  path_display: string;
+  participant_count: number;
+  participant_bns: string[] | null;
+  participant_names: string[] | null;
+  min_year: number | null;
+  max_year: number | null;
+  same_year: boolean | null;
+  bottleneck_window: number | string | null;
+  total_flow_window: number | string | null;
+  bottleneck_allyears: number | string | null;
+  total_flow_allyears: number | string | null;
+  max_participant_cra_score: number | string | null;
+  avg_participant_cra_score: number | string | null;
+  top_flagged_participants: string[] | null;
+  challenge3_sort_score: number | string | null;
+  loop_interpretation: LoopInterpretation;
+}
+
+export interface LoopsFiltersApi {
+  limit: number;
+  offset: number;
+  min_hops: number;
+  same_year_only: boolean;
+  min_total_flow: number;
+  min_bottleneck: number;
+  min_cra_score: number;
+  interpretation: string | null;
+}
+
+export interface LoopsResponseApi {
+  filters: LoopsFiltersApi;
+  total: number;
+  loops: LoopListRowApi[];
+}
+
+export interface LoopFilters {
+  limit?: number;
+  offset?: number;
+  minHops?: number;
+  sameYearOnly?: boolean;
+  minTotalFlow?: number;
+  minBottleneck?: number;
+  minCraScore?: number;
+  interpretation?: string | null;
+}
+
+export interface LoopParticipantApi {
+  bn: string;
+  legal_name: string;
+  position_in_loop: number;
+  sends_to: string;
+  sends_to_name: string | null;
+  receives_from: string;
+  receives_from_name: string | null;
+  total_loops: number | string | null;
+  max_bottleneck: number | string | null;
+  total_circular_amt: number | string | null;
+  cra_loop_score: number | string | null;
+  revenue: number | string | null;
+  program_spending: number | string | null;
+  admin_spending: number | string | null;
+  fundraising_spending: number | string | null;
+  compensation_spending: number | string | null;
+  entity_id?: number | null;
+}
+
+export interface LoopEdgeApi {
+  hop_idx: number;
+  src: string;
+  dst: string;
+  year_flow: number | string | null;
+  gift_count: number | string | null;
+}
+
+export interface LoopGraphNodeApi {
+  id: string;
+  bn: string;
+  label: string;
+  position_in_loop: number;
+  cra_loop_score: number;
+  total_loops: number;
+  total_circular_amt: number;
+  entity_id: number | null;
+}
+
+export interface LoopGraphEdgeApi {
+  id: string;
+  hop_idx: number;
+  source: string;
+  target: string;
+  label: string;
+  year_flow: number;
+  gift_count: number;
+}
+
+export interface LoopEvidenceApi {
+  id: string;
+  title: string;
+  tone: 'review' | 'context' | 'info';
+  body: string;
+}
+
+export interface LoopDetailResponseApi {
+  summary: LoopListRowApi | null;
+  participants: LoopParticipantApi[];
+  edges: LoopEdgeApi[];
+  graph: {
+    nodes: LoopGraphNodeApi[];
+    edges: LoopGraphEdgeApi[];
+  };
+  evidence: LoopEvidenceApi[];
+}
+
+export interface LoopListRow {
+  loopId: number;
+  hops: number;
+  pathDisplay: string;
+  participantCount: number;
+  participantBns: string[];
+  participantNames: string[];
+  minYear: number | null;
+  maxYear: number | null;
+  sameYear: boolean;
+  bottleneckWindow: number;
+  totalFlowWindow: number;
+  bottleneckAllYears: number;
+  totalFlowAllYears: number;
+  maxParticipantCraScore: number;
+  avgParticipantCraScore: number;
+  topFlaggedParticipants: string[];
+  challenge3SortScore: number;
+  loopInterpretation: LoopInterpretation;
+  interpretationLabel: string;
+}
+
+export interface LoopParticipantRow {
+  bn: string;
+  legalName: string;
+  positionInLoop: number;
+  sendsTo: string;
+  sendsToName: string | null;
+  receivesFrom: string;
+  receivesFromName: string | null;
+  totalLoops: number;
+  maxBottleneck: number;
+  totalCircularAmount: number;
+  craLoopScore: number;
+  revenue: number;
+  programSpending: number;
+  adminSpending: number;
+  fundraisingSpending: number;
+  compensationSpending: number;
+  entityId: number | null;
+}
+
+export interface LoopDetailModel {
+  summary: LoopListRow;
+  participants: LoopParticipantRow[];
+  edges: Array<{
+    hopIdx: number;
+    src: string;
+    dst: string;
+    yearFlow: number;
+    giftCount: number;
+  }>;
+  graph: {
+    nodes: LoopGraphNodeApi[];
+    edges: LoopGraphEdgeApi[];
+  };
+  evidence: LoopEvidenceApi[];
+}
