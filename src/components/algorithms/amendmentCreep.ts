@@ -24,7 +24,7 @@ interface RiskAnalysis {
 
 const COMPETITIVE_THRESHOLD = 25000; // Example threshold
 
-function analyzeAmendmentCreep(contracts: ProcurementContract[]): RiskAnalysis[] {
+export function analyzeAmendmentCreep(contracts: ProcurementContract[]): RiskAnalysis[] {
   return contracts.map(contract => {
     const creepRatio = contract.currentTotalAmount / contract.originalAmount;
     

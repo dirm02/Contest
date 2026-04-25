@@ -3,13 +3,22 @@ import type {
   EntityGovernanceResponseApi,
   EntityResponseApi,
   FundingByYearResponseApi,
+  GhostCapacityDetailResponseApi,
+  GhostCapacityFilters,
+  GhostCapacityResponseApi,
   GovernanceGraphResponseApi,
   GovernancePairsFilter,
   GovernancePairsResponseApi,
+  LoopDetailResponseApi,
+  LoopFilters,
+  LoopsResponseApi,
   PersonProfileResponseApi,
   PersonSearchResponseApi,
   RelatedResponseApi,
   SearchResponseApi,
+  ZombieDetailResponseApi,
+  ZombieFilters,
+  ZombiesResponseApi,
 } from './types';
 
 async function getJson<T>(path: string): Promise<T> {
@@ -40,11 +49,17 @@ export const queryKeys = {
   accountability: (id: number) => ['accountability', id] as const,
   related: (id: number) => ['related', id] as const,
   detailedLinks: (id: number) => ['detailed-links', id] as const,
+  zombies: (filters: ZombieFilters) => ['risk', 'zombies', filters] as const,
+  zombieDetail: (recipientKey: string) => ['risk', 'zombies', recipientKey] as const,
+  ghostCapacity: (filters: GhostCapacityFilters) => ['risk', 'ghost-capacity', filters] as const,
+  ghostCapacityDetail: (recipientKey: string) => ['risk', 'ghost-capacity', recipientKey] as const,
   governancePairs: (filters: GovernancePairsFilter) => ['governance', 'pairs', filters] as const,
   governancePairGraph: (a: number, b: number) => ['governance', 'pair-graph', a, b] as const,
   governancePeopleSearch: (query: string) => ['governance', 'people', 'search', query] as const,
   governancePersonProfile: (personNorm: string) => ['governance', 'person', personNorm] as const,
   governanceEntityPeople: (id: number) => ['governance', 'entity', id, 'people'] as const,
+  loops: (filters: LoopFilters) => ['loops', filters] as const,
+  loopDetail: (loopId: number) => ['loops', 'detail', loopId] as const,
 };
 
 export function searchEntities(query: string) {
@@ -65,6 +80,82 @@ export function fetchAccountability(id: number) {
 
 export function fetchRelated(id: number) {
   return getJson<RelatedResponseApi>(`/api/entity/${id}/related`);
+}
+
+function buildZombieQuery(filters: ZombieFilters): string {
+  const params = new URLSearchParams();
+  if (filters.limit != null) params.set('limit', String(filters.limit));
+  if (filters.offset != null) params.set('offset', String(filters.offset));
+  if (filters.minTotalValue != null) params.set('min_total_value', String(filters.minTotalValue));
+  if (filters.lastSeenBeforeYear != null) {
+    params.set('last_seen_before_year', String(filters.lastSeenBeforeYear));
+  }
+  if (filters.signalType) params.set('signal_type', filters.signalType);
+  if (filters.recipientType) params.set('recipient_type', filters.recipientType);
+  if (filters.province) params.set('province', filters.province);
+  if (filters.requireEntityMatch != null) {
+    params.set('require_entity_match', String(filters.requireEntityMatch));
+  }
+  const qs = params.toString();
+  return qs ? `?${qs}` : '';
+}
+
+function buildGhostCapacityQuery(filters: GhostCapacityFilters): string {
+  const params = new URLSearchParams();
+  if (filters.limit != null) params.set('limit', String(filters.limit));
+  if (filters.offset != null) params.set('offset', String(filters.offset));
+  if (filters.minTotalValue != null) params.set('min_total_value', String(filters.minTotalValue));
+  if (filters.maxGrantCount != null) params.set('max_grant_count', String(filters.maxGrantCount));
+  if (filters.minAvgValue != null) params.set('min_avg_value', String(filters.minAvgValue));
+  if (filters.minDeptCount != null) params.set('min_dept_count', String(filters.minDeptCount));
+  if (filters.requireNoBn != null) params.set('require_no_bn', String(filters.requireNoBn));
+  if (filters.signalType) params.set('signal_type', filters.signalType);
+  if (filters.recipientType) params.set('recipient_type', filters.recipientType);
+  if (filters.province) params.set('province', filters.province);
+  const qs = params.toString();
+  return qs ? `?${qs}` : '';
+}
+
+export function fetchZombies(filters: ZombieFilters = {}) {
+  return getJson<ZombiesResponseApi>(`/api/zombies${buildZombieQuery(filters)}`);
+}
+
+export function fetchZombieDetail(recipientKey: string) {
+  return getJson<ZombieDetailResponseApi>(`/api/zombies/${encodeURIComponent(recipientKey)}`);
+}
+
+export function fetchGhostCapacity(filters: GhostCapacityFilters = {}) {
+  return getJson<GhostCapacityResponseApi>(
+    `/api/ghost-capacity${buildGhostCapacityQuery(filters)}`,
+  );
+}
+
+export function fetchGhostCapacityDetail(recipientKey: string) {
+  return getJson<GhostCapacityDetailResponseApi>(
+    `/api/ghost-capacity/${encodeURIComponent(recipientKey)}`,
+  );
+}
+
+function buildLoopsQuery(filters: LoopFilters): string {
+  const params = new URLSearchParams();
+  if (filters.limit != null) params.set('limit', String(filters.limit));
+  if (filters.offset != null) params.set('offset', String(filters.offset));
+  if (filters.minHops != null) params.set('min_hops', String(filters.minHops));
+  if (filters.sameYearOnly != null) params.set('same_year_only', String(filters.sameYearOnly));
+  if (filters.minTotalFlow != null) params.set('min_total_flow', String(filters.minTotalFlow));
+  if (filters.minBottleneck != null) params.set('min_bottleneck', String(filters.minBottleneck));
+  if (filters.minCraScore != null) params.set('min_cra_score', String(filters.minCraScore));
+  if (filters.interpretation) params.set('interpretation', filters.interpretation);
+  const qs = params.toString();
+  return qs ? `?${qs}` : '';
+}
+
+export function fetchLoops(filters: LoopFilters = {}) {
+  return getJson<LoopsResponseApi>(`/api/loops${buildLoopsQuery(filters)}`);
+}
+
+export function fetchLoopDetail(loopId: number) {
+  return getJson<LoopDetailResponseApi>(`/api/loops/${loopId}`);
 }
 
 function buildGovernancePairsQuery(filters: GovernancePairsFilter): string {

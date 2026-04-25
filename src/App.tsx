@@ -3,13 +3,21 @@ import SearchPage from './routes/SearchPage';
 import DossierPage from './routes/DossierPage';
 import GovernanceLandingPage from './routes/GovernanceLandingPage';
 import GovernancePairDetailPage from './routes/GovernancePairDetailPage';
+import LoopsLandingPage from './routes/LoopsLandingPage';
+import LoopDetailPage from './routes/LoopDetailPage';
 import PeopleSearchPage from './routes/PeopleSearchPage';
 import PersonDetailPage from './routes/PersonDetailPage';
+import ZombiesLandingPage from './routes/ZombiesLandingPage';
+import ZombieDetailPage from './routes/ZombieDetailPage';
+import GhostCapacityLandingPage from './routes/GhostCapacityLandingPage';
+import GhostCapacityDetailPage from './routes/GhostCapacityDetailPage';
 
-// Example Usage:
 const NAV_ITEMS: Array<{ to: string; label: string; end?: boolean }> = [
   { to: '/', label: 'Search', end: true },
   { to: '/governance', label: 'Governance Networks' },
+  { to: '/loops', label: 'Funding Loops' },
+  { to: '/zombies', label: 'Zombie Recipients' },
+  { to: '/ghost-capacity', label: 'Ghost Capacity' },
   { to: '/people', label: 'People' },
 ];
 
@@ -58,6 +66,15 @@ export default function App() {
           <Route
             path="/governance/pair/:entityA/:entityB"
             element={<GovernancePairDetailPage />}
+          />
+          <Route path="/loops" element={<LoopsLandingPage />} />
+          <Route path="/loops/:loopId" element={<LoopDetailPage />} />
+          <Route path="/zombies" element={<ZombiesLandingPage />} />
+          <Route path="/zombies/:recipientKey" element={<ZombieDetailPage />} />
+          <Route path="/ghost-capacity" element={<GhostCapacityLandingPage />} />
+          <Route
+            path="/ghost-capacity/:recipientKey"
+            element={<GhostCapacityDetailPage />}
           />
           <Route path="/people" element={<PeopleSearchPage />} />
           <Route path="/people/:personNorm" element={<PersonDetailPage />} />

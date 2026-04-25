@@ -8,6 +8,7 @@ import {
   recipientRiskSignalLabel,
 } from '../api/mappers';
 import CrossDatasetContextCard from '../components/risk/CrossDatasetContextCard';
+import RecipientRiskGraph from '../components/risk/RecipientRiskGraph';
 import RiskTimelineChart from '../components/risk/RiskTimelineChart';
 
 function LoadingSection({ label }: { label: string }) {
@@ -164,6 +165,20 @@ export default function GhostCapacityDetailPage() {
             </article>
           );
         })}
+      </section>
+
+      <section className="app-card rounded-2xl p-5">
+        <div className="mb-4">
+          <p className="section-title">Recipient graph</p>
+          <h2 className="mt-2 text-xl font-semibold text-[var(--color-ink)]">
+            Identity gaps, funding footprint, and capacity signals
+          </h2>
+        </div>
+        <RecipientRiskGraph
+          mode="ghost-capacity"
+          summary={detail.summary}
+          context={detail.crossDatasetContext}
+        />
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[1.3fr_0.9fr]">
