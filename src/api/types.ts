@@ -244,6 +244,253 @@ export interface EvidenceSection {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
+// Challenge 1/2 — Zombie + Ghost recipient risk types
+// ────────────────────────────────────────────────────────────────────────────
+
+export type RecipientSignalTone = 'review' | 'context' | 'info' | string;
+
+export interface ZombieFilters {
+  limit?: number;
+  offset?: number;
+  minTotalValue?: number;
+  lastSeenBeforeYear?: number;
+  signalType?: string | null;
+  recipientType?: string | null;
+  province?: string | null;
+  requireEntityMatch?: boolean;
+}
+
+export interface GhostCapacityFilters {
+  limit?: number;
+  offset?: number;
+  minTotalValue?: number;
+  maxGrantCount?: number;
+  minAvgValue?: number;
+  minDeptCount?: number;
+  requireNoBn?: boolean;
+  signalType?: string | null;
+  recipientType?: string | null;
+  province?: string | null;
+}
+
+export interface CrossDatasetContextApi {
+  resolved_entity_id: number | null;
+  resolved_entity_name: string | null;
+  resolved_bn_root: string | null;
+  dataset_sources: string[] | null;
+  total_all_funding: number | string | null;
+  fed_total_grants: number | string | null;
+  ab_total_grants: number | string | null;
+  ab_total_contracts: number | string | null;
+  ab_total_sole_source: number | string | null;
+  cra_total_revenue: number | string | null;
+  ab_non_profit_status: string | null;
+  ab_non_profit_status_description: string | null;
+  ab_non_profit_registration_date: string | null;
+}
+
+export interface RecipientRiskSummaryApi {
+  recipient_key: string;
+  name: string;
+  bn: string | null;
+  recipient_type: string | null;
+  recipient_type_name: string | null;
+  province: string | null;
+  city: string | null;
+  grant_count: number;
+  total_value: number | string;
+  avg_value: number | string;
+  max_value: number | string;
+  first_grant: string | null;
+  last_grant: string | null;
+  last_year: number | null;
+  dept_count: number;
+  departments: string[];
+  programs: string[];
+  amendment_count: number;
+  years_since_last_seen: number;
+  signal_type: string;
+  matched_signals: string[];
+  challenge_score: number;
+  why_flagged: string[];
+  cross_dataset_context: CrossDatasetContextApi;
+}
+
+export interface ZombiesResponseApi {
+  filters: {
+    limit: number;
+    offset: number;
+    min_total_value: number;
+    last_seen_before_year: number;
+    signal_type: string | null;
+    recipient_type: string | null;
+    province: string | null;
+    require_entity_match: boolean;
+  };
+  total: number;
+  results: RecipientRiskSummaryApi[];
+}
+
+export interface GhostCapacityResponseApi {
+  filters: {
+    limit: number;
+    offset: number;
+    min_total_value: number;
+    max_grant_count: number;
+    min_avg_value: number;
+    min_dept_count: number;
+    require_no_bn: boolean;
+    signal_type: string | null;
+    recipient_type: string | null;
+    province: string | null;
+  };
+  total: number;
+  results: RecipientRiskSummaryApi[];
+}
+
+export interface RecipientRiskTimelinePointApi {
+  year: number;
+  grant_count: number;
+  total_value: number | string;
+  amendment_count: number;
+  dept_count: number;
+}
+
+export interface RecipientRiskHistoryRowApi {
+  label: string;
+  grant_count: number;
+  total_value: number | string;
+  last_year: number | null;
+}
+
+export interface RecipientRiskEvidenceApi {
+  id: string;
+  title: string;
+  tone: RecipientSignalTone;
+  body: string;
+}
+
+export interface ZombieDetailResponseApi {
+  summary: RecipientRiskSummaryApi;
+  timeline: RecipientRiskTimelinePointApi[];
+  department_history: RecipientRiskHistoryRowApi[];
+  program_history: RecipientRiskHistoryRowApi[];
+  evidence: RecipientRiskEvidenceApi[];
+  cross_dataset_context: CrossDatasetContextApi;
+  resolved_entity_id: number | null;
+}
+
+export interface GhostIdentitySignalsApi {
+  has_business_number: boolean;
+  is_for_profit: boolean;
+  department_reach: number;
+  average_grant_value: number | string;
+  resolved_entity_match: boolean;
+  alberta_registry_match: boolean;
+}
+
+export interface GhostCapacityDetailResponseApi {
+  summary: RecipientRiskSummaryApi;
+  timeline: RecipientRiskTimelinePointApi[];
+  department_history: RecipientRiskHistoryRowApi[];
+  program_history: RecipientRiskHistoryRowApi[];
+  identity_signals: GhostIdentitySignalsApi;
+  evidence: RecipientRiskEvidenceApi[];
+  cross_dataset_context: CrossDatasetContextApi;
+  resolved_entity_id: number | null;
+}
+
+export interface RecipientRiskRow {
+  recipientKey: string;
+  name: string;
+  bn: string | null;
+  recipientType: string | null;
+  recipientTypeName: string | null;
+  province: string | null;
+  city: string | null;
+  grantCount: number;
+  totalValue: number;
+  avgValue: number;
+  maxValue: number;
+  firstGrant: string | null;
+  lastGrant: string | null;
+  lastYear: number | null;
+  deptCount: number;
+  departments: string[];
+  programs: string[];
+  amendmentCount: number;
+  yearsSinceLastSeen: number;
+  signalType: string;
+  matchedSignals: string[];
+  challengeScore: number;
+  whyFlagged: string[];
+}
+
+export interface RecipientRiskTimelinePoint {
+  year: number;
+  grantCount: number;
+  totalValue: number;
+  amendmentCount: number;
+  deptCount: number;
+}
+
+export interface RecipientRiskHistoryRow {
+  label: string;
+  grantCount: number;
+  totalValue: number;
+  lastYear: number | null;
+}
+
+export interface RecipientRiskEvidenceCard {
+  id: string;
+  title: string;
+  tone: RecipientSignalTone;
+  body: string;
+}
+
+export interface CrossDatasetContextModel {
+  resolvedEntityId: number | null;
+  resolvedEntityName: string | null;
+  resolvedBnRoot: string | null;
+  datasetSources: string[];
+  totalAllFunding: number;
+  fedTotalGrants: number;
+  abTotalGrants: number;
+  abTotalContracts: number;
+  abTotalSoleSource: number;
+  craTotalRevenue: number;
+  abNonProfitStatus: string | null;
+  abNonProfitStatusDescription: string | null;
+  abNonProfitRegistrationDate: string | null;
+}
+
+export interface ZombieDetailModel {
+  summary: RecipientRiskRow;
+  timeline: RecipientRiskTimelinePoint[];
+  departmentHistory: RecipientRiskHistoryRow[];
+  programHistory: RecipientRiskHistoryRow[];
+  evidence: RecipientRiskEvidenceCard[];
+  crossDatasetContext: CrossDatasetContextModel;
+}
+
+export interface GhostCapacityDetailModel {
+  summary: RecipientRiskRow;
+  timeline: RecipientRiskTimelinePoint[];
+  departmentHistory: RecipientRiskHistoryRow[];
+  programHistory: RecipientRiskHistoryRow[];
+  identitySignals: {
+    hasBusinessNumber: boolean;
+    isForProfit: boolean;
+    departmentReach: number;
+    averageGrantValue: number;
+    resolvedEntityMatch: boolean;
+    albertaRegistryMatch: boolean;
+  };
+  evidence: RecipientRiskEvidenceCard[];
+  crossDatasetContext: CrossDatasetContextModel;
+}
+
+// ────────────────────────────────────────────────────────────────────────────
 // Challenge 6 — Governance lens types
 // ────────────────────────────────────────────────────────────────────────────
 
@@ -469,4 +716,186 @@ export interface EntityGovernancePersonRow {
   activeYearCount: number;
   everNonArmsLength: boolean;
   otherLinkedEntityCount: number;
+}
+
+export type LoopInterpretation =
+  | 'review'
+  | 'likely_normal_denominational_network'
+  | 'likely_normal_foundation_operator'
+  | 'likely_normal_federated_network'
+  | string;
+
+export interface LoopListRowApi {
+  loop_id: number;
+  hops: number;
+  path_display: string;
+  participant_count: number;
+  participant_bns: string[] | null;
+  participant_names: string[] | null;
+  min_year: number | null;
+  max_year: number | null;
+  same_year: boolean | null;
+  bottleneck_window: number | string | null;
+  total_flow_window: number | string | null;
+  bottleneck_allyears: number | string | null;
+  total_flow_allyears: number | string | null;
+  max_participant_cra_score: number | string | null;
+  avg_participant_cra_score: number | string | null;
+  top_flagged_participants: string[] | null;
+  challenge3_sort_score: number | string | null;
+  loop_interpretation: LoopInterpretation;
+}
+
+export interface LoopsFiltersApi {
+  limit: number;
+  offset: number;
+  min_hops: number;
+  same_year_only: boolean;
+  min_total_flow: number;
+  min_bottleneck: number;
+  min_cra_score: number;
+  interpretation: string | null;
+}
+
+export interface LoopsResponseApi {
+  filters: LoopsFiltersApi;
+  total: number;
+  loops: LoopListRowApi[];
+}
+
+export interface LoopFilters {
+  limit?: number;
+  offset?: number;
+  minHops?: number;
+  sameYearOnly?: boolean;
+  minTotalFlow?: number;
+  minBottleneck?: number;
+  minCraScore?: number;
+  interpretation?: string | null;
+}
+
+export interface LoopParticipantApi {
+  bn: string;
+  legal_name: string;
+  position_in_loop: number;
+  sends_to: string;
+  sends_to_name: string | null;
+  receives_from: string;
+  receives_from_name: string | null;
+  total_loops: number | string | null;
+  max_bottleneck: number | string | null;
+  total_circular_amt: number | string | null;
+  cra_loop_score: number | string | null;
+  revenue: number | string | null;
+  program_spending: number | string | null;
+  admin_spending: number | string | null;
+  fundraising_spending: number | string | null;
+  compensation_spending: number | string | null;
+  entity_id?: number | null;
+}
+
+export interface LoopEdgeApi {
+  hop_idx: number;
+  src: string;
+  dst: string;
+  year_flow: number | string | null;
+  gift_count: number | string | null;
+}
+
+export interface LoopGraphNodeApi {
+  id: string;
+  bn: string;
+  label: string;
+  position_in_loop: number;
+  cra_loop_score: number;
+  total_loops: number;
+  total_circular_amt: number;
+  entity_id: number | null;
+}
+
+export interface LoopGraphEdgeApi {
+  id: string;
+  hop_idx: number;
+  source: string;
+  target: string;
+  label: string;
+  year_flow: number;
+  gift_count: number;
+}
+
+export interface LoopEvidenceApi {
+  id: string;
+  title: string;
+  tone: 'review' | 'context' | 'info';
+  body: string;
+}
+
+export interface LoopDetailResponseApi {
+  summary: LoopListRowApi | null;
+  participants: LoopParticipantApi[];
+  edges: LoopEdgeApi[];
+  graph: {
+    nodes: LoopGraphNodeApi[];
+    edges: LoopGraphEdgeApi[];
+  };
+  evidence: LoopEvidenceApi[];
+}
+
+export interface LoopListRow {
+  loopId: number;
+  hops: number;
+  pathDisplay: string;
+  participantCount: number;
+  participantBns: string[];
+  participantNames: string[];
+  minYear: number | null;
+  maxYear: number | null;
+  sameYear: boolean;
+  bottleneckWindow: number;
+  totalFlowWindow: number;
+  bottleneckAllYears: number;
+  totalFlowAllYears: number;
+  maxParticipantCraScore: number;
+  avgParticipantCraScore: number;
+  topFlaggedParticipants: string[];
+  challenge3SortScore: number;
+  loopInterpretation: LoopInterpretation;
+  interpretationLabel: string;
+}
+
+export interface LoopParticipantRow {
+  bn: string;
+  legalName: string;
+  positionInLoop: number;
+  sendsTo: string;
+  sendsToName: string | null;
+  receivesFrom: string;
+  receivesFromName: string | null;
+  totalLoops: number;
+  maxBottleneck: number;
+  totalCircularAmount: number;
+  craLoopScore: number;
+  revenue: number;
+  programSpending: number;
+  adminSpending: number;
+  fundraisingSpending: number;
+  compensationSpending: number;
+  entityId: number | null;
+}
+
+export interface LoopDetailModel {
+  summary: LoopListRow;
+  participants: LoopParticipantRow[];
+  edges: Array<{
+    hopIdx: number;
+    src: string;
+    dst: string;
+    yearFlow: number;
+    giftCount: number;
+  }>;
+  graph: {
+    nodes: LoopGraphNodeApi[];
+    edges: LoopGraphEdgeApi[];
+  };
+  evidence: LoopEvidenceApi[];
 }

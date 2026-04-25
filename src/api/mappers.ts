@@ -1,5 +1,7 @@
 import type {
   AccountabilityResponseApi,
+  CrossDatasetContextApi,
+  CrossDatasetContextModel,
   CraFundingPoint,
   DatasetTag,
   EntityGovernancePersonRow,
@@ -14,16 +16,36 @@ import type {
   GovernancePairsResponseApi,
   GraphEdgeData,
   GraphNodeData,
+  GhostCapacityDetailModel,
+  GhostCapacityDetailResponseApi,
+  GhostCapacityResponseApi,
   HeaderSummary,
+  LoopDetailModel,
+  LoopDetailResponseApi,
+  LoopInterpretation,
+  LoopListRow,
+  LoopParticipantRow,
+  LoopsResponseApi,
   PersonProfileModel,
   PersonProfileResponseApi,
   PersonSearchResponseApi,
   PersonSearchRow,
+  RecipientRiskEvidenceApi,
+  RecipientRiskEvidenceCard,
+  RecipientRiskHistoryRow,
+  RecipientRiskHistoryRowApi,
+  RecipientRiskRow,
+  RecipientRiskSummaryApi,
+  RecipientRiskTimelinePoint,
+  RecipientRiskTimelinePointApi,
   RelatedResponseApi,
   SearchResponseApi,
   SearchResult,
   SignalCard,
   SignalSeverity,
+  ZombieDetailModel,
+  ZombieDetailResponseApi,
+  ZombiesResponseApi,
 } from './types';
 
 function toNumber(value: number | string | null | undefined): number {
@@ -466,9 +488,252 @@ export function mapEvidenceSections(
   ].filter((section) => section.items.length > 0);
 }
 
+function mapCrossDatasetContext(context: CrossDatasetContextApi): CrossDatasetContextModel {
+  return {
+    resolvedEntityId: context.resolved_entity_id ?? null,
+    resolvedEntityName: context.resolved_entity_name ?? null,
+    resolvedBnRoot: context.resolved_bn_root ?? null,
+    datasetSources: context.dataset_sources ?? [],
+    totalAllFunding: toNumber(context.total_all_funding),
+    fedTotalGrants: toNumber(context.fed_total_grants),
+    abTotalGrants: toNumber(context.ab_total_grants),
+    abTotalContracts: toNumber(context.ab_total_contracts),
+    abTotalSoleSource: toNumber(context.ab_total_sole_source),
+    craTotalRevenue: toNumber(context.cra_total_revenue),
+    abNonProfitStatus: context.ab_non_profit_status ?? null,
+    abNonProfitStatusDescription: context.ab_non_profit_status_description ?? null,
+    abNonProfitRegistrationDate: context.ab_non_profit_registration_date ?? null,
+  };
+}
+
+function mapRecipientRiskRow(summary: RecipientRiskSummaryApi): RecipientRiskRow {
+  return {
+    recipientKey: summary.recipient_key,
+    name: summary.name,
+    bn: summary.bn ?? null,
+    recipientType: summary.recipient_type ?? null,
+    recipientTypeName: summary.recipient_type_name ?? null,
+    province: summary.province ?? null,
+    city: summary.city ?? null,
+    grantCount: toNumber(summary.grant_count),
+    totalValue: toNumber(summary.total_value),
+    avgValue: toNumber(summary.avg_value),
+    maxValue: toNumber(summary.max_value),
+    firstGrant: summary.first_grant ?? null,
+    lastGrant: summary.last_grant ?? null,
+    lastYear: summary.last_year ?? null,
+    deptCount: toNumber(summary.dept_count),
+    departments: summary.departments ?? [],
+    programs: summary.programs ?? [],
+    amendmentCount: toNumber(summary.amendment_count),
+    yearsSinceLastSeen: toNumber(summary.years_since_last_seen),
+    signalType: summary.signal_type,
+    matchedSignals: summary.matched_signals ?? [],
+    challengeScore: toNumber(summary.challenge_score),
+    whyFlagged: summary.why_flagged ?? [],
+  };
+}
+
+function mapTimelinePoints(rows: RecipientRiskTimelinePointApi[]): RecipientRiskTimelinePoint[] {
+  return (rows ?? []).map((row) => ({
+    year: toNumber(row.year),
+    grantCount: toNumber(row.grant_count),
+    totalValue: toNumber(row.total_value),
+    amendmentCount: toNumber(row.amendment_count),
+    deptCount: toNumber(row.dept_count),
+  }));
+}
+
+function mapHistoryRows(rows: RecipientRiskHistoryRowApi[]): RecipientRiskHistoryRow[] {
+  return (rows ?? []).map((row) => ({
+    label: row.label,
+    grantCount: toNumber(row.grant_count),
+    totalValue: toNumber(row.total_value),
+    lastYear: row.last_year ?? null,
+  }));
+}
+
+function mapEvidenceCards(rows: RecipientRiskEvidenceApi[]): RecipientRiskEvidenceCard[] {
+  return (rows ?? []).map((row) => ({
+    id: row.id,
+    title: row.title,
+    tone: row.tone,
+    body: row.body,
+  }));
+}
+
+export function recipientRiskSignalLabel(signalType: string): string {
+  const labels: Record<string, string> = {
+    zombie: 'Zombie',
+    high_dependency: 'High dependency',
+    disappeared_for_profit: 'Disappeared for-profit',
+    no_bn: 'No BN',
+    for_profit_no_bn: 'For-profit no BN',
+    pass_through: 'Pass-through',
+    multi_department_for_profit: 'Multi-department for-profit',
+  };
+  return labels[signalType] ?? signalType.replace(/_/g, ' ');
+}
+
+export function mapZombies(response: ZombiesResponseApi): RecipientRiskRow[] {
+  return (response.results ?? []).map(mapRecipientRiskRow);
+}
+
+export function mapGhostCapacity(response: GhostCapacityResponseApi): RecipientRiskRow[] {
+  return (response.results ?? []).map(mapRecipientRiskRow);
+}
+
+export function mapZombieDetail(response: ZombieDetailResponseApi): ZombieDetailModel {
+  return {
+    summary: mapRecipientRiskRow(response.summary),
+    timeline: mapTimelinePoints(response.timeline),
+    departmentHistory: mapHistoryRows(response.department_history),
+    programHistory: mapHistoryRows(response.program_history),
+    evidence: mapEvidenceCards(response.evidence),
+    crossDatasetContext: mapCrossDatasetContext(response.cross_dataset_context),
+  };
+}
+
+export function mapGhostCapacityDetail(
+  response: GhostCapacityDetailResponseApi,
+): GhostCapacityDetailModel {
+  return {
+    summary: mapRecipientRiskRow(response.summary),
+    timeline: mapTimelinePoints(response.timeline),
+    departmentHistory: mapHistoryRows(response.department_history),
+    programHistory: mapHistoryRows(response.program_history),
+    identitySignals: {
+      hasBusinessNumber: Boolean(response.identity_signals?.has_business_number),
+      isForProfit: Boolean(response.identity_signals?.is_for_profit),
+      departmentReach: toNumber(response.identity_signals?.department_reach),
+      averageGrantValue: toNumber(response.identity_signals?.average_grant_value),
+      resolvedEntityMatch: Boolean(response.identity_signals?.resolved_entity_match),
+      albertaRegistryMatch: Boolean(response.identity_signals?.alberta_registry_match),
+    },
+    evidence: mapEvidenceCards(response.evidence),
+    crossDatasetContext: mapCrossDatasetContext(response.cross_dataset_context),
+  };
+}
+
 // ────────────────────────────────────────────────────────────────────────────
 // Challenge 6 — Governance mappers
 // ────────────────────────────────────────────────────────────────────────────
+
+const LOOP_INTERPRETATION_LABELS: Record<string, string> = {
+  review: 'Needs review',
+  likely_normal_denominational_network: 'Likely normal - denominational network',
+  likely_normal_foundation_operator: 'Likely normal - foundation / operator',
+  likely_normal_federated_network: 'Likely normal - federated network',
+};
+
+export function loopInterpretationLabel(value: LoopInterpretation): string {
+  return LOOP_INTERPRETATION_LABELS[value] ?? 'Needs review';
+}
+
+function mapLoopRow(row: {
+  loop_id: number;
+  hops: number;
+  path_display: string;
+  participant_count: number;
+  participant_bns: string[] | null;
+  participant_names: string[] | null;
+  min_year: number | null;
+  max_year: number | null;
+  same_year: boolean | null;
+  bottleneck_window: number | string | null;
+  total_flow_window: number | string | null;
+  bottleneck_allyears: number | string | null;
+  total_flow_allyears: number | string | null;
+  max_participant_cra_score: number | string | null;
+  avg_participant_cra_score: number | string | null;
+  top_flagged_participants: string[] | null;
+  challenge3_sort_score: number | string | null;
+  loop_interpretation: LoopInterpretation;
+}): LoopListRow {
+  return {
+    loopId: row.loop_id,
+    hops: row.hops,
+    pathDisplay: row.path_display,
+    participantCount: row.participant_count,
+    participantBns: row.participant_bns ?? [],
+    participantNames: row.participant_names ?? [],
+    minYear: row.min_year,
+    maxYear: row.max_year,
+    sameYear: Boolean(row.same_year),
+    bottleneckWindow: toNumber(row.bottleneck_window),
+    totalFlowWindow: toNumber(row.total_flow_window),
+    bottleneckAllYears: toNumber(row.bottleneck_allyears),
+    totalFlowAllYears: toNumber(row.total_flow_allyears),
+    maxParticipantCraScore: toNumber(row.max_participant_cra_score),
+    avgParticipantCraScore: toNumber(row.avg_participant_cra_score),
+    topFlaggedParticipants: row.top_flagged_participants ?? [],
+    challenge3SortScore: toNumber(row.challenge3_sort_score),
+    loopInterpretation: row.loop_interpretation,
+    interpretationLabel: loopInterpretationLabel(row.loop_interpretation),
+  };
+}
+
+export function mapLoops(response: LoopsResponseApi): LoopListRow[] {
+  return response.loops.map(mapLoopRow);
+}
+
+function mapLoopParticipant(row: {
+  bn: string;
+  legal_name: string;
+  position_in_loop: number;
+  sends_to: string;
+  sends_to_name: string | null;
+  receives_from: string;
+  receives_from_name: string | null;
+  total_loops: number | string | null;
+  max_bottleneck: number | string | null;
+  total_circular_amt: number | string | null;
+  cra_loop_score: number | string | null;
+  revenue: number | string | null;
+  program_spending: number | string | null;
+  admin_spending: number | string | null;
+  fundraising_spending: number | string | null;
+  compensation_spending: number | string | null;
+  entity_id?: number | null;
+}): LoopParticipantRow {
+  return {
+    bn: row.bn,
+    legalName: row.legal_name,
+    positionInLoop: row.position_in_loop,
+    sendsTo: row.sends_to,
+    sendsToName: row.sends_to_name,
+    receivesFrom: row.receives_from,
+    receivesFromName: row.receives_from_name,
+    totalLoops: toNumber(row.total_loops),
+    maxBottleneck: toNumber(row.max_bottleneck),
+    totalCircularAmount: toNumber(row.total_circular_amt),
+    craLoopScore: toNumber(row.cra_loop_score),
+    revenue: toNumber(row.revenue),
+    programSpending: toNumber(row.program_spending),
+    adminSpending: toNumber(row.admin_spending),
+    fundraisingSpending: toNumber(row.fundraising_spending),
+    compensationSpending: toNumber(row.compensation_spending),
+    entityId: row.entity_id ?? null,
+  };
+}
+
+export function mapLoopDetail(response: LoopDetailResponseApi): LoopDetailModel | null {
+  if (!response.summary) return null;
+
+  return {
+    summary: mapLoopRow(response.summary),
+    participants: response.participants.map(mapLoopParticipant),
+    edges: response.edges.map((edge) => ({
+      hopIdx: edge.hop_idx,
+      src: edge.src,
+      dst: edge.dst,
+      yearFlow: toNumber(edge.year_flow),
+      giftCount: toNumber(edge.gift_count),
+    })),
+    graph: response.graph,
+    evidence: response.evidence ?? [],
+  };
+}
 
 const INTERPRETATION_LABELS: Record<string, string> = {
   review: 'Needs review',

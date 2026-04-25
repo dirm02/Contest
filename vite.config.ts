@@ -12,6 +12,13 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react(), tailwindcss()],
+    build: {
+      rollupOptions: {
+        output: {
+          entryFileNames: 'assets/[name]-[hash]-challenge-ui.js',
+        },
+      },
+    },
     server: {
       host: '127.0.0.1',
       port: DEV_WEB_PORT,
