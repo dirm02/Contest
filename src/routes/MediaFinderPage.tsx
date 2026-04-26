@@ -1,153 +1,166 @@
-import React, { useState } from 'react';
-import { AdverseMediaScanner } from '../components/algorithms/adverseMedia';
-import type { AdverseEvent } from '../components/algorithms/adverseMedia';
+import { useState } from 'react';
+import type { FormEvent } from 'react';
+import { fetchAdverseMedia } from '../api/client';
+import type { AdverseMediaResponse } from '../api/types';
+import { getSeverityTone } from '../components/algorithms/adverseMedia';
+
+function formatDate(value: string) {
+  const timestamp = Date.parse(value);
+  if (!Number.isFinite(timestamp)) return 'Date unavailable';
+  return new Intl.DateTimeFormat(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  }).format(timestamp);
+}
 
 export default function MediaFinderPage() {
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<AdverseEvent[]>([]);
+  const [response, setResponse] = useState<AdverseMediaResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [processingTime, setProcessingTime] = useState<number | undefined>();
   const [searched, setSearched] = useState(false);
 
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!query.trim()) return;
+  async function handleSearch(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const nextQuery = query.trim();
+    if (!nextQuery) return;
 
     setLoading(true);
     setError(null);
     setSearched(false);
-    const start = performance.now();
     try {
-      const scanner = new AdverseMediaScanner();
-      const news = await scanner.scan(query);
-      const end = performance.now();
-      setProcessingTime(end - start);
-      setResults(news);
+      const nextResponse = await fetchAdverseMedia(nextQuery);
+      setResponse(nextResponse);
       setSearched(true);
     } catch (err) {
-      setError('Failed to fetch media results. Please try again.');
-      console.error(err);
+      setResponse(null);
+      setError(err instanceof Error ? err.message : 'Failed to scan adverse media sources.');
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   return (
-    <div className="flex flex-col gap-8">
-      <div className="flex flex-col gap-4">
-        <h1 className="text-3xl font-bold tracking-tight text-[var(--color-ink)]">Media Finder</h1>
-        <p className="text-[var(--color-muted)]">
-          Search for adverse media and news stories about a company.
-        </p>
+    <section className="flex flex-col gap-6">
+      <div>
+        <p className="section-title">Challenge 10</p>
+        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-[var(--color-ink)]">
+          Media Finder
+        </h1>
       </div>
 
-      <div className="space-y-2">
-        <div className="app-card rounded-2xl p-6">
-          <form onSubmit={handleSearch} className="flex gap-4">
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Enter company name..."
-              className="flex-1 rounded-xl border border-[var(--color-border)] bg-white px-4 py-3 text-[var(--color-ink)] focus:border-[var(--color-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/20"
-            />
-            <button
-              type="submit"
-              disabled={loading}
-              className="rounded-xl bg-[var(--color-accent)] px-8 py-3 font-semibold text-white transition hover:bg-[var(--color-accent)]/90 disabled:opacity-50"
-            >
-              {loading ? 'Scanning...' : 'Search'}
-            </button>
-          </form>
-        </div>
-        
-        {searched && processingTime !== undefined && !loading && (
-          <p className="px-1 text-xs text-[var(--color-muted)]">
-            Found {results.length} {results.length === 1 ? 'article' : 'articles'} in {processingTime.toFixed(0)}ms
-          </p>
-        )}
+      <div className="app-card rounded-2xl p-5 sm:p-6">
+        <form onSubmit={handleSearch} className="flex flex-col gap-3 sm:flex-row">
+          <input
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search company or organization name"
+            className="min-h-12 flex-1 rounded-xl border border-[var(--color-border)] bg-white px-4 text-sm text-[var(--color-ink)] outline-none transition focus:border-[var(--color-accent)] focus:ring-2 focus:ring-[var(--color-accent)]/20"
+          />
+          <button
+            type="submit"
+            disabled={loading || !query.trim()}
+            className="min-h-12 rounded-xl bg-[var(--color-accent)] px-6 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {loading ? 'Scanning...' : 'Search'}
+          </button>
+        </form>
       </div>
 
       {error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">
+        <div className="rounded-2xl border border-[var(--color-risk-high)] bg-red-50 p-4 text-sm text-red-700">
           {error}
         </div>
       )}
 
-      <div className="flex flex-col gap-4">
-        {results.length > 0 ? (
-          results.map((item, index) => (
+      {response?.warnings.length ? (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+          {response.warnings.join(' ')}
+        </div>
+      ) : null}
+
+      {searched && response && (
+        <div className="flex flex-wrap items-center gap-3 text-xs text-[var(--color-muted)]">
+          <span className="rounded-full border border-[var(--color-border)] bg-white px-3 py-1">
+            {response.total} {response.total === 1 ? 'article' : 'articles'}
+          </span>
+          <span className="rounded-full border border-[var(--color-border)] bg-white px-3 py-1">
+            {response.processing_ms}ms
+          </span>
+        </div>
+      )}
+
+      <div className="grid gap-4">
+        {response?.results.map((item) => {
+          const tone = getSeverityTone(item.severityScore);
+          const badgeClass =
+            tone === 'high'
+              ? 'signal-badge-high'
+              : tone === 'medium'
+                ? 'signal-badge-medium'
+                : 'signal-badge-info';
+
+          return (
             <a
-              key={index}
+              key={`${item.sourceProvider}-${item.link}-${item.headline}`}
               href={item.link}
               target="_blank"
-              rel="noopener noreferrer"
-              className="app-card group flex overflow-hidden rounded-2xl transition hover:border-[var(--color-accent)] hover:shadow-lg"
+              rel="noreferrer"
+              className="app-card group grid gap-4 overflow-hidden rounded-2xl p-4 transition hover:border-[var(--color-accent)] sm:grid-cols-[128px_minmax(0,1fr)]"
             >
-              <div className="flex w-full gap-6 p-4">
-                <div className="relative h-24 w-32 flex-shrink-0 overflow-hidden rounded-lg bg-[var(--color-bg)]">
-                  {item.thumbnail ? (
-                    <img
-                      src={item.thumbnail}
-                      alt={item.headline}
-                      className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = 'none';
-                        const parent = (e.target as HTMLImageElement).parentElement;
-                        if (parent) {
-                          const placeholder = parent.querySelector('.placeholder-icon');
-                          if (placeholder) (placeholder as HTMLElement).style.display = 'flex';
-                        }
-                      }}
-                    />
-                  ) : null}
-                  <div 
-                    className="placeholder-icon absolute inset-0 flex flex-col items-center justify-center bg-[var(--color-accent)]/5 text-[var(--color-accent)]"
-                    style={{ display: item.thumbnail ? 'none' : 'flex' }}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2" />
-                      <path d="M18 14h-8" />
-                      <path d="M15 18h-5" />
-                      <path d="M10 6h8v4h-8V6Z" />
-                    </svg>
-                    <span className="mt-1 text-[10px] font-bold uppercase tracking-wider opacity-60">News</span>
+              <div className="aspect-[4/3] overflow-hidden rounded-xl border border-[var(--color-border)] bg-stone-100">
+                {item.thumbnail ? (
+                  <img
+                    src={item.thumbnail}
+                    alt=""
+                    className="h-full w-full object-cover transition group-hover:scale-105"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-muted)]">
+                    News
                   </div>
+                )}
+              </div>
+
+              <div className="min-w-0 space-y-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${badgeClass}`}>
+                    Severity {item.severityScore}
+                  </span>
+                  <span className="rounded-full border border-[var(--color-border)] bg-white px-2.5 py-1 text-[11px] text-[var(--color-muted)]">
+                    {item.sourceName}
+                  </span>
+                  <span className="text-xs text-[var(--color-muted)]">{formatDate(item.date)}</span>
                 </div>
-                <div className="flex flex-1 flex-col justify-center">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
-                        item.severityScore >= 75 ? 'signal-badge-high' : 
-                        item.severityScore >= 50 ? 'signal-badge-medium' : 
-                        'signal-badge-info'
-                      }`}>
-                        Severity: {item.severityScore}
-                      </span>
-                      <span className="text-[11px] font-medium text-[var(--color-muted)]">
-                        {new Date(item.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                      </span>
-                    </div>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[var(--color-border)] transition-colors group-hover:text-[var(--color-accent)]">
-                      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                      <polyline points="15 3 21 3 21 9" />
-                      <line x1="10" y1="14" x2="21" y2="3" />
-                    </svg>
-                  </div>
-                  <h3 className="mt-2 text-lg font-bold leading-snug text-[var(--color-ink)] transition-colors group-hover:text-[var(--color-accent)]">
-                    {item.headline}
-                  </h3>
+
+                <h2 className="text-lg font-semibold leading-snug text-[var(--color-ink)] group-hover:text-[var(--color-accent)]">
+                  {item.headline}
+                </h2>
+
+                <div className="flex flex-wrap gap-2">
+                  {item.matchedTerms.slice(0, 6).map((term) => (
+                    <span
+                      key={term}
+                      className="rounded-full border border-[var(--color-border)] bg-white/80 px-2 py-0.5 text-[11px] text-[var(--color-muted)]"
+                    >
+                      {term}
+                    </span>
+                  ))}
                 </div>
               </div>
             </a>
-          ))
-        ) : query && !loading ? (
-          <div className="py-12 text-center text-[var(--color-muted)]">
-            No adverse media found for "{query}".
-          </div>
-        ) : null}
+          );
+        })}
       </div>
-    </div>
+
+      {searched && response && response.results.length === 0 && !loading && (
+        <div className="rounded-2xl border border-[var(--color-border)] bg-white p-8 text-center text-sm text-[var(--color-muted)]">
+          No adverse media found for "{response.query}".
+        </div>
+      )}
+    </section>
   );
 }

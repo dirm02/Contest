@@ -3,24 +3,29 @@ import SearchPage from './routes/SearchPage';
 import DossierPage from './routes/DossierPage';
 import GovernanceLandingPage from './routes/GovernanceLandingPage';
 import GovernancePairDetailPage from './routes/GovernancePairDetailPage';
+import AmendmentCreepDetailPage from './routes/AmendmentCreepDetailPage';
+import AmendmentCreepLandingPage from './routes/AmendmentCreepLandingPage';
+import ChallengeReviewPage from './routes/ChallengeReviewPage';
 import LoopsLandingPage from './routes/LoopsLandingPage';
 import LoopDetailPage from './routes/LoopDetailPage';
+import MediaFinderPage from './routes/MediaFinderPage';
 import PeopleSearchPage from './routes/PeopleSearchPage';
 import PersonDetailPage from './routes/PersonDetailPage';
 import ZombiesLandingPage from './routes/ZombiesLandingPage';
 import ZombieDetailPage from './routes/ZombieDetailPage';
 import GhostCapacityLandingPage from './routes/GhostCapacityLandingPage';
 import GhostCapacityDetailPage from './routes/GhostCapacityDetailPage';
-import MediaFinderPage from './routes/MediaFinderPage';
 
 const NAV_ITEMS: Array<{ to: string; label: string; end?: boolean }> = [
   { to: '/', label: 'Search', end: true },
+  { to: '/challenge-review', label: 'Challenge Review' },
   { to: '/governance', label: 'Governance Networks' },
   { to: '/loops', label: 'Funding Loops' },
+  { to: '/amendment-creep', label: 'Amendment Creep' },
+  { to: '/media-finder', label: 'Media Finder' },
   { to: '/zombies', label: 'Zombie Recipients' },
   { to: '/ghost-capacity', label: 'Ghost Capacity' },
   { to: '/people', label: 'People' },
-  { to: '/media-finder', label: 'Media Finder' },
 ];
 
 export default function App() {
@@ -63,6 +68,7 @@ export default function App() {
       <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col px-4 py-6 sm:px-6 lg:px-8">
         <Routes>
           <Route path="/" element={<SearchPage />} />
+          <Route path="/challenge-review" element={<ChallengeReviewPage />} />
           <Route path="/entity/:id" element={<DossierPage />} />
           <Route path="/governance" element={<GovernanceLandingPage />} />
           <Route
@@ -71,6 +77,9 @@ export default function App() {
           />
           <Route path="/loops" element={<LoopsLandingPage />} />
           <Route path="/loops/:loopId" element={<LoopDetailPage />} />
+          <Route path="/amendment-creep" element={<AmendmentCreepLandingPage />} />
+          <Route path="/amendment-creep/:caseId" element={<AmendmentCreepDetailPage />} />
+          <Route path="/media-finder" element={<MediaFinderPage />} />
           <Route path="/zombies" element={<ZombiesLandingPage />} />
           <Route path="/zombies/:recipientKey" element={<ZombieDetailPage />} />
           <Route path="/ghost-capacity" element={<GhostCapacityLandingPage />} />
@@ -80,7 +89,6 @@ export default function App() {
           />
           <Route path="/people" element={<PeopleSearchPage />} />
           <Route path="/people/:personNorm" element={<PersonDetailPage />} />
-          <Route path="/media-finder" element={<MediaFinderPage />} />
         </Routes>
       </main>
     </div>

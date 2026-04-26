@@ -899,3 +899,169 @@ export interface LoopDetailModel {
   };
   evidence: LoopEvidenceApi[];
 }
+
+export interface AdverseMediaResult {
+  company: string;
+  headline: string;
+  link: string;
+  date: string;
+  severityScore: number;
+  thumbnail: string | null;
+  sourceName: string;
+  sourceProvider: string;
+  matchedTerms: string[];
+}
+
+export interface AdverseMediaResponse {
+  query: string;
+  total: number;
+  processing_ms: number;
+  warnings: string[];
+  results: AdverseMediaResult[];
+}
+
+export interface AmendmentCreepFilters {
+  limit?: number;
+  offset?: number;
+  source?: 'fed' | 'ab' | null;
+  minScore?: number;
+  minCreepRatio?: number;
+  department?: string | null;
+  vendor?: string | null;
+}
+
+export interface AmendmentCreepCase {
+  case_id: string;
+  source: 'fed' | 'ab';
+  case_type: string;
+  vendor: string;
+  department: string | null;
+  reference_number: string;
+  description: string | null;
+  program: string | null;
+  original_value: number;
+  current_value: number;
+  follow_on_value: number;
+  creep_ratio: number;
+  amendment_count: number;
+  competitive_count: number;
+  sole_source_count: number;
+  record_count: number;
+  first_date: string | null;
+  last_date: string | null;
+  near_threshold: boolean;
+  has_nonstandard_justification: boolean;
+  nonstandard_justification_count: number;
+  risk_score: number;
+  why_flagged: string[];
+}
+
+export interface AmendmentCreepResponse {
+  filters: {
+    limit: number;
+    offset: number;
+    source: 'fed' | 'ab' | null;
+    min_score: number;
+    min_creep_ratio: number;
+    department: string | null;
+    vendor: string | null;
+  };
+  total: number;
+  summary: {
+    total: number;
+    high_risk_count: number;
+    total_flagged_value: number;
+    median_creep_ratio: number;
+  };
+  results: AmendmentCreepCase[];
+}
+
+export interface AmendmentCreepEvidence {
+  id: string;
+  title: string;
+  tone: 'review' | 'context' | 'info';
+  body: string;
+}
+
+export interface AmendmentCreepTimelinePoint {
+  id: string;
+  label: string;
+  date: string | null;
+  fiscal_year?: string | null;
+  value: number;
+  record_type: string;
+}
+
+export interface AmendmentCreepRecord {
+  id: string;
+  record_type: string;
+  ref_number: string | null;
+  amendment_number: string | null;
+  date: string | null;
+  agreement_start_date: string | null;
+  value: number;
+  department: string | null;
+  vendor: string;
+  description: string | null;
+  program: string | null;
+  justification_code: string | null;
+}
+
+export interface AmendmentCreepDetailResponse {
+  summary: AmendmentCreepCase;
+  evidence: AmendmentCreepEvidence[];
+  timeline: AmendmentCreepTimelinePoint[];
+  records: AmendmentCreepRecord[];
+  scoring: {
+    risk_score: number;
+    why_flagged: string[];
+    near_threshold: boolean;
+    has_nonstandard_justification: boolean;
+  };
+}
+
+export interface ChallengeReviewItem {
+  id: string;
+  title: string;
+  route: string;
+  endpoints: string[];
+  postgresSources: string[];
+  bigQuerySources: string[];
+  currentState: string;
+  validationGoal: string;
+  servingStrategy: string;
+  uiReview: string;
+  postgresRowCount: number;
+  bigQueryRowCount: number;
+  hasBigQueryCoverage: boolean;
+  status: 'ready_to_validate' | 'needs_source_mapping' | string;
+}
+
+export interface ChallengeReviewResponse {
+  generated_at: string;
+  strategy: {
+    analytics_engine: string;
+    serving_engine: string;
+    priority: string;
+  };
+  bigquery: {
+    available: boolean;
+    project_id: string;
+    dataset: string;
+    location: string;
+    error: string | null;
+    counts: Record<string, number>;
+  };
+  postgres: {
+    available: boolean;
+    counts: Record<string, number>;
+  };
+  summary: {
+    solved_challenges: number;
+    ready_to_validate: number;
+    needs_source_mapping: number;
+    remaining_challenges: string[];
+  };
+  next_steps: string[];
+  challenges: ChallengeReviewItem[];
+}
