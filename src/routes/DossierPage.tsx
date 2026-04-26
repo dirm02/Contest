@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useQueries, useQuery } from '@tanstack/react-query';
 import {
@@ -29,6 +29,7 @@ import EvidencePanel from '../components/dossier/EvidencePanel';
 import DossierGovernanceSection from '../components/governance/DossierGovernanceSection';
 import type { GraphNodeData } from '../api/types';
 import { AdverseMediaScanner, getSeverityTone } from '../components/algorithms/adverseMedia';
+import { useChat } from '../components/chat/ChatContext';
 
 function LoadingSection({ label }: { label: string }) {
   return (
@@ -48,6 +49,7 @@ export default function DossierPage() {
   const navigate = useNavigate();
   const entityId = Number(params.id);
   const [selectedNode, setSelectedNode] = useState<GraphNodeData | null>(null);
+  const { setPageContext } = useChat();
 
   const [entityQuery, fundingQuery, accountabilityQuery, relatedQuery] = useQueries({
     queries: [
@@ -130,6 +132,20 @@ export default function DossierPage() {
 
     return { summary, funding, signals: baseSignals, graph, evidence };
   }, [accountabilityQuery.data, entityQuery.data, fundingQuery.data, relatedQuery.data]);
+
+  useEffect(() => {
+    if (viewModel) {
+      setPageContext({
+        type: 'entity_dossier',
+        entityId: viewModel.summary.id,
+        name: viewModel.summary.canonicalName,
+        bn: viewModel.summary.bnRoot,
+        signals: viewModel.signals.map(s => ({ title: s.title, severity: s.severity, reason: s.reason })),
+        datasets: viewModel.summary.datasets,
+      });
+    }
+    return () => setPageContext(null);
+  }, [viewModel, setPageContext]);
 
   const adverseMediaQuery = useQuery({
     queryKey: queryKeys.adverseMedia(viewModel?.summary.canonicalName ?? ''),
