@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useQueries, useQuery } from '@tanstack/react-query';
 import {
@@ -28,8 +28,6 @@ import GraphFocusPanel from '../components/graph/GraphFocusPanel';
 import EvidencePanel from '../components/dossier/EvidencePanel';
 import DossierGovernanceSection from '../components/governance/DossierGovernanceSection';
 import type { GraphNodeData } from '../api/types';
-import { AdverseMediaScanner, getSeverityTone } from '../components/algorithms/adverseMedia';
-import { useChat } from '../components/chat/ChatContext';
 
 function LoadingSection({ label }: { label: string }) {
   return (
@@ -49,7 +47,6 @@ export default function DossierPage() {
   const navigate = useNavigate();
   const entityId = Number(params.id);
   const [selectedNode, setSelectedNode] = useState<GraphNodeData | null>(null);
-  const { setPageContext } = useChat();
 
   const [entityQuery, fundingQuery, accountabilityQuery, relatedQuery] = useQueries({
     queries: [
@@ -121,7 +118,7 @@ export default function DossierPage() {
 
     const summary = mapHeaderSummary(entityQuery.data, relatedQuery.data);
     const funding = mapFundingSeries(fundingQuery.data);
-    const baseSignals = mapSignalCards(accountabilityQuery.data, relatedQuery.data);
+    const signals = mapSignalCards(accountabilityQuery.data, relatedQuery.data);
     const graph = mapGraph(entityQuery.data, relatedQuery.data);
     const evidence = mapEvidenceSections(
       entityQuery.data,
@@ -130,22 +127,8 @@ export default function DossierPage() {
       relatedQuery.data,
     );
 
-    return { summary, funding, signals: baseSignals, graph, evidence };
+    return { summary, funding, signals, graph, evidence };
   }, [accountabilityQuery.data, entityQuery.data, fundingQuery.data, relatedQuery.data]);
-
-  useEffect(() => {
-    if (viewModel) {
-      setPageContext({
-        type: 'entity_dossier',
-        entityId: viewModel.summary.id,
-        name: viewModel.summary.canonicalName,
-        bn: viewModel.summary.bnRoot,
-        signals: viewModel.signals.map(s => ({ title: s.title, severity: s.severity, reason: s.reason })),
-        datasets: viewModel.summary.datasets,
-      });
-    }
-    return () => setPageContext(null);
-  }, [viewModel, setPageContext]);
 
   const adverseMediaQuery = useQuery({
     queryKey: queryKeys.adverseMedia(viewModel?.summary.canonicalName ?? ''),
@@ -153,70 +136,6 @@ export default function DossierPage() {
     enabled: Boolean(viewModel?.summary.canonicalName),
     staleTime: 30 * 60 * 1000,
   });
-
-  const adverseMediaScannerQuery = useQuery({
-    queryKey: ['adverseMediaScanner', viewModel?.summary.canonicalName],
-    queryFn: async () => {
-      const scanner = new AdverseMediaScanner();
-      return scanner.scan(viewModel?.summary.canonicalName ?? '');
-    },
-    enabled: Boolean(viewModel?.summary.canonicalName),
-    staleTime: 30 * 60 * 1000,
-  });
-
-  const adverseMediaScore = useMemo(() => {
-    const results = adverseMediaScannerQuery.data ?? adverseMediaQuery.data?.results;
-    if (!results) return undefined;
-    const scanner = new AdverseMediaScanner();
-    return scanner.calculateAdverseScore(results as any);
-  }, [adverseMediaScannerQuery.data, adverseMediaQuery.data?.results]);
-
-  const adverseMediaCount = useMemo(() => {
-    return adverseMediaScannerQuery.data?.length ?? adverseMediaQuery.data?.total;
-  }, [adverseMediaScannerQuery.data, adverseMediaQuery.data?.total]);
-
-  const combinedSignals = useMemo(() => {
-    if (!viewModel) return [];
-    const signals = [...viewModel.signals];
-
-    const isScanning = adverseMediaScannerQuery.isLoading || adverseMediaQuery.isLoading;
-    const hasError = adverseMediaScannerQuery.isError && adverseMediaQuery.isError;
-    const finalCount = adverseMediaCount ?? 0;
-    const finalScore = adverseMediaScore ?? 0;
-
-    if (isScanning) {
-      signals.push({
-        id: 'adverse-media-signal',
-        title: 'Adverse Media Findings',
-        severity: 'info',
-        reason: 'Scanner is currently searching for potential adverse media coverage...',
-        metrics: ['Scan in progress...']
-      });
-    } else if (hasError) {
-      signals.push({
-        id: 'adverse-media-signal',
-        title: 'Adverse Media Findings',
-        severity: 'info',
-        reason: 'The automated media scan failed to complete.',
-        metrics: ['Scan unavailable']
-      });
-    } else {
-      signals.push({
-        id: 'adverse-media-signal',
-        title: 'Adverse Media Findings',
-        severity: getSeverityTone(finalScore),
-        reason: finalCount > 0 
-          ? `Automated scan identified potential adverse media coverage linked to this entity.`
-          : `Automated scan completed with no high-risk adverse media identified.`,
-        metrics: [
-          `${finalCount} articles found`,
-          `Total severity score: ${finalScore}`
-        ]
-      });
-    }
-
-    return signals;
-  }, [viewModel, adverseMediaScore, adverseMediaCount, adverseMediaScannerQuery.isLoading, adverseMediaQuery.isLoading, adverseMediaScannerQuery.isError, adverseMediaQuery.isError]);
 
   const amendmentCreepQuery = useQuery({
     queryKey: queryKeys.amendmentCreep({
@@ -286,10 +205,9 @@ export default function DossierPage() {
       <HeaderSummary
         summary={viewModel.summary}
         signals={viewModel.signals}
-        adverseMediaCount={adverseMediaCount}
-        adverseMediaScore={adverseMediaScore}
-        isAdverseMediaLoading={adverseMediaScannerQuery.isLoading || adverseMediaQuery.isLoading}
-        isAdverseMediaError={adverseMediaScannerQuery.isError && adverseMediaQuery.isError}
+        adverseMediaCount={adverseMediaQuery.data?.total}
+        isAdverseMediaLoading={adverseMediaQuery.isLoading}
+        isAdverseMediaError={adverseMediaQuery.isError}
         amendmentCreepCount={amendmentCreepQuery.data?.total}
         amendmentCreepMaxScore={amendmentCreepQuery.data?.results[0]?.risk_score}
         isAmendmentCreepLoading={amendmentCreepQuery.isLoading}
@@ -298,7 +216,7 @@ export default function DossierPage() {
 
       <FundingCharts external={viewModel.funding.external} cra={viewModel.funding.cra} />
 
-      <SignalCards cards={combinedSignals} />
+      <SignalCards cards={viewModel.signals} />
 
       <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
         <div className="space-y-4">

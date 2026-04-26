@@ -8,7 +8,6 @@ import { mapSearchResults } from '../api/mappers';
 export default function SearchPage() {
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
-  const [processingTime, setProcessingTime] = useState<number | undefined>();
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -20,13 +19,7 @@ export default function SearchPage() {
 
   const searchQuery = useQuery({
     queryKey: queryKeys.search(debouncedQuery),
-    queryFn: async () => {
-      const start = performance.now();
-      const result = await searchEntities(debouncedQuery);
-      const end = performance.now();
-      setProcessingTime(end - start);
-      return result;
-    },
+    queryFn: () => searchEntities(debouncedQuery),
     enabled: debouncedQuery.length >= 2 || /^\d{9,}$/.test(debouncedQuery),
   });
 
@@ -54,8 +47,6 @@ export default function SearchPage() {
         onChange={setQuery}
         onSubmit={() => setDebouncedQuery(query.trim())}
         isLoading={searchQuery.isFetching}
-        resultCount={results.length}
-        processingTime={processingTime}
       />
 
       <ResultList

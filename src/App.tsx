@@ -16,7 +16,6 @@ import ZombiesLandingPage from './routes/ZombiesLandingPage';
 import ZombieDetailPage from './routes/ZombieDetailPage';
 import GhostCapacityLandingPage from './routes/GhostCapacityLandingPage';
 import GhostCapacityDetailPage from './routes/GhostCapacityDetailPage';
-import ChatAssistant from './components/chat/ChatAssistant';
 import VendorConcentrationPage from './routes/VendorConcentrationPage';
 
 const NAV_ITEMS: Array<{ to: string; label: string; end?: boolean }> = [
@@ -100,7 +99,6 @@ export default function App() {
           <Route path="/people/:personNorm" element={<PersonDetailPage />} />
         </Routes>
       </main>
-      <ChatAssistant />
     </div>
   );
 }

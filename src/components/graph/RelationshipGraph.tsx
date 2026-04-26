@@ -15,10 +15,6 @@ interface RelationshipGraphProps {
   onSelectNode: (node: GraphNodeData) => void;
 }
 
-/**
- * Calculates a fixed grid position for related nodes.
- * Spreads nodes into two main areas: Top and Bottom, to leave horizontal space for the center.
- */
 function getGridPosition(index: number, total: number) {
   if (total <= 0) return { x: 0, y: 0 };
 
@@ -153,14 +149,14 @@ export default function RelationshipGraph({
 
   if (nodes.length <= 1) {
     return (
-      <div className="flex h-[420px] items-center justify-center rounded-lg border border-dashed border-[var(--color-border)] bg-[var(--color-surface-subtle)] text-sm text-[var(--color-muted)]">
+      <div className="flex h-[420px] items-center justify-center rounded-2xl border border-dashed border-[var(--color-border)] bg-white/70 text-sm text-[var(--color-muted)]">
         No direct related entities were surfaced for this entity.
       </div>
     );
   }
 
   return (
-    <div className="h-[700px] rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-subtle)]">
+    <div className="h-[700px] rounded-2xl border border-[var(--color-border)] bg-white/80">
       <ReactFlow
         key={`graph-${nodes.map((node) => node.id).join('-')}`}
         nodes={flowNodes}

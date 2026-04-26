@@ -70,7 +70,7 @@ export default function MediaFinderPage() {
       </div>
 
       {error && (
-        <div className="rounded-2xl border border-[var(--color-risk-high)] bg-red-50 p-4 text-sm text-red-700">
+        <div className="rounded-2xl border border-[var(--color-risk-high)] bg-red-50 p-4 text-sm text-[var(--color-risk-high)]">
           {error}
         </div>
       )}

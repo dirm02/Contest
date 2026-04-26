@@ -1,4 +1,4 @@
-import { useMemo, useEffect } from 'react';
+import { useMemo } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { fetchZombieDetail, queryKeys } from '../api/client';
@@ -10,7 +10,6 @@ import {
 import CrossDatasetContextCard from '../components/risk/CrossDatasetContextCard';
 import RecipientRiskGraph from '../components/risk/RecipientRiskGraph';
 import RiskTimelineChart from '../components/risk/RiskTimelineChart';
-import { useChat } from '../components/chat/ChatContext';
 
 function LoadingSection({ label }: { label: string }) {
   return (
@@ -28,7 +27,6 @@ function LoadingSection({ label }: { label: string }) {
 export default function ZombieDetailPage() {
   const params = useParams<{ recipientKey: string }>();
   const recipientKey = params.recipientKey ?? '';
-  const { setPageContext } = useChat();
 
   const detailQuery = useQuery({
     queryKey: queryKeys.zombieDetail(recipientKey),
@@ -41,22 +39,6 @@ export default function ZombieDetailPage() {
     () => (detailQuery.data ? mapZombieDetail(detailQuery.data) : null),
     [detailQuery.data],
   );
-
-  useEffect(() => {
-    if (detail) {
-      setPageContext({
-        type: 'zombie_recipient_risk',
-        recipientName: detail.summary.name,
-        bn: detail.summary.bn,
-        signalType: detail.summary.signalType,
-        totalFunding: detail.summary.totalValue,
-        lastSeen: detail.summary.lastYear,
-        whyFlagged: detail.summary.whyFlagged,
-        crossDatasetContext: detail.crossDatasetContext,
-      });
-    }
-    return () => setPageContext(null);
-  }, [detail, setPageContext]);
 
   if (!recipientKey) {
     return (
