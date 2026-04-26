@@ -5,7 +5,7 @@ param(
   [string]$FrontendRepoPath = "C:\Users\LocalAccountHPT25\Desktop\newsaas\Contest",
   [string]$FrontendVmDistPath = "/var/www/Contest/dist",
   [string]$FrontendVmTempPath = "/tmp/contest-dist-new",
-  [string]$BackendServerJsLocalPath = "C:\Users\LocalAccountHPT25\Desktop\newsaas\agency-26-hackathon\general\visualizations\server.js",
+  [string]$BackendServerJsLocalPath = "C:\Users\LocalAccountHPT25\Desktop\newsaas\Contest\backend\general\visualizations\server.js",
   [string]$BackendServerJsVmPath = "/var/www/AccountabilityMax-/general/visualizations/server.js",
   [string]$ApiServiceName = "accountibilitymax-api",
   [switch]$SyncBackend = $true,

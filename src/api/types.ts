@@ -949,6 +949,7 @@ export interface AmendmentCreepCase {
   record_count: number;
   first_date: string | null;
   last_date: string | null;
+  latest_is_amendment?: boolean;
   near_threshold: boolean;
   has_nonstandard_justification: boolean;
   nonstandard_justification_count: number;

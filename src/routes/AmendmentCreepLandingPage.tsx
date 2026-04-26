@@ -34,7 +34,7 @@ export default function AmendmentCreepLandingPage() {
     <section className="space-y-6">
       <div className="space-y-2">
         <p className="section-title">Challenge 4</p>
-        <h1 className="max-w-4xl text-3xl font-semibold tracking-tight text-[var(--color-ink)] sm:text-5xl">
+        <h1 className="max-w-4xl text-3xl font-semibold text-[var(--color-ink)] sm:text-5xl">
           Sole-source and amendment-creep watchlist
         </h1>
         <p className="max-w-3xl text-sm leading-6 text-[var(--color-muted)] sm:text-base">
@@ -43,22 +43,31 @@ export default function AmendmentCreepLandingPage() {
         </p>
       </div>
 
+      <section className="app-card rounded-lg p-5">
+        <p className="section-title">Method note</p>
+        <p className="mt-2 text-sm leading-6 text-[var(--color-muted)]">
+          Federal agreement values are treated as cumulative current values, so amendment rows are not summed.
+          Alberta follow-on cases link competitive and sole-source records with normalized vendor names; aliases
+          and name collisions remain review caveats.
+        </p>
+      </section>
+
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <div className="app-card rounded-2xl p-5">
+        <div className="app-card rounded-lg p-5">
           <p className="section-title">Flagged cases</p>
           <p className="metric-value mt-2 text-3xl">{summary?.total ?? '...'}</p>
         </div>
-        <div className="app-card rounded-2xl p-5">
+        <div className="app-card rounded-lg p-5">
           <p className="section-title">High risk</p>
           <p className="metric-value mt-2 text-3xl">{summary?.high_risk_count ?? '...'}</p>
         </div>
-        <div className="app-card rounded-2xl p-5">
+        <div className="app-card rounded-lg p-5">
           <p className="section-title">Flagged value</p>
           <p className="metric-value mt-2 text-2xl">
             {summary ? formatCurrencyAmount(summary.total_flagged_value) : '...'}
           </p>
         </div>
-        <div className="app-card rounded-2xl p-5">
+        <div className="app-card rounded-lg p-5">
           <p className="section-title">Median ratio</p>
           <p className="metric-value mt-2 text-3xl">
             {summary ? `${summary.median_creep_ratio.toFixed(2)}x` : '...'}
@@ -66,7 +75,7 @@ export default function AmendmentCreepLandingPage() {
         </div>
       </section>
 
-      <section className="app-card rounded-2xl p-5">
+      <section className="app-card rounded-lg p-5">
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
           <label className="space-y-1 text-sm">
             <span className="section-title">Source</span>
@@ -79,7 +88,7 @@ export default function AmendmentCreepLandingPage() {
                   offset: 0,
                 })
               }
-              className="min-h-11 w-full rounded-xl border border-[var(--color-border)] bg-white px-3"
+              className="min-h-11 w-full rounded-md border border-[var(--color-border)] bg-white px-3"
             >
               <option value="">All</option>
               <option value="fed">Federal</option>
@@ -94,7 +103,7 @@ export default function AmendmentCreepLandingPage() {
               max={100}
               value={filters.minScore ?? 0}
               onChange={(event) => setFilters({ ...filters, minScore: Number(event.target.value), offset: 0 })}
-              className="min-h-11 w-full rounded-xl border border-[var(--color-border)] bg-white px-3"
+              className="min-h-11 w-full rounded-md border border-[var(--color-border)] bg-white px-3"
             />
           </label>
           <label className="space-y-1 text-sm">
@@ -107,7 +116,7 @@ export default function AmendmentCreepLandingPage() {
               onChange={(event) =>
                 setFilters({ ...filters, minCreepRatio: Number(event.target.value), offset: 0 })
               }
-              className="min-h-11 w-full rounded-xl border border-[var(--color-border)] bg-white px-3"
+              className="min-h-11 w-full rounded-md border border-[var(--color-border)] bg-white px-3"
             />
           </label>
           <label className="space-y-1 text-sm">
@@ -115,7 +124,7 @@ export default function AmendmentCreepLandingPage() {
             <input
               value={filters.department ?? ''}
               onChange={(event) => setFilters({ ...filters, department: event.target.value || null, offset: 0 })}
-              className="min-h-11 w-full rounded-xl border border-[var(--color-border)] bg-white px-3"
+              className="min-h-11 w-full rounded-md border border-[var(--color-border)] bg-white px-3"
             />
           </label>
           <label className="space-y-1 text-sm">
@@ -123,21 +132,21 @@ export default function AmendmentCreepLandingPage() {
             <input
               value={filters.vendor ?? ''}
               onChange={(event) => setFilters({ ...filters, vendor: event.target.value || null, offset: 0 })}
-              className="min-h-11 w-full rounded-xl border border-[var(--color-border)] bg-white px-3"
+              className="min-h-11 w-full rounded-md border border-[var(--color-border)] bg-white px-3"
             />
           </label>
         </div>
       </section>
 
       {query.isError && (
-        <div className="app-card rounded-2xl border-[var(--color-risk-high)] p-5 text-sm text-[var(--color-risk-high)]">
+        <div className="app-card rounded-lg border-[var(--color-risk-high)] p-5 text-sm text-[var(--color-risk-high)]">
           {query.error instanceof Error ? query.error.message : 'Challenge 4 endpoint failed.'}
         </div>
       )}
 
       <div className="grid gap-4">
         {query.isLoading ? (
-          <div className="app-card rounded-2xl p-6 text-sm text-[var(--color-muted)]">
+          <div className="app-card rounded-lg p-6 text-sm text-[var(--color-muted)]">
             Loading amendment-creep cases...
           </div>
         ) : (
@@ -145,7 +154,7 @@ export default function AmendmentCreepLandingPage() {
             <Link
               key={row.case_id}
               to={`/amendment-creep/${encodeURIComponent(row.case_id)}`}
-              className="app-card rounded-2xl p-5 transition hover:border-[var(--color-accent)] hover:shadow-lg"
+              className="app-card rounded-lg p-5 transition hover:border-[var(--color-accent)]"
             >
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div className="min-w-0 space-y-3">

@@ -48,7 +48,7 @@ const CHALLENGES: ChallengeAtlasItem[] = [
     question: 'Which relationships started small or competitive and then grew through amendments or sole-source work?',
     evidence: 'Federal original/current values, Alberta competitive contracts, Alberta sole-source follow-ons.',
     route: '/amendment-creep',
-    status: 'validation',
+    status: 'live',
   },
   {
     id: 5,

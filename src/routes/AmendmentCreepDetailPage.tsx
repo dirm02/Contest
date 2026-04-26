@@ -27,7 +27,7 @@ export default function AmendmentCreepDetailPage() {
 
   if (!caseId) {
     return (
-      <div className="app-card rounded-2xl p-6">
+      <div className="app-card rounded-lg p-6">
         <p className="section-title">Invalid case</p>
         <p className="mt-2 text-sm text-[var(--color-muted)]">A Challenge 4 case id is required.</p>
       </div>
@@ -36,7 +36,7 @@ export default function AmendmentCreepDetailPage() {
 
   if (query.isLoading) {
     return (
-      <div className="app-card rounded-2xl p-6 text-sm text-[var(--color-muted)]">
+      <div className="app-card rounded-lg p-6 text-sm text-[var(--color-muted)]">
         Loading amendment-creep detail...
       </div>
     );
@@ -44,7 +44,7 @@ export default function AmendmentCreepDetailPage() {
 
   if (query.isError || !query.data) {
     return (
-      <div className="app-card rounded-2xl border-[var(--color-risk-high)] p-6">
+      <div className="app-card rounded-lg border-[var(--color-risk-high)] p-6">
         <p className="section-title">Challenge 4 detail failed to load</p>
         <p className="mt-2 text-sm text-[var(--color-risk-high)]">
           {query.error instanceof Error ? query.error.message : 'Endpoint returned an error.'}
@@ -60,18 +60,18 @@ export default function AmendmentCreepDetailPage() {
       <div className="flex flex-wrap items-center gap-3">
         <Link
           to="/amendment-creep"
-          className="rounded-full border border-[var(--color-border)] bg-white/80 px-3 py-1.5 text-sm text-[var(--color-muted)] transition hover:bg-white"
+          className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 text-sm text-[var(--color-muted)] transition hover:bg-[var(--color-surface-subtle)]"
         >
           Back to Challenge 4
         </Link>
         <span className="section-title">{summary.source === 'fed' ? 'Federal' : 'Alberta'} case</span>
       </div>
 
-      <section className="app-card rounded-2xl p-6 sm:p-7">
+      <section className="app-card rounded-lg p-6 sm:p-7">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <p className="section-title">{summary.case_type}</p>
-            <h1 className="mt-2 max-w-5xl text-2xl font-semibold tracking-tight text-[var(--color-ink)] sm:text-4xl">
+            <h1 className="mt-2 max-w-5xl text-2xl font-semibold text-[var(--color-ink)] sm:text-4xl">
               {summary.vendor}
             </h1>
             <p className="mt-2 text-sm text-[var(--color-muted)]">{summary.department ?? 'Department unavailable'}</p>
@@ -87,28 +87,33 @@ export default function AmendmentCreepDetailPage() {
                   Nonstandard sole-source code
                 </span>
               )}
+              {summary.source === 'fed' && summary.latest_is_amendment === false && (
+                <span className="rounded-full px-2.5 py-1 text-xs font-medium signal-badge-info">
+                  Source semantics review
+                </span>
+              )}
             </div>
           </div>
-          <div className="rounded-2xl border border-[var(--color-border)] bg-white/80 px-4 py-3 text-sm text-[var(--color-muted)]">
+          <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-subtle)] px-4 py-3 text-sm text-[var(--color-muted)]">
             <div>Reference {summary.reference_number}</div>
             <div className="mt-1">Records {summary.record_count}</div>
           </div>
         </div>
 
         <dl className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <div className="rounded-2xl border border-[var(--color-border)] bg-white/80 p-4">
+          <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-subtle)] p-4">
             <dt className="section-title">Original</dt>
             <dd className="metric-value mt-2 text-2xl">{formatCurrencyAmount(summary.original_value)}</dd>
           </div>
-          <div className="rounded-2xl border border-[var(--color-border)] bg-white/80 p-4">
+          <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-subtle)] p-4">
             <dt className="section-title">Current / total</dt>
             <dd className="metric-value mt-2 text-2xl">{formatCurrencyAmount(summary.current_value)}</dd>
           </div>
-          <div className="rounded-2xl border border-[var(--color-border)] bg-white/80 p-4">
+          <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-subtle)] p-4">
             <dt className="section-title">Growth</dt>
             <dd className="metric-value mt-2 text-2xl">{formatCurrencyAmount(summary.follow_on_value)}</dd>
           </div>
-          <div className="rounded-2xl border border-[var(--color-border)] bg-white/80 p-4">
+          <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-subtle)] p-4">
             <dt className="section-title">Ratio</dt>
             <dd className="metric-value mt-2 text-2xl">{summary.creep_ratio.toFixed(2)}x</dd>
           </div>
@@ -124,7 +129,7 @@ export default function AmendmentCreepDetailPage() {
                 ? 'signal-badge-info'
                 : 'signal-badge-low';
           return (
-            <article key={item.id} className="app-card rounded-2xl p-5">
+            <article key={item.id} className="app-card rounded-lg p-5">
               <div className="flex items-center justify-between gap-3">
                 <p className="section-title">Evidence</p>
                 <span className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${tone}`}>
@@ -138,11 +143,11 @@ export default function AmendmentCreepDetailPage() {
         })}
       </section>
 
-      <section className="app-card rounded-2xl p-5">
+      <section className="app-card rounded-lg p-5">
         <p className="section-title">Timeline</p>
         <div className="mt-4 grid gap-3">
           {timeline.map((item) => (
-            <div key={item.id} className="rounded-2xl border border-[var(--color-border)] bg-white/80 p-4">
+            <div key={item.id} className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-subtle)] p-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h3 className="font-semibold text-[var(--color-ink)]">{item.label}</h3>
@@ -157,7 +162,7 @@ export default function AmendmentCreepDetailPage() {
         </div>
       </section>
 
-      <section className="app-card overflow-hidden rounded-2xl">
+      <section className="app-card overflow-hidden rounded-lg">
         <div className="border-b border-[var(--color-border)] p-5">
           <p className="section-title">Underlying records</p>
         </div>

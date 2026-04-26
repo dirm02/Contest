@@ -384,6 +384,30 @@ function buildAmendmentEvidence(row) {
       body: 'At least one Alberta sole-source record uses code z, documented as outside the twelve standard permitted situations.',
     });
   }
+  if (row.source === 'fed' && row.latest_is_amendment === false) {
+    evidence.push({
+      id: 'latest-row-not-amendment',
+      title: 'Latest high-value row is not marked as an amendment',
+      tone: 'context',
+      body: 'The agreement value still grew more than 3x, but the latest source row is not flagged as an amendment. Treat this as a source-semantics review case.',
+    });
+  }
+  if (row.source === 'fed') {
+    evidence.push({
+      id: 'cumulative-value-semantics',
+      title: 'Federal values are cumulative',
+      tone: 'info',
+      body: 'Federal agreement_value is treated as the current cumulative agreement value. Amendment rows are not summed as incremental dollars.',
+    });
+  }
+  if (row.source === 'ab') {
+    evidence.push({
+      id: 'vendor-name-match',
+      title: 'Vendor match uses normalized names',
+      tone: 'info',
+      body: 'Alberta competitive and sole-source rows are linked by normalized vendor names, so aliases and name collisions remain review caveats.',
+    });
+  }
   if (Number(row.record_count || 0) >= 4) {
     evidence.push({
       id: 'repeat-relationship',
@@ -3925,6 +3949,7 @@ const AMENDMENT_CREEP_CASES_SQL = `
       fc.record_count,
       orig.agreement_start_date AS first_date,
       COALESCE(cur.amendment_date, cur.agreement_start_date, orig.agreement_start_date) AS last_date,
+      cur.is_amendment AS latest_is_amendment,
       EXISTS (
         SELECT 1 FROM unnest(ARRAY[25000, 75000, 100000]::numeric[]) threshold_value
         WHERE orig.agreement_value >= threshold_value * 0.95 AND orig.agreement_value < threshold_value
@@ -3948,6 +3973,7 @@ const AMENDMENT_CREEP_CASES_SQL = `
       )::int AS risk_score,
       ARRAY_REMOVE(ARRAY[
         CASE WHEN cur.agreement_value >= orig.agreement_value * 3 THEN 'Current value is more than 3x the original amount' END,
+        CASE WHEN cur.is_amendment = false THEN 'Latest high-value row is not marked as an amendment' END,
         CASE WHEN fc.amendment_count >= 3 THEN 'Three or more amendments on the same agreement' END,
         CASE WHEN cur.agreement_value - orig.agreement_value >= 1000000 THEN 'Amended increase exceeds $1M' END,
         CASE WHEN EXISTS (
@@ -3958,10 +3984,11 @@ const AMENDMENT_CREEP_CASES_SQL = `
     FROM fed_originals orig
     JOIN fed_current cur USING (ref_number, agreement_party_key)
     JOIN fed_counts fc USING (ref_number, agreement_party_key)
-    WHERE cur.is_amendment = true AND cur.agreement_value > orig.agreement_value * 3
+    WHERE cur.agreement_value > orig.agreement_value * 3
+      AND (cur.is_amendment = true OR fc.record_count > 1)
   ),
   ab_competitive AS (
-    SELECT upper(trim(recipient)) AS vendor_key,
+    SELECT btrim(regexp_replace(regexp_replace(upper(trim(recipient)), '[^A-Z0-9]+', ' ', 'g'), '\\s+', ' ', 'g')) AS vendor_key,
            MIN(recipient) AS vendor,
            STRING_AGG(DISTINCT ministry, ', ' ORDER BY ministry) AS department,
            SUM(amount)::numeric AS competitive_total,
@@ -3969,21 +3996,21 @@ const AMENDMENT_CREEP_CASES_SQL = `
            COUNT(*)::int AS competitive_count
     FROM ab.ab_contracts
     WHERE recipient IS NOT NULL AND amount > 0
-    GROUP BY upper(trim(recipient))
+    GROUP BY btrim(regexp_replace(regexp_replace(upper(trim(recipient)), '[^A-Z0-9]+', ' ', 'g'), '\\s+', ' ', 'g'))
   ),
   ab_sole AS (
-    SELECT upper(trim(vendor)) AS vendor_key,
+    SELECT btrim(regexp_replace(regexp_replace(upper(trim(vendor)), '[^A-Z0-9]+', ' ', 'g'), '\\s+', ' ', 'g')) AS vendor_key,
            MIN(vendor) AS vendor,
            STRING_AGG(DISTINCT ministry, ', ' ORDER BY ministry) AS department,
            SUM(amount)::numeric AS sole_total,
            COUNT(*)::int AS sole_count,
-           COUNT(*) FILTER (WHERE permitted_situations = 'z')::int AS nonstandard_count,
+           COUNT(*) FILTER (WHERE lower(trim(permitted_situations)) = 'z')::int AS nonstandard_count,
            MIN(start_date) AS first_sole_date,
            MAX(COALESCE(end_date, start_date)) AS last_sole_date,
            MAX(contract_services) AS sample_services
     FROM ab.ab_sole_source
     WHERE vendor IS NOT NULL AND amount > 0
-    GROUP BY upper(trim(vendor))
+    GROUP BY btrim(regexp_replace(regexp_replace(upper(trim(vendor)), '[^A-Z0-9]+', ' ', 'g'), '\\s+', ' ', 'g'))
   ),
   ab_cases AS (
     SELECT
@@ -4005,6 +4032,7 @@ const AMENDMENT_CREEP_CASES_SQL = `
       (c.competitive_count + s.sole_count)::int AS record_count,
       s.first_sole_date AS first_date,
       s.last_sole_date AS last_date,
+      false AS latest_is_amendment,
       EXISTS (
         SELECT 1 FROM unnest(ARRAY[25000, 75000, 100000]::numeric[]) threshold_value
         WHERE c.max_competitive_amount >= threshold_value * 0.95 AND c.max_competitive_amount < threshold_value
@@ -4163,13 +4191,13 @@ app.get('/api/amendment-creep/:caseId', async (req, res) => {
       const hash = caseId.slice(3);
       const recordResult = await pool.query(`
         WITH vendor_match AS (
-          SELECT upper(trim(recipient)) AS vendor_key
+          SELECT btrim(regexp_replace(regexp_replace(upper(trim(recipient)), '[^A-Z0-9]+', ' ', 'g'), '\\s+', ' ', 'g')) AS vendor_key
           FROM ab.ab_contracts
-          WHERE md5(upper(trim(recipient))) = $1
+          WHERE md5(btrim(regexp_replace(regexp_replace(upper(trim(recipient)), '[^A-Z0-9]+', ' ', 'g'), '\\s+', ' ', 'g'))) = $1
           UNION
-          SELECT upper(trim(vendor)) AS vendor_key
+          SELECT btrim(regexp_replace(regexp_replace(upper(trim(vendor)), '[^A-Z0-9]+', ' ', 'g'), '\\s+', ' ', 'g')) AS vendor_key
           FROM ab.ab_sole_source
-          WHERE md5(upper(trim(vendor))) = $1
+          WHERE md5(btrim(regexp_replace(regexp_replace(upper(trim(vendor)), '[^A-Z0-9]+', ' ', 'g'), '\\s+', ' ', 'g'))) = $1
         )
         SELECT id::text AS id,
                'competitive'::text AS record_type,
@@ -4184,7 +4212,7 @@ app.get('/api/amendment-creep/:caseId', async (req, res) => {
                display_fiscal_year AS program,
                NULL::text AS justification_code
         FROM ab.ab_contracts c
-        JOIN vendor_match vm ON upper(trim(c.recipient)) = vm.vendor_key
+        JOIN vendor_match vm ON btrim(regexp_replace(regexp_replace(upper(trim(c.recipient)), '[^A-Z0-9]+', ' ', 'g'), '\\s+', ' ', 'g')) = vm.vendor_key
         UNION ALL
         SELECT id::text AS id,
                'sole-source'::text AS record_type,
@@ -4199,7 +4227,7 @@ app.get('/api/amendment-creep/:caseId', async (req, res) => {
                display_fiscal_year AS program,
                permitted_situations AS justification_code
         FROM ab.ab_sole_source ss
-        JOIN vendor_match vm ON upper(trim(ss.vendor)) = vm.vendor_key
+        JOIN vendor_match vm ON btrim(regexp_replace(regexp_replace(upper(trim(ss.vendor)), '[^A-Z0-9]+', ' ', 'g'), '\\s+', ' ', 'g')) = vm.vendor_key
         ORDER BY date NULLS FIRST, program NULLS FIRST, value DESC
       `, [hash]);
       records = recordResult.rows;
