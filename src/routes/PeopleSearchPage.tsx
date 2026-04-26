@@ -8,6 +8,7 @@ import PeopleResultList from '../components/governance/PeopleResultList';
 export default function PeopleSearchPage() {
   const [query, setQuery] = useState('');
   const [debounced, setDebounced] = useState('');
+  const [processingTime, setProcessingTime] = useState<number | undefined>();
 
   useEffect(() => {
     const timeout = window.setTimeout(() => setDebounced(query.trim()), 300);
@@ -16,7 +17,13 @@ export default function PeopleSearchPage() {
 
   const peopleQuery = useQuery({
     queryKey: queryKeys.governancePeopleSearch(debounced),
-    queryFn: () => searchGovernancePeople(debounced),
+    queryFn: async () => {
+      const start = performance.now();
+      const result = await searchGovernancePeople(debounced);
+      const end = performance.now();
+      setProcessingTime(end - start);
+      return result;
+    },
     enabled: debounced.length >= 2,
     staleTime: 30_000,
   });
@@ -44,6 +51,8 @@ export default function PeopleSearchPage() {
         onChange={setQuery}
         onSubmit={() => setDebounced(query.trim())}
         isLoading={peopleQuery.isFetching}
+        resultCount={rows.length}
+        processingTime={processingTime}
       />
 
       <PeopleResultList
