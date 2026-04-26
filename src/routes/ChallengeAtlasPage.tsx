@@ -145,9 +145,9 @@ export default function ChallengeAtlasPage() {
     <section className="space-y-6">
       <header className="grid gap-5 lg:grid-cols-[1.35fr_0.65fr] lg:items-end">
         <div className="space-y-2">
-          <p className="section-title">Investigations</p>
-          <h1 className="max-w-4xl text-3xl font-semibold tracking-tight text-[var(--color-ink)] sm:text-4xl">
-            One hub for challenge watchlists, dossiers, and evidence trails
+          <p className="section-title">Admin Panel</p>
+          <h1 className="max-w-4xl text-3xl font-semibold text-[var(--color-ink)] sm:text-4xl">
+            Challenge watchlists, dossiers, and evidence trails
           </h1>
           <p className="max-w-3xl text-sm leading-6 text-[var(--color-muted)] sm:text-base">
             The challenges are related views of the same accountability graph. Use this page to move
@@ -179,14 +179,14 @@ export default function ChallengeAtlasPage() {
             {workflow.route.startsWith('#') ? (
               <a
                 href={workflow.route}
-                className="mt-4 inline-flex min-h-10 items-center justify-center rounded-lg border border-[var(--color-border)] bg-white px-3 text-sm font-semibold text-[var(--color-ink)] transition hover:bg-[var(--color-surface)]"
+                className="mt-4 inline-flex min-h-10 items-center justify-center rounded-md border border-[var(--color-border)] bg-[var(--color-surface-subtle)] px-3 text-sm font-semibold text-[var(--color-ink)] transition hover:bg-[var(--color-accent-soft)]"
               >
                 {workflow.action}
               </a>
             ) : (
               <Link
                 to={workflow.route}
-                className="mt-4 inline-flex min-h-10 items-center justify-center rounded-lg border border-[var(--color-border)] bg-white px-3 text-sm font-semibold text-[var(--color-ink)] transition hover:bg-[var(--color-surface)]"
+                className="mt-4 inline-flex min-h-10 items-center justify-center rounded-md border border-[var(--color-border)] bg-[var(--color-surface-subtle)] px-3 text-sm font-semibold text-[var(--color-ink)] transition hover:bg-[var(--color-accent-soft)]"
               >
                 {workflow.action}
               </Link>
@@ -207,15 +207,15 @@ export default function ChallengeAtlasPage() {
             media signals. The dossier is where those signals should converge.
           </p>
           <div className="mt-4 grid gap-2 text-sm text-[var(--color-muted)]">
-            <div className="rounded-lg border border-[var(--color-border)] bg-white p-3">
+            <div className="border-t border-[var(--color-border)] py-3">
               <strong className="text-[var(--color-ink)]">Entity risk:</strong> challenges 1, 2, and 6
               explain identity, capacity, and control.
             </div>
-            <div className="rounded-lg border border-[var(--color-border)] bg-white p-3">
+            <div className="border-t border-[var(--color-border)] py-3">
               <strong className="text-[var(--color-ink)]">Money flow:</strong> challenges 3, 4, 5, and 9
               explain how public dollars move and concentrate.
             </div>
-            <div className="rounded-lg border border-[var(--color-border)] bg-white p-3">
+            <div className="border-t border-[var(--color-border)] py-3">
               <strong className="text-[var(--color-ink)]">Policy context:</strong> challenges 7, 8, and 10
               explain whether spending matches priorities and external risk.
             </div>
@@ -225,19 +225,19 @@ export default function ChallengeAtlasPage() {
         <div className="app-card rounded-lg p-5">
           <p className="section-title">Recommended navigation</p>
           <div className="mt-3 grid gap-3">
-            <div className="rounded-lg border border-[var(--color-border)] bg-white p-3">
+            <div className="border-t border-[var(--color-border)] py-3">
               <p className="text-sm font-semibold text-[var(--color-ink)]">Header</p>
               <p className="mt-1 text-sm text-[var(--color-muted)]">
-                Search, Investigations, People. Keep the main bar short and predictable.
+                Search, Admin Panel, People. Keep the main bar short and predictable.
               </p>
             </div>
-            <div className="rounded-lg border border-[var(--color-border)] bg-white p-3">
-              <p className="text-sm font-semibold text-[var(--color-ink)]">Investigations hub</p>
+            <div className="border-t border-[var(--color-border)] py-3">
+              <p className="text-sm font-semibold text-[var(--color-ink)]">Admin Panel</p>
               <p className="mt-1 text-sm text-[var(--color-muted)]">
                 Challenge cards, status, evidence type, and routes to the live modules.
               </p>
             </div>
-            <div className="rounded-lg border border-[var(--color-border)] bg-white p-3">
+            <div className="border-t border-[var(--color-border)] py-3">
               <p className="text-sm font-semibold text-[var(--color-ink)]">Dossier</p>
               <p className="mt-1 text-sm text-[var(--color-muted)]">
                 Compact boxes show which challenge signals apply to the selected organization.
@@ -267,7 +267,7 @@ export default function ChallengeAtlasPage() {
             </p>
             <h2 className="mt-2 text-lg font-semibold text-[var(--color-ink)]">{challenge.title}</h2>
             <p className="mt-2 text-sm leading-6 text-[var(--color-muted)]">{challenge.question}</p>
-            <div className="mt-4 rounded-lg border border-[var(--color-border)] bg-white p-3">
+            <div className="mt-4 border-t border-[var(--color-border)] pt-3">
               <p className="section-title">Evidence</p>
               <p className="mt-1 text-sm leading-5 text-[var(--color-muted)]">{challenge.evidence}</p>
             </div>
@@ -275,12 +275,12 @@ export default function ChallengeAtlasPage() {
               {challenge.route ? (
                 <Link
                   to={challenge.route}
-                  className="inline-flex min-h-10 items-center justify-center rounded-lg border border-[var(--color-border)] bg-white px-3 text-sm font-semibold text-[var(--color-ink)] transition hover:bg-[var(--color-surface)]"
+                  className="inline-flex min-h-10 items-center justify-center rounded-md border border-[var(--color-border)] bg-[var(--color-surface-subtle)] px-3 text-sm font-semibold text-[var(--color-ink)] transition hover:bg-[var(--color-accent-soft)]"
                 >
                   Open module
                 </Link>
               ) : (
-                <span className="inline-flex min-h-10 items-center justify-center rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-sm font-semibold text-[var(--color-muted)]">
+                <span className="inline-flex min-h-10 items-center justify-center rounded-md border border-[var(--color-border)] bg-[var(--color-surface-subtle)] px-3 text-sm font-semibold text-[var(--color-muted)]">
                   Planned module
                 </span>
               )}

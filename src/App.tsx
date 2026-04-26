@@ -27,37 +27,46 @@ const NAV_ITEMS: Array<{ to: string; label: string; end?: boolean }> = [
 export default function App() {
   return (
     <div className="app-shell">
-      <header className="border-b border-[var(--color-border)] bg-[var(--color-surface)]/95 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:gap-6 lg:py-5 lg:px-8">
-          <div className="flex items-center justify-between gap-3">
-            <Link to="/" className="text-lg font-semibold tracking-tight text-[var(--color-ink)]">
-              AccountibilityMax.app
+      <header className="sticky top-0 z-40 border-b border-[var(--color-border)] bg-[var(--color-surface)]/95 backdrop-blur">
+        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:gap-6 lg:px-8">
+          <div className="flex items-center justify-between gap-4">
+            <Link to="/" className="flex min-w-0 items-center gap-3 text-[var(--color-ink)]">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-subtle)] text-sm font-bold text-[var(--color-accent)]">
+                AM
+              </span>
+              <span className="truncate text-lg font-semibold">
+                AccountabilityMax
+              </span>
             </Link>
-            <span className="rounded-full border border-[var(--color-border)] bg-white/70 px-3 py-1 text-xs uppercase tracking-[0.2em] text-[var(--color-muted)] lg:hidden">
-              Investigative MVP
+            <span className="inline-flex shrink-0 items-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-surface-subtle)] px-3 py-1.5 text-xs font-medium text-[var(--color-muted)] lg:hidden">
+              <span className="size-2 rounded-full bg-[var(--color-success)]" />
+              Data online
             </span>
           </div>
-          <nav className="flex flex-wrap items-center gap-2 text-sm">
-            {NAV_ITEMS.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.end}
-                className={({ isActive }) =>
-                  `rounded-full border px-3 py-1.5 transition ${
-                    isActive
-                      ? 'border-transparent bg-[var(--color-accent)] text-white'
-                      : 'border-[var(--color-border)] bg-white/70 text-[var(--color-muted)] hover:bg-white'
-                  }`
-                }
-              >
-                {item.label}
-              </NavLink>
-            ))}
-            <span className="hidden rounded-full border border-[var(--color-border)] bg-white/70 px-3 py-1 text-xs uppercase tracking-[0.2em] text-[var(--color-muted)] lg:inline">
-              Investigative MVP
+          <div className="flex items-center justify-between gap-3">
+            <nav className="flex flex-wrap items-center gap-1 text-sm">
+              {NAV_ITEMS.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  end={item.end}
+                  className={({ isActive }) =>
+                    `rounded-md px-3 py-2 font-medium transition ${
+                      isActive
+                        ? 'bg-[var(--color-accent)] text-white'
+                        : 'text-[var(--color-muted)] hover:bg-[var(--color-surface-subtle)] hover:text-[var(--color-ink)]'
+                    }`
+                  }
+                >
+                  {item.label}
+                </NavLink>
+              ))}
+            </nav>
+            <span className="hidden shrink-0 items-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-surface-subtle)] px-3 py-1.5 text-xs font-medium text-[var(--color-muted)] lg:inline-flex">
+              <span className="size-2 rounded-full bg-[var(--color-success)]" />
+              Data online
             </span>
-          </nav>
+          </div>
         </div>
       </header>
 
