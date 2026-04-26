@@ -4,6 +4,7 @@ interface HeaderSummaryProps {
   summary: HeaderSummaryData;
   signals: SignalCard[];
   adverseMediaCount?: number;
+  adverseMediaScore?: number;
   isAdverseMediaLoading?: boolean;
   isAdverseMediaError?: boolean;
   amendmentCreepCount?: number;
@@ -85,6 +86,7 @@ export default function HeaderSummary({
   summary,
   signals,
   adverseMediaCount,
+  adverseMediaScore,
   isAdverseMediaLoading = false,
   isAdverseMediaError = false,
   amendmentCreepCount,
@@ -94,9 +96,9 @@ export default function HeaderSummary({
 }: HeaderSummaryProps) {
   const adverseMediaValue = isAdverseMediaError
     ? '!'
-    : isAdverseMediaLoading || adverseMediaCount == null
+    : isAdverseMediaLoading || (adverseMediaCount == null && adverseMediaScore == null)
       ? '...'
-      : adverseMediaCount;
+      : adverseMediaScore ?? adverseMediaCount;
   const amendmentCreepValue = isAmendmentCreepError
     ? '!'
     : isAmendmentCreepLoading || amendmentCreepCount == null
@@ -139,7 +141,7 @@ export default function HeaderSummary({
           <RiskMeter signals={signals} />
         </div>
 
-        <dl className="grid grid-cols-2 gap-4 sm:grid-cols-5">
+        <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:w-[480px]">
           <div className="rounded-2xl border border-[var(--color-border)] bg-white/80 p-4">
             <dt className="section-title">Aliases</dt>
             <dd className="metric-value mt-2 text-2xl">{summary.aliasCount}</dd>
