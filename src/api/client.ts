@@ -4,6 +4,7 @@ import type {
   AmendmentCreepDetailResponse,
   AmendmentCreepFilters,
   AmendmentCreepResponse,
+  ChallengeComparisonReport,
   ChallengeReviewResponse,
   EntityGovernanceResponseApi,
   EntityResponseApi,
@@ -69,6 +70,7 @@ export const queryKeys = {
   amendmentCreep: (filters: AmendmentCreepFilters) => ['amendment-creep', filters] as const,
   amendmentCreepDetail: (caseId: string) => ['amendment-creep', 'detail', caseId] as const,
   challengeReview: () => ['challenge-review'] as const,
+  challengeComparison: (challengeId: string) => ['challenge-review', 'compare', challengeId] as const,
 };
 
 export function searchEntities(query: string) {
@@ -247,4 +249,10 @@ export function fetchAmendmentCreepDetail(caseId: string) {
 
 export function fetchChallengeReview() {
   return getJson<ChallengeReviewResponse>('/api/challenge-review');
+}
+
+export function fetchChallengeComparison(challengeId: string) {
+  return getJson<ChallengeComparisonReport>(
+    `/api/challenge-review/compare/${encodeURIComponent(challengeId)}`,
+  );
 }

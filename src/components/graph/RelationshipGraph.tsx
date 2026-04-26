@@ -2,7 +2,6 @@ import { useMemo } from 'react';
 import {
   Background,
   Controls,
-  MiniMap,
   ReactFlow,
   type Edge,
   type Node,
@@ -16,12 +15,24 @@ interface RelationshipGraphProps {
   onSelectNode: (node: GraphNodeData) => void;
 }
 
-function radialPosition(index: number, total: number, radius = 250) {
-  if (total <= 1) return { x: 0, y: 0 };
-  const angle = (index / total) * Math.PI * 2;
+function getGridPosition(index: number, total: number) {
+  if (total <= 0) return { x: 0, y: 0 };
+
+  const nodesPerRow = 3;
+  const spacingX = 300;
+  const spacingY = 160;
+  const topCount = Math.ceil(total / 2);
+  const isTop = index < topCount;
+  const groupIndex = isTop ? index : index - topCount;
+  const groupTotal = isTop ? topCount : total - topCount;
+  const row = Math.floor(groupIndex / nodesPerRow);
+  const col = groupIndex % nodesPerRow;
+  const currentRowCount = Math.min(nodesPerRow, groupTotal - row * nodesPerRow);
+  const rowWidth = (currentRowCount - 1) * spacingX;
+
   return {
-    x: Math.cos(angle) * radius,
-    y: Math.sin(angle) * radius,
+    x: -rowWidth / 2 + col * spacingX,
+    y: isTop ? -250 - row * spacingY : 250 + row * spacingY,
   };
 }
 
@@ -45,29 +56,45 @@ export default function RelationshipGraph({
   onSelectNode,
 }: RelationshipGraphProps) {
   const flowNodes = useMemo<Node[]>(
-    () =>
-      nodes.map((node, index) => {
+    () => {
+      const centerNode = nodes.find((node) => node.relation === 'center');
+      const relatedNodes = nodes.filter((node) => node.relation !== 'center');
+      const positionedNodes: Node[] = [];
+
+      if (centerNode) {
+        positionedNodes.push({
+          id: centerNode.id,
+          position: { x: -120, y: -45 },
+          data: { label: centerNode.label, node: centerNode },
+        });
+      }
+
+      relatedNodes.forEach((node, index) => {
+        const position = getGridPosition(index, relatedNodes.length);
+
+        positionedNodes.push({
+          id: node.id,
+          position: { x: position.x - 100, y: position.y - 45 },
+          data: { label: node.label, node },
+        });
+      });
+
+      return positionedNodes.map((flowNode) => {
+        const node = (flowNode.data as { node: GraphNodeData }).node;
         const colors = nodeColors(node.relation);
-        const position =
-          node.relation === 'center'
-            ? { x: 0, y: 0 }
-            : radialPosition(
-                index - 1,
-                Math.max(
-                  nodes.filter((candidate) => candidate.relation !== 'center').length,
-                  1,
-                ),
-              );
+        const isCenter = node.relation === 'center';
 
         return {
-          id: node.id,
-          position,
+          ...flowNode,
           data: {
+            ...flowNode.data,
             label: (
-              <div className="min-w-[150px] max-w-[190px]">
-                <div className="font-semibold">{node.label}</div>
-                <div className="mt-1 text-[11px] opacity-80">
-                  {node.datasets.join(' • ') || 'No dataset tag'}
+              <div className="pointer-events-none flex h-full flex-col justify-center px-2 text-center">
+                <div className="line-clamp-2 text-[12px] font-bold leading-tight">
+                  {node.label}
+                </div>
+                <div className="mt-1.5 truncate text-[9px] font-medium uppercase tracking-wider opacity-60">
+                  {node.datasets.join(' • ') || 'No source'}
                 </div>
               </div>
             ),
@@ -75,17 +102,22 @@ export default function RelationshipGraph({
           style: {
             background: colors.background,
             color: colors.color,
-            border: `1px solid ${colors.border}`,
-            borderRadius: 16,
-            padding: 8,
-            width: node.relation === 'center' ? 220 : 190,
+            border: `1.5px solid ${colors.border}`,
+            borderRadius: 12,
+            width: isCenter ? 240 : 200,
+            height: 90,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
             boxShadow:
               selectedNodeId === node.id
-                ? '0 0 0 3px rgba(37,81,176,0.15)'
-                : '0 8px 20px rgba(31,26,23,0.08)',
+                ? '0 0 0 4px rgba(37,81,176,0.25)'
+                : '0 4px 12px rgba(0,0,0,0.08)',
           },
         };
-      }),
+      });
+    },
     [nodes, selectedNodeId],
   );
 
@@ -108,7 +140,7 @@ export default function RelationshipGraph({
         },
         labelStyle: {
           fill: '#6b645c',
-          fontSize: 11,
+          fontSize: 10,
           fontWeight: 600,
         },
       })),
@@ -124,17 +156,18 @@ export default function RelationshipGraph({
   }
 
   return (
-    <div className="h-[420px] rounded-2xl border border-[var(--color-border)] bg-white/80">
+    <div className="h-[700px] rounded-2xl border border-[var(--color-border)] bg-white/80">
       <ReactFlow
+        key={`graph-${nodes.map((node) => node.id).join('-')}`}
         nodes={flowNodes}
         edges={flowEdges}
         fitView
-        onNodeClick={(_, node) => {
-          const selected = nodes.find((item) => item.id === node.id);
-          if (selected) onSelectNode(selected);
+        fitViewOptions={{ padding: 0.2 }}
+        onNodeClick={(_, flowNode) => {
+          const nodeData = (flowNode.data as { node?: GraphNodeData }).node;
+          if (nodeData) onSelectNode(nodeData);
         }}
       >
-        <MiniMap pannable zoomable />
         <Controls />
         <Background gap={20} />
       </ReactFlow>

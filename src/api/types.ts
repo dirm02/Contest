@@ -1065,3 +1065,37 @@ export interface ChallengeReviewResponse {
   next_steps: string[];
   challenges: ChallengeReviewItem[];
 }
+
+export type ChallengeComparisonVerdict = 'pass' | 'warning' | 'fail';
+
+export interface ChallengeComparisonReport {
+  challenge_id: string;
+  title: string;
+  generated_at: string;
+  verdict: ChallengeComparisonVerdict;
+  summary: {
+    postgres_result_count: number;
+    bigquery_result_count: number;
+    top_overlap_count: number;
+    top_overlap_ratio: number;
+    mismatch_count: number;
+    metrics_checked: string[];
+    notes: string[];
+  };
+  mismatches: {
+    missing_in_postgres_count: number;
+    missing_in_bigquery_count: number;
+    metric_difference_count: number;
+  };
+  examples: {
+    missing_in_postgres: Array<Record<string, unknown>>;
+    missing_in_bigquery: Array<Record<string, unknown>>;
+    metric_differences: Array<Record<string, unknown>>;
+    warnings?: string[];
+    live_result_count?: number;
+  };
+  source_counts?: {
+    postgres: Record<string, number>;
+    bigquery: Record<string, number>;
+  };
+}

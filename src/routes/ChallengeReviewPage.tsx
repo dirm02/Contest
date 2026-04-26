@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { fetchChallengeReview, queryKeys } from '../api/client';
+import { useQueries, useQuery } from '@tanstack/react-query';
+import { fetchChallengeComparison, fetchChallengeReview, queryKeys } from '../api/client';
+import type { ChallengeComparisonReport } from '../api/types';
 
 function formatCount(value: number) {
   return new Intl.NumberFormat('en-CA').format(value);
@@ -8,6 +9,19 @@ function formatCount(value: number) {
 
 function statusLabel(status: string) {
   return status === 'ready_to_validate' ? 'Ready to validate' : 'Needs source mapping';
+}
+
+function verdictClass(verdict?: string) {
+  if (verdict === 'pass') return 'signal-badge-low';
+  if (verdict === 'fail') return 'signal-badge-high';
+  return 'signal-badge-medium';
+}
+
+function verdictLabel(report: ChallengeComparisonReport | undefined, isLoading: boolean, isError: boolean) {
+  if (isLoading) return 'Checking';
+  if (isError) return 'Failed';
+  if (!report) return 'Pending';
+  return report.verdict === 'pass' ? 'Pass' : report.verdict === 'fail' ? 'Fail' : 'Warning';
 }
 
 export default function ChallengeReviewPage() {
@@ -18,6 +32,32 @@ export default function ChallengeReviewPage() {
   });
 
   const review = query.data;
+  const comparisonQueries = useQueries({
+    queries: (review?.challenges ?? []).map((challenge) => ({
+      queryKey: queryKeys.challengeComparison(challenge.id),
+      queryFn: () => fetchChallengeComparison(challenge.id),
+      enabled: Boolean(review),
+      staleTime: 15 * 60_000,
+      retry: 1,
+    })),
+  });
+
+  const comparisons = new Map<string, {
+    data?: ChallengeComparisonReport;
+    isLoading: boolean;
+    isError: boolean;
+  }>();
+  (review?.challenges ?? []).forEach((challenge, index) => {
+    const comparison = comparisonQueries[index];
+    comparisons.set(challenge.id, {
+      data: comparison?.data,
+      isLoading: Boolean(comparison?.isLoading),
+      isError: Boolean(comparison?.isError),
+    });
+  });
+  const completedComparisons = [...comparisons.values()].filter((comparison) => comparison.data).length;
+  const failedComparisons = [...comparisons.values()].filter((comparison) => comparison.data?.verdict === 'fail').length;
+  const warningComparisons = [...comparisons.values()].filter((comparison) => comparison.data?.verdict === 'warning').length;
 
   return (
     <section className="space-y-6">
@@ -47,15 +87,15 @@ export default function ChallengeReviewPage() {
           </p>
         </div>
         <div className="app-card rounded-2xl p-5">
-          <p className="section-title">Ready for BigQuery</p>
+          <p className="section-title">Validated</p>
           <p className="metric-value mt-2 text-3xl">
-            {review ? review.summary.ready_to_validate : '...'}
+            {review ? `${completedComparisons}/${review.summary.solved_challenges}` : '...'}
           </p>
         </div>
         <div className="app-card rounded-2xl p-5">
-          <p className="section-title">Remaining</p>
+          <p className="section-title">Warnings / fails</p>
           <p className="metric-value mt-2 text-3xl">
-            {review ? review.summary.remaining_challenges.join(', ') : '...'}
+            {review ? `${warningComparisons}/${failedComparisons}` : '...'}
           </p>
         </div>
         <div className="app-card rounded-2xl p-5">
@@ -113,6 +153,10 @@ export default function ChallengeReviewPage() {
 
         {review?.challenges.map((challenge) => (
           <article key={challenge.id} className="app-card rounded-2xl p-5">
+            {(() => {
+              const comparison = comparisons.get(challenge.id);
+              const report = comparison?.data;
+              return (
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center gap-2">
@@ -128,6 +172,13 @@ export default function ChallengeReviewPage() {
                   >
                     {statusLabel(challenge.status)}
                   </span>
+                  <span
+                    className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                      comparison?.isError ? 'signal-badge-high' : verdictClass(report?.verdict)
+                    }`}
+                  >
+                    {verdictLabel(report, Boolean(comparison?.isLoading), Boolean(comparison?.isError))}
+                  </span>
                 </div>
                 <div>
                   <h2 className="text-xl font-semibold text-[var(--color-ink)]">
@@ -137,6 +188,39 @@ export default function ChallengeReviewPage() {
                     {challenge.currentState}
                   </p>
                 </div>
+                {report && (
+                  <div className="grid gap-3 text-sm md:grid-cols-4">
+                    <div className="rounded-xl border border-[var(--color-border)] bg-white p-3">
+                      <p className="section-title">Overlap</p>
+                      <p className="mt-1 font-semibold text-[var(--color-ink)]">
+                        {report.summary.top_overlap_count}/{report.summary.postgres_result_count}
+                      </p>
+                    </div>
+                    <div className="rounded-xl border border-[var(--color-border)] bg-white p-3">
+                      <p className="section-title">Mismatches</p>
+                      <p className="mt-1 font-semibold text-[var(--color-ink)]">
+                        {report.summary.mismatch_count}
+                      </p>
+                    </div>
+                    <div className="rounded-xl border border-[var(--color-border)] bg-white p-3">
+                      <p className="section-title">Missing PG/BQ</p>
+                      <p className="mt-1 font-semibold text-[var(--color-ink)]">
+                        {report.mismatches.missing_in_postgres_count}/{report.mismatches.missing_in_bigquery_count}
+                      </p>
+                    </div>
+                    <div className="rounded-xl border border-[var(--color-border)] bg-white p-3">
+                      <p className="section-title">Checked</p>
+                      <p className="mt-1 text-xs font-semibold text-[var(--color-ink)]">
+                        {new Date(report.generated_at).toLocaleTimeString()}
+                      </p>
+                    </div>
+                  </div>
+                )}
+                {report?.summary.notes?.length ? (
+                  <p className="text-sm leading-6 text-[var(--color-muted)]">
+                    {report.summary.notes.join(' ')}
+                  </p>
+                ) : null}
                 <div className="grid gap-3 text-sm lg:grid-cols-3">
                   <div>
                     <p className="section-title">Validate</p>
@@ -183,6 +267,8 @@ export default function ChallengeReviewPage() {
                 </Link>
               </aside>
             </div>
+              );
+            })()}
           </article>
         ))}
       </div>

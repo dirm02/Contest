@@ -1,6 +1,7 @@
 import { Link, NavLink, Route, Routes } from 'react-router-dom';
 import SearchPage from './routes/SearchPage';
 import DossierPage from './routes/DossierPage';
+import ChallengeAtlasPage from './routes/ChallengeAtlasPage';
 import GovernanceLandingPage from './routes/GovernanceLandingPage';
 import GovernancePairDetailPage from './routes/GovernancePairDetailPage';
 import AmendmentCreepDetailPage from './routes/AmendmentCreepDetailPage';
@@ -18,13 +19,7 @@ import GhostCapacityDetailPage from './routes/GhostCapacityDetailPage';
 
 const NAV_ITEMS: Array<{ to: string; label: string; end?: boolean }> = [
   { to: '/', label: 'Search', end: true },
-  { to: '/challenge-review', label: 'Challenge Review' },
-  { to: '/governance', label: 'Governance Networks' },
-  { to: '/loops', label: 'Funding Loops' },
-  { to: '/amendment-creep', label: 'Amendment Creep' },
-  { to: '/media-finder', label: 'Media Finder' },
-  { to: '/zombies', label: 'Zombie Recipients' },
-  { to: '/ghost-capacity', label: 'Ghost Capacity' },
+  { to: '/investigations', label: 'Admin Panel' },
   { to: '/people', label: 'People' },
 ];
 
@@ -68,6 +63,8 @@ export default function App() {
       <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col px-4 py-6 sm:px-6 lg:px-8">
         <Routes>
           <Route path="/" element={<SearchPage />} />
+          <Route path="/investigations" element={<ChallengeAtlasPage />} />
+          <Route path="/challenge-atlas" element={<ChallengeAtlasPage />} />
           <Route path="/challenge-review" element={<ChallengeReviewPage />} />
           <Route path="/entity/:id" element={<DossierPage />} />
           <Route path="/governance" element={<GovernanceLandingPage />} />
