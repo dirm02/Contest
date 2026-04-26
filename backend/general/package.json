@@ -1,0 +1,54 @@
+{
+  "name": "ai-for-accountability-general",
+  "version": "1.0.0",
+  "description": "AI For Accountability Hackathon — cross-dataset entity resolution pipeline (CRA + FED + AB)",
+  "scripts": {
+    "migrate": "node scripts/01-migrate.js",
+    "seed:ministries": "node scripts/02-seed-ministries.js",
+    "setup": "npm run migrate && npm run seed:ministries",
+    "drop": "node scripts/drop-tables.js",
+    "reset": "npm run drop && npm run setup",
+    "entities:migrate": "node scripts/03-migrate-entities.js",
+    "entities:resolve": "node scripts/04-resolve-entities.js",
+    "entities:resolve:cra": "node scripts/04-resolve-entities.js --phase 1",
+    "entities:resolve:qd": "node scripts/04-resolve-entities.js --phase 1b",
+    "entities:resolve:fed": "node scripts/04-resolve-entities.js --phase 2",
+    "entities:resolve:ab": "node scripts/04-resolve-entities.js --phase 3",
+    "entities:splink": "node scripts/05-run-splink.js",
+    "entities:splink:install": "pip install -r splink/requirements.txt",
+    "entities:detect": "node scripts/06-detect-candidates.js",
+    "entities:detect:merge": "node scripts/06-detect-candidates.js --auto-merge",
+    "entities:smart-match": "node --max-old-space-size=6144 scripts/07-smart-match.js --skip-llm",
+    "entities:llm": "node scripts/08-llm-golden-records.js --concurrency 100",
+    "entities:llm:vertex": "node scripts/08-llm-golden-records.js --concurrency 100 --provider vertex",
+    "entities:llm:anthropic": "node scripts/08-llm-golden-records.js --concurrency 100 --provider anthropic",
+    "entities:build-golden": "node scripts/09-build-golden-records.js",
+    "entities:donee-fallback": "node scripts/10-donee-trigram-fallback.js",
+    "entities:donee-fallback:detect": "node scripts/10-donee-trigram-fallback.js --phase A",
+    "entities:donee-fallback:llm": "node scripts/10-donee-trigram-fallback.js --phase B",
+    "entities:donee-fallback:apply": "node scripts/10-donee-trigram-fallback.js --phase C",
+    "entities:reset": "node scripts/tools/reset-entities.js",
+    "entities:reset:force": "node scripts/tools/reset-entities.js --yes",
+    "entities:search": "node scripts/tools/entity-search.js",
+    "entities:dashboard": "node scripts/tools/dashboard.js",
+    "entities:dossier": "node visualizations/server.js",
+    "entities:compare:splink": "node scripts/tools/data-quality/compare-500-vs-splink.js",
+    "entities:audit:nobn": "node scripts/tools/data-quality/audit-nobn-bridging.js",
+    "pipeline:run": "npm run entities:migrate && npm run entities:resolve && npm run entities:splink && npm run entities:detect && npm run entities:smart-match && npm run entities:llm && npm run entities:build-golden && npm run entities:donee-fallback",
+    "pipeline:rebuild": "npm run entities:reset:force && npm run pipeline:run"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.88.0",
+    "@google-cloud/bigquery": "^8.1.1",
+    "dotenv": "^17.4.2",
+    "express": "^4.22.1",
+    "jose": "^6.2.2",
+    "pg": "^8.20.0"
+  },
+  "devDependencies": {
+    "better-sqlite3": "^11.3.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

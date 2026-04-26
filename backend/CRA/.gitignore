@@ -1,0 +1,11 @@
+node_modules/
+_archive/
+.env
+.claude/settings.local.json
+.env.public
+!.env.example
+data/cache/
+data/cache/2024/
+!data/cache/.gitkeep
+*.log
+.DS_Store

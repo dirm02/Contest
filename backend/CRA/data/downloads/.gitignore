@@ -1,0 +1,5 @@
+# Downloaded data files - excluded from commits
+# Run: node scripts/download-data.js to regenerate
+*
+!.gitignore
+!.gitkeep

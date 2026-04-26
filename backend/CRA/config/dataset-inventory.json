@@ -1,0 +1,393 @@
+{
+  "_metadata": {
+    "description": "CRA T3010 Open Data resource inventory - maps dataset categories to Government of Canada Open Data Portal UUIDs by fiscal year",
+    "source": "Government of Canada Open Data Portal (open.canada.ca) and CRA direct releases",
+    "maintainer": "AI For Accountability Hackathon Team",
+    "lastUpdated": "2026-04-08",
+    "notes": [
+      "2024 UUIDs are now available on Open Data Portal as of April 2026",
+      "2024 data is a partial year - charities have 6 months after fiscal year-end to file",
+      "Disbursement Quota data was not published for 2021 and 2022",
+      "Compensation 2023 UUID had trailing '&' in original spreadsheet (corrected here)"
+    ]
+  },
+  "fiscalYears": [2020, 2021, 2022, 2023, 2024],
+  "datasets": {
+    "identification": {
+      "id": 1,
+      "name": "Identification",
+      "table": "cra_identification",
+      "t3010Section": "Part A - Identification",
+      "description": "Core charity registration: BN, legal name, address, category, designation",
+      "uuids": {
+        "2020": "2b9adf8a-1cf5-4019-8e75-9fe6ed50892b",
+        "2021": "40043933-3e30-4c9a-813d-ccfdacdaf5db",
+        "2022": "4284197f-73f9-4c28-8e4f-56aeaf9414cf",
+        "2023": "31a52caf-fa79-4ab3-bded-1ccc7b61c17f",
+        "2024": "694fdc72-eae4-4ee0-83eb-832ab7b230e3"
+      },
+      "localCsv": {
+        "2024": {
+          "path": "CRA-2024-T3010-Raw/Ident.csv",
+          "encoding": "latin1"
+        }
+      }
+    },
+    "directors": {
+      "id": 2,
+      "name": "Directors/Officers",
+      "table": "cra_directors",
+      "t3010Section": "Schedule - Directors/Trustees and Like Officials",
+      "description": "Board directors, trustees, and officers for each charity filing",
+      "uuids": {
+        "2020": "029d8159-3074-4637-af22-a50c7182cc51",
+        "2021": "9b2d0f3d-9b66-401d-a551-863ec27414c1",
+        "2022": "245cb6eb-f9bc-4eff-adc5-26131b6bed66",
+        "2023": "798a4a5f-f1ac-41a1-82d7-ef777f905bfe",
+        "2024": "3eb35dcd-9b0c-4ae9-a45c-e5e481567c23"
+      },
+      "localCsv": {
+        "2024": {
+          "path": "CRA-2024-Directors/2024board.csv",
+          "encoding": "utf8"
+        }
+      }
+    },
+    "financial_data": {
+      "id": 3,
+      "name": "Financial Data",
+      "table": "cra_financial_details",
+      "t3010Section": "Section D & Schedule 6",
+      "description": "Detailed financial line items: revenue, expenses, assets, liabilities",
+      "uuids": {
+        "2020": "9dfd020a-e5e5-49c7-a4ed-c9c8b54c8188",
+        "2021": "93544c86-0458-448a-adac-fff195c4f42c",
+        "2022": "2436c7a6-7ad4-45d2-abea-62de613e6ef0",
+        "2023": "0b9b4b01-5cb6-4981-b007-ae88f48cc799",
+        "2024": "e545170c-3689-4833-b2a8-e9e83100ab59"
+      },
+      "localCsv": {
+        "2024": {
+          "path": "CRA-2024-T3010-Raw/Financial Section D & Schedule 6.csv",
+          "encoding": "utf8"
+        }
+      }
+    },
+    "general_info": {
+      "id": 4,
+      "name": "General Information",
+      "table": "cra_financial_general",
+      "t3010Section": "Sections A, B, and C",
+      "description": "Program areas, Y/N questionnaire flags, boolean indicators",
+      "uuids": {
+        "2020": "e62ec7b2-b40e-4d8d-954f-d2e71a71b69b",
+        "2021": "be944ec3-c8c7-42ed-a9f7-8c9b7c023276",
+        "2022": "2ca3e064-2971-44a2-8c7a-e2dd2bb0858c",
+        "2023": "4cf7d8fa-221a-4934-a423-82dbeac7462b",
+        "2024": "fd7c8679-8032-4613-b2b7-44fb8bc9c7c9"
+      },
+      "localCsv": {
+        "2024": {
+          "path": "CRA-2024-T3010-Raw/Financial Section A_ B and C.csv",
+          "encoding": "utf8"
+        }
+      }
+    },
+    "charitable_programs": {
+      "id": 5,
+      "name": "Charitable Programs",
+      "table": "cra_charitable_programs",
+      "t3010Section": "Section B - Programs",
+      "description": "Program descriptions by type (ongoing, new, inactive)",
+      "uuids": {
+        "2020": "ea23ff3a-f1f5-4517-b591-d8fea4d401e7",
+        "2021": "6695faf6-3810-48ad-880b-02028b1942c9",
+        "2022": "a7b7ac42-4322-4748-9361-5794c5957a45",
+        "2023": "b02f94b3-6555-4315-96ab-2658f61290c5",
+        "2024": "1f16eb1b-cc03-4c95-a81c-0fdc0722c5ee"
+      },
+      "localCsv": {
+        "2024": {
+          "path": "CRA-2024-T3010-Raw/New and Ongoing Programs.csv",
+          "encoding": "utf8"
+        }
+      }
+    },
+    "non_qualified_donees": {
+      "id": 6,
+      "name": "Non-Qualified Donees",
+      "table": "cra_non_qualified_donees",
+      "t3010Section": "Grants to Non-Qualified Donees",
+      "description": "Grants to individuals/organizations that are not qualified donees",
+      "uuids": {
+        "2020": "00fddc7f-f62f-4b8d-aa35-1943433a95b9",
+        "2021": "fd2931b4-3b1a-4252-a8a8-4c4218eda613",
+        "2022": "0b912228-e5a5-4c4a-aa0b-b8ec78ee3cf0",
+        "2023": "d205c11b-9803-4d3a-8ac8-ab7b648d145b",
+        "2024": "f4eb196a-d0c1-45b0-bc48-e9b48c06cbce"
+      },
+      "localCsv": {
+        "2024": {
+          "path": "CRA-2024-T3010-Raw/Grants to Non-Qualified Donees.csv",
+          "encoding": "utf8"
+        }
+      }
+    },
+    "qualified_donees": {
+      "id": 7,
+      "name": "Qualified Donees",
+      "table": "cra_qualified_donees",
+      "t3010Section": "Gifts to Qualified Donees",
+      "description": "Gifts to other registered charities",
+      "uuids": {
+        "2020": "e5f674fc-a8a6-4844-8bd8-7fc4a8a67282",
+        "2021": "11556a79-d5a8-4a24-b3d3-348d08ad6ee9",
+        "2022": "af071c2f-e88d-4d9f-9d1c-173bcb161d3e",
+        "2023": "c603fe1f-cc4c-480e-b1cd-7fd949c42487",
+        "2024": "e945d3ac-ce8c-40c9-a322-47f477d6a8de"
+      },
+      "localCsv": {
+        "2024": [
+          { "path": "CRA-2024-QualifiedDonee/qual2024.csv", "encoding": "utf8" },
+          { "path": "CRA-2024-T3010-Raw/Gift.csv", "encoding": "latin1" }
+        ]
+      }
+    },
+    "foundation_info": {
+      "id": 8,
+      "name": "Private/Public Foundations",
+      "table": "cra_foundation_info",
+      "t3010Section": "Schedule 1 - Foundations",
+      "description": "Foundation-specific financial data",
+      "uuids": {
+        "2020": "9e979c5f-bdac-4f6d-990b-255fa533226d",
+        "2021": "80e3c7f9-e3b9-43d0-9053-f7359c305dcb",
+        "2022": "abd0d652-de97-44bb-884a-a8a196890174",
+        "2023": "3ef352d3-037d-48fb-98c0-f5e5b7ee5b89",
+        "2024": "72c8fab0-24c8-4351-a673-efe7ee72bcf1"
+      },
+      "localCsv": {
+        "2024": {
+          "path": "CRA-2024-T3010-Raw/Schedule 1_ Foundations.csv",
+          "encoding": "utf8"
+        }
+      }
+    },
+    "activities_outside_countries": {
+      "id": 9,
+      "name": "Activities Outside Canada - Countries",
+      "table": "cra_activities_outside_countries",
+      "t3010Section": "Schedule 2 - Countries",
+      "description": "Countries where charitable programs were carried out",
+      "uuids": {
+        "2020": "38ab0eea-e36c-435e-a00e-76c5571af7eb",
+        "2021": "6f052d29-443b-4cce-a0e2-eac8225d976c",
+        "2022": "b889b268-a1a2-49ed-b0e1-6715385a844f",
+        "2023": "489bf273-da0e-42fa-947c-3bc02dac28af",
+        "2024": "9a0a7b94-634b-4092-9a3b-e6001cf74f5b"
+      },
+      "localCsv": {
+        "2024": {
+          "path": "CRA-2024-T3010-Raw/Schedule 2_ Activities Outside Canada - Country.csv",
+          "encoding": "utf8"
+        }
+      }
+    },
+    "activities_outside_details": {
+      "id": 10,
+      "name": "Activities Outside Canada - Details",
+      "table": "cra_activities_outside_details",
+      "t3010Section": "Schedule 2 - Details",
+      "description": "Financial details on activities outside Canada",
+      "uuids": {
+        "2020": "61265412-c557-4dce-9fa2-6806a975d809",
+        "2021": "07e21c04-e95e-4576-9847-828b28cb3788",
+        "2022": "b1732cca-1bb2-4465-9792-558591e7c0fc",
+        "2023": "558ac0f1-8261-4eec-b1a0-92b596062464",
+        "2024": "600fa0f0-6410-493e-a891-1ac25ddf8004"
+      },
+      "localCsv": {
+        "2024": {
+          "path": "CRA-2024-T3010-Raw/Schedule 2_ Activities Outside Canada.csv",
+          "encoding": "utf8"
+        }
+      }
+    },
+    "exported_goods": {
+      "id": 11,
+      "name": "Exported Goods",
+      "table": "cra_exported_goods",
+      "t3010Section": "Schedule 2 - Exported Goods",
+      "description": "Goods exported outside Canada",
+      "uuids": {
+        "2020": "3800840e-ff3a-483c-8f15-e33a0b761333",
+        "2021": "8ef9fc37-aa8f-4099-8f1e-9827d2a0cd03",
+        "2022": "fd631f06-e775-46eb-8f90-320279a2e23b",
+        "2023": "45b96a3b-afb8-46bc-8c66-4550208d8bd7",
+        "2024": "1229e5a8-a507-4f80-8926-6e931ff9ad47"
+      },
+      "localCsv": {
+        "2024": {
+          "path": "CRA-2024-T3010-Raw/Schedule 2_ Activities Outside Canada - Destination.csv",
+          "encoding": "utf8"
+        }
+      }
+    },
+    "resources_sent_outside": {
+      "id": 12,
+      "name": "Resources Sent Outside Canada",
+      "table": "cra_resources_sent_outside",
+      "t3010Section": "Schedule 2 - Resources",
+      "description": "Financial resources transferred outside Canada",
+      "uuids": {
+        "2020": "586a345f-d801-47e6-aaa7-d59c2f52e30c",
+        "2021": "5623228d-3b1a-4088-8e95-c4a66904ac2f",
+        "2022": "9f93f12b-e889-4f29-9cac-03976e96678b",
+        "2023": "f650c51e-8c88-4804-bda7-adce4bceba7c",
+        "2024": "5d174c72-9dca-4961-88f2-fc8e6257941b"
+      },
+      "localCsv": {
+        "2024": {
+          "path": "CRA-2024-T3010-Raw/Schedule 2_ Activities Outside Canada - Recipient.csv",
+          "encoding": "utf8"
+        }
+      }
+    },
+    "compensation": {
+      "id": 13,
+      "name": "Compensation",
+      "table": "cra_compensation",
+      "t3010Section": "Schedule 3 - Compensation",
+      "description": "Employee compensation ranges and totals",
+      "uuids": {
+        "2020": "07e38548-10d2-4461-841d-5e20c28ce96b",
+        "2021": "ec4d4a94-6eb6-4c05-b618-754f7f2bc78c",
+        "2022": "6439f41e-fa8d-474d-ab07-a5721a066274",
+        "2023": "aff519a3-a71e-4934-b052-dd29419be224",
+        "2024": "37fe5088-b30c-4713-9a42-5a3e7e08fcb0"
+      },
+      "localCsv": {
+        "2024": {
+          "path": "CRA-2024-T3010-Raw/Schedule 3_ Compensation.csv",
+          "encoding": "utf8"
+        }
+      }
+    },
+    "gifts_in_kind": {
+      "id": 14,
+      "name": "Non-cash Gifts (Gifts in Kind)",
+      "table": "cra_gifts_in_kind",
+      "t3010Section": "Schedule 5 - Non-cash Gifts",
+      "description": "Non-cash gifts received by charities",
+      "uuids": {
+        "2020": "9ccdc8a0-adb3-4a1e-8f7d-7c0acfce6fdd",
+        "2021": "77d7ffda-dfa5-4e4d-874d-7f8fc3730f11",
+        "2022": "1d9d40d2-3cb5-4ea1-ba30-1b74206e8e52",
+        "2023": "9517a12c-51b8-46eb-94a6-75a2332ed997",
+        "2024": "dec91969-9c33-452d-94f1-35b6d429f244"
+      },
+      "localCsv": {
+        "2024": {
+          "path": "CRA-2024-T3010-Raw/Schedule 5_ Non-Cash gifts.csv",
+          "encoding": "utf8"
+        }
+      }
+    },
+    "political_activity_description": {
+      "id": 15,
+      "name": "Political Activities - Description",
+      "table": "cra_political_activity_desc",
+      "t3010Section": "Schedule 7 - Description",
+      "description": "Description of political/public policy activities",
+      "uuids": {
+        "2020": "cc21c5ec-6ccb-4015-ad77-ae98ab653708",
+        "2021": "5f93c990-e481-4841-8097-41f3393301c7",
+        "2022": "bdd44a8c-6c54-4ab2-9059-ca30c5ad6e20",
+        "2023": "03635bf0-2bb7-4b3e-a0ca-e56010c08712",
+        "2024": "1e4f5e21-5de8-4fd0-bada-a8c93f2b893d"
+      },
+      "localCsv": {
+        "2024": {
+          "path": "CRA-2024-T3010-Raw/Schedule 7_ Description.csv",
+          "encoding": "utf8",
+          "note": "Empty for 2024 - no political activity data reported"
+        }
+      }
+    },
+    "political_activity_funding": {
+      "id": 16,
+      "name": "Political Activities - Funding",
+      "table": "cra_political_activity_funding",
+      "t3010Section": "Schedule 7 - Funding",
+      "description": "Political activity funding from outside Canada",
+      "uuids": {
+        "2020": "6c0b52ee-4726-48ee-b457-a5e505bfb2fb",
+        "2021": "cc3154e8-c7b3-4be7-b7af-c2b2b62d481e",
+        "2022": "ff9e83a8-0f4e-495c-a6d0-76f398a0a7d3",
+        "2023": "408a6861-26d0-4f75-bd99-27f9a40ccc52",
+        "2024": "2160ad68-860e-4924-af63-a4eb70afa1f0"
+      },
+      "localCsv": {
+        "2024": {
+          "path": "CRA-2024-T3010-Raw/Schedule 7_ Political Activities - Outside Canada.csv",
+          "encoding": "utf8",
+          "note": "Empty for 2024"
+        }
+      }
+    },
+    "political_activity_resources": {
+      "id": 17,
+      "name": "Political Activities - Resources",
+      "table": "cra_political_activity_resources",
+      "t3010Section": "Schedule 7 - Resources",
+      "description": "Resources used for political activities",
+      "uuids": {
+        "2020": "ffa346b0-f452-42ee-abeb-31ab644edf6c",
+        "2021": "e1330d89-e981-43ee-a9e3-017170ad7816",
+        "2022": "8dee0c0e-0599-4eeb-8eb9-acd29ace7c06",
+        "2023": "3464b8f9-8b2d-4c8c-a7c6-af606312e12a",
+        "2024": "a56df1f9-beeb-46d8-8dcc-687f1d53b7bf"
+      },
+      "localCsv": {
+        "2024": {
+          "path": "CRA-2024-T3010-Raw/Schedule 7_ Political Activities - Resources.csv",
+          "encoding": "utf8",
+          "note": "Empty for 2024"
+        }
+      }
+    },
+    "disbursement_quota": {
+      "id": 18,
+      "name": "Disbursement Quota",
+      "table": "cra_disbursement_quota",
+      "t3010Section": "Schedule 8 - Disbursement Quota",
+      "description": "Disbursement quota calculations (not available for all years)",
+      "uuids": {
+        "2020": "371b101a-d8f1-4544-9554-2d76456d25e5",
+        "2023": "d98c8529-78a7-409b-b15f-296af52a43f1",
+        "2024": "d3c4db23-284f-49d7-9c86-6d8532f417bd"
+      }
+    },
+    "web_urls": {
+      "id": 19,
+      "name": "Charity Contact Web Addresses",
+      "table": "cra_web_urls",
+      "t3010Section": "Contact Information",
+      "description": "Website and contact URLs for charities",
+      "uuids": {
+        "2020": "821606b5-2c4b-4293-bf5b-26924408443f",
+        "2021": "3887ba10-9059-4e33-9a7e-a53acb6731e2",
+        "2022": "26a5ca19-77ed-4fad-a522-a3bf37c7956b",
+        "2023": "204222a0-eefc-4ccc-8c29-b6ecea0f6eb5",
+        "2024": "e3567bb5-5d98-44d0-b0e8-9cdd3732c9e4"
+      },
+      "localCsv": {
+        "2024": {
+          "path": "CRA-2024-T3010-Raw/Ident.csv",
+          "encoding": "latin1",
+          "note": "Web URLs extracted from Contact URL column of Ident.csv"
+        }
+      }
+    }
+  }
+}
