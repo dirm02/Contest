@@ -31,11 +31,11 @@ import type { GraphNodeData } from '../api/types';
 
 function LoadingSection({ label }: { label: string }) {
   return (
-    <div className="app-card rounded-2xl p-6">
+    <div className="app-card rounded-lg p-6">
       <div className="animate-pulse space-y-3">
-        <div className="h-4 w-32 rounded bg-stone-200" />
-        <div className="h-8 w-1/2 rounded bg-stone-200" />
-        <div className="h-40 rounded bg-stone-100" />
+        <div className="h-4 w-32 rounded bg-[var(--color-border)]" />
+        <div className="h-8 w-1/2 rounded bg-[var(--color-border)]" />
+        <div className="h-40 rounded bg-[var(--color-surface-subtle)]" />
       </div>
       <p className="mt-4 text-sm text-[var(--color-muted)]">{label}</p>
     </div>
@@ -155,7 +155,7 @@ export default function DossierPage() {
 
   if (!Number.isFinite(entityId) || entityId <= 0) {
     return (
-      <div className="app-card rounded-2xl p-6">
+      <div className="app-card rounded-lg p-6">
         <p className="section-title">Invalid entity</p>
         <p className="mt-2 text-sm text-[var(--color-muted)]">
           The dossier route requires a numeric entity identifier.
@@ -167,21 +167,21 @@ export default function DossierPage() {
   if (isLoading || !viewModel) {
     return (
       <section className="space-y-6">
-        <LoadingSection label="Loading entity dossier…" />
-        <LoadingSection label="Loading funding and graph data…" />
+        <LoadingSection label="Loading entity dossier..." />
+        <LoadingSection label="Loading funding and graph data..." />
       </section>
     );
   }
 
   if (isError) {
     return (
-      <div className="app-card rounded-2xl border-[var(--color-risk-high)] p-6">
+      <div className="app-card rounded-lg border-[var(--color-risk-high)] p-6">
         <p className="section-title">Dossier failed to load</p>
         <p className="mt-2 text-sm text-[var(--color-risk-high)]">
           {errorMessage ?? 'One of the backend dossier endpoints returned an error.'}
         </p>
         <Link
-          className="btn mt-4 inline-flex rounded-xl border border-transparent bg-[var(--color-accent)] px-4 py-2.5 text-sm font-medium text-white hover:opacity-90"
+          className="btn mt-4 inline-flex rounded-md border border-transparent bg-[var(--color-accent)] px-4 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-accent-hover)]"
           to="/"
         >
           Return to search
@@ -195,7 +195,7 @@ export default function DossierPage() {
       <div className="flex items-center gap-3">
         <Link
           to="/"
-          className="rounded-full border border-[var(--color-border)] bg-white/80 px-3 py-1.5 text-sm text-[var(--color-muted)] transition hover:bg-white"
+          className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 text-sm text-[var(--color-muted)] transition hover:bg-[var(--color-surface-subtle)]"
         >
           Back to search
         </Link>
@@ -255,3 +255,4 @@ export default function DossierPage() {
     </section>
   );
 }
+
