@@ -6,6 +6,8 @@ import type {
   AmendmentCreepResponse,
   ChallengeComparisonReport,
   ChallengeReviewResponse,
+  ContractIntelligenceFilters,
+  ContractIntelligenceResponse,
   EntityGovernanceResponseApi,
   EntityResponseApi,
   FundingByYearResponseApi,
@@ -72,6 +74,7 @@ export const queryKeys = {
   amendmentCreep: (filters: AmendmentCreepFilters) => ['amendment-creep', filters] as const,
   amendmentCreepDetail: (caseId: string) => ['amendment-creep', 'detail', caseId] as const,
   vendorConcentration: (filters: VendorConcentrationFilters) => ['vendor-concentration', filters] as const,
+  contractIntelligence: (filters: ContractIntelligenceFilters) => ['contract-intelligence', filters] as const,
   challengeReview: () => ['challenge-review'] as const,
   challengeComparison: (challengeId: string) => ['challenge-review', 'compare', challengeId] as const,
 };
@@ -268,6 +271,25 @@ function buildVendorConcentrationQuery(filters: VendorConcentrationFilters): str
 export function fetchVendorConcentration(filters: VendorConcentrationFilters = {}) {
   return getJson<VendorConcentrationResponse>(
     `/api/vendor-concentration${buildVendorConcentrationQuery(filters)}`,
+  );
+}
+
+function buildContractIntelligenceQuery(filters: ContractIntelligenceFilters): string {
+  const params = new URLSearchParams();
+  if (filters.limit != null) params.set('limit', String(filters.limit));
+  if (filters.offset != null) params.set('offset', String(filters.offset));
+  if (filters.department) params.set('department', filters.department);
+  if (filters.category) params.set('category', filters.category);
+  if (filters.growthDriver) params.set('growth_driver', filters.growthDriver);
+  if (filters.minDelta != null) params.set('min_delta', String(filters.minDelta));
+  if (filters.minHhi != null) params.set('min_hhi', String(filters.minHhi));
+  const qs = params.toString();
+  return qs ? `?${qs}` : '';
+}
+
+export function fetchContractIntelligence(filters: ContractIntelligenceFilters = {}) {
+  return getJson<ContractIntelligenceResponse>(
+    `/api/contract-intelligence${buildContractIntelligenceQuery(filters)}`,
   );
 }
 

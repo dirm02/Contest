@@ -1075,6 +1075,87 @@ export interface VendorConcentrationResponse {
   results: VendorConcentrationRow[];
 }
 
+export interface ContractIntelligenceFilters {
+  limit?: number;
+  offset?: number;
+  department?: string | null;
+  category?: string | null;
+  growthDriver?: string | null;
+  minDelta?: number;
+  minHhi?: number;
+}
+
+export interface ContractIntelligenceRow {
+  source_grade: string;
+  source: string;
+  department: string;
+  category_label: string;
+  spend_decomposition_metric: string;
+  price_index_status: string;
+  start_year: number;
+  end_year: number;
+  start_total_value: number;
+  end_total_value: number;
+  delta_total_value: number;
+  start_contract_count: number;
+  end_contract_count: number;
+  delta_contract_count: number;
+  start_avg_contract_value: number;
+  end_avg_contract_value: number;
+  avg_contract_value_change: number;
+  volume_effect: number;
+  value_effect: number;
+  interaction_effect: number;
+  value_effect_share_of_delta: number;
+  start_amendment_value_total: number;
+  end_amendment_value_total: number;
+  delta_amendment_value: number;
+  amendment_share_of_total_end: number;
+  end_original_value_total: number;
+  amendment_delta_share_of_spend_delta: number;
+  solicitation_procedure_mix_end: string;
+  end_avg_number_of_bids: number;
+  number_of_bids_coverage_end: number;
+  standing_offer_contract_share_end: number;
+  solicitation_procedure_coverage_end: number;
+  hhi: number;
+  cr4: number;
+  top_share: number;
+  effective_competitors: number;
+  share_sum: number;
+  mega_contract_share_end: number;
+  growth_driver_label: string;
+  top_vendors_with_shares: string;
+  caveats: string[];
+  min_year_observed: number;
+  max_year_observed: number;
+  years_present: number;
+  end_vendor_count: number;
+}
+
+export interface ContractIntelligenceResponse {
+  filters: {
+    limit: number;
+    offset: number;
+    department: string | null;
+    category: string | null;
+    growth_driver: string | null;
+    min_delta: number;
+    min_hhi: number;
+  };
+  total: number;
+  summary: {
+    rows_analyzed: number;
+    total_growth: number;
+    highest_hhi: number;
+    amendment_heavy_cases: number;
+    growth_drivers: string[];
+  };
+  sources: Array<{ label: string; url: string }>;
+  notes: string[];
+  results: ContractIntelligenceRow[];
+}
+
 export interface ChallengeReviewItem {
   id: string;
   title: string;

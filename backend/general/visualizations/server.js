@@ -4656,6 +4656,187 @@ app.get('/api/vendor-concentration', async (req, res) => {
   }
 });
 
+const CONTRACT_INTELLIGENCE_SQL = `
+SELECT
+  source_grade,
+  source,
+  department,
+  category_label,
+  spend_decomposition_metric,
+  price_index_status,
+  start_year,
+  end_year,
+  start_total_value,
+  end_total_value,
+  delta_total_value,
+  start_contract_count,
+  end_contract_count,
+  delta_contract_count,
+  start_avg_contract_value,
+  end_avg_contract_value,
+  avg_contract_value_change,
+  volume_effect,
+  value_effect,
+  interaction_effect,
+  value_effect_share_of_delta,
+  start_amendment_value_total,
+  end_amendment_value_total,
+  delta_amendment_value,
+  amendment_share_of_total_end,
+  end_original_value_total,
+  amendment_delta_share_of_spend_delta,
+  solicitation_procedure_mix_end,
+  end_avg_number_of_bids,
+  number_of_bids_coverage_end,
+  standing_offer_contract_share_end,
+  solicitation_procedure_coverage_end,
+  hhi,
+  cr4,
+  top_share,
+  effective_competitors,
+  share_sum,
+  mega_contract_share_end,
+  growth_driver_label,
+  top_vendors_with_shares,
+  caveats,
+  min_year_observed,
+  max_year_observed,
+  years_present,
+  end_vendor_count
+FROM ${BIGQUERY_DATASET}.c9_procurement_grade_v1
+ORDER BY delta_total_value DESC, end_total_value DESC
+`;
+
+app.get('/api/contract-intelligence', async (req, res) => {
+  try {
+    const limit = parseIntegerQuery(req.query.limit, 50, 1, 200);
+    const offset = parseIntegerQuery(req.query.offset, 0, 0, 100000);
+    const department = String(req.query.department || '').trim().toLowerCase();
+    const category = String(req.query.category || '').trim().toLowerCase();
+    const growthDriver = String(req.query.growth_driver || '').trim().toLowerCase();
+    const minDelta = parseNumberQuery(req.query.min_delta, 0, Number.MIN_SAFE_INTEGER, Number.MAX_SAFE_INTEGER);
+    const minHhi = parseNumberQuery(req.query.min_hhi, 0, 0, 1);
+
+    const rowsCacheKey = 'contract-intelligence:bigquery:procurement-grade-v1';
+    let allRows = getCachedJson(rowsCacheKey);
+    if (!allRows) {
+      allRows = await runBigQuerySafe(CONTRACT_INTELLIGENCE_SQL);
+      setCachedJson(rowsCacheKey, allRows, 30 * 60 * 1000);
+    }
+
+    const normalizedRows = allRows.map((row) => ({
+      source_grade: row.source_grade || 'procurement_grade',
+      source: row.source || 'federal_contracts_10k',
+      department: row.department || '',
+      category_label: row.category_label || '',
+      spend_decomposition_metric: row.spend_decomposition_metric || 'average_contract_value',
+      price_index_status: row.price_index_status || 'nominal_cad_not_cpi_adjusted',
+      start_year: toNumber(row.start_year),
+      end_year: toNumber(row.end_year),
+      start_total_value: toNumber(row.start_total_value),
+      end_total_value: toNumber(row.end_total_value),
+      delta_total_value: toNumber(row.delta_total_value),
+      start_contract_count: toNumber(row.start_contract_count),
+      end_contract_count: toNumber(row.end_contract_count),
+      delta_contract_count: toNumber(row.delta_contract_count),
+      start_avg_contract_value: toNumber(row.start_avg_contract_value),
+      end_avg_contract_value: toNumber(row.end_avg_contract_value),
+      avg_contract_value_change: toNumber(row.avg_contract_value_change),
+      volume_effect: toNumber(row.volume_effect),
+      value_effect: toNumber(row.value_effect),
+      interaction_effect: toNumber(row.interaction_effect),
+      value_effect_share_of_delta: toNumber(row.value_effect_share_of_delta),
+      start_amendment_value_total: toNumber(row.start_amendment_value_total),
+      end_amendment_value_total: toNumber(row.end_amendment_value_total),
+      delta_amendment_value: toNumber(row.delta_amendment_value),
+      amendment_share_of_total_end: toNumber(row.amendment_share_of_total_end),
+      end_original_value_total: toNumber(row.end_original_value_total),
+      amendment_delta_share_of_spend_delta: toNumber(row.amendment_delta_share_of_spend_delta),
+      solicitation_procedure_mix_end: row.solicitation_procedure_mix_end || '',
+      end_avg_number_of_bids: toNumber(row.end_avg_number_of_bids),
+      number_of_bids_coverage_end: toNumber(row.number_of_bids_coverage_end),
+      standing_offer_contract_share_end: toNumber(row.standing_offer_contract_share_end),
+      solicitation_procedure_coverage_end: toNumber(row.solicitation_procedure_coverage_end),
+      hhi: toNumber(row.hhi),
+      cr4: toNumber(row.cr4),
+      top_share: toNumber(row.top_share),
+      effective_competitors: toNumber(row.effective_competitors),
+      share_sum: toNumber(row.share_sum),
+      mega_contract_share_end: toNumber(row.mega_contract_share_end),
+      growth_driver_label: row.growth_driver_label || '',
+      top_vendors_with_shares: row.top_vendors_with_shares || '',
+      caveats: row.caveats
+        ? String(row.caveats).split(';').map((note) => note.trim()).filter(Boolean)
+        : [],
+      min_year_observed: toNumber(row.min_year_observed),
+      max_year_observed: toNumber(row.max_year_observed),
+      years_present: toNumber(row.years_present),
+      end_vendor_count: toNumber(row.end_vendor_count),
+    }));
+
+    const filteredRows = normalizedRows.filter((row) => {
+      if (department && !row.department.toLowerCase().includes(department)) return false;
+      if (category && !row.category_label.toLowerCase().includes(category)) return false;
+      if (growthDriver && row.growth_driver_label.toLowerCase() !== growthDriver) return false;
+      if (row.delta_total_value < minDelta) return false;
+      if (row.hhi < minHhi) return false;
+      return true;
+    });
+
+    const pageRows = filteredRows.slice(offset, offset + limit);
+    const totalGrowth = filteredRows.reduce((sum, row) => sum + Math.max(0, row.delta_total_value), 0);
+    const amendmentHeavyCases = filteredRows.filter((row) => row.growth_driver_label === 'amendment-driven').length;
+    const hhiValues = filteredRows.map((row) => row.hhi);
+    const uniqueDrivers = [...new Set(normalizedRows.map((row) => row.growth_driver_label).filter(Boolean))].sort();
+
+    res.json({
+      filters: {
+        limit,
+        offset,
+        department: department || null,
+        category: category || null,
+        growth_driver: growthDriver || null,
+        min_delta: minDelta,
+        min_hhi: minHhi,
+      },
+      total: filteredRows.length,
+      summary: {
+        rows_analyzed: filteredRows.length,
+        total_growth: totalGrowth,
+        highest_hhi: hhiValues.length ? Math.max(...hhiValues) : 0,
+        amendment_heavy_cases: amendmentHeavyCases,
+        growth_drivers: uniqueDrivers,
+      },
+      sources: [
+        {
+          label: 'Contracts over $10K',
+          url: 'https://open.canada.ca/data/en/dataset/d8f85d91-7dec-4fd1-8055-483b77225d8b',
+        },
+        {
+          label: 'CanadaBuys Award Notices',
+          url: 'https://open.canada.ca/data/en/dataset/a1acb126-9ce8-40a9-b889-5da2b1dd20cb',
+        },
+        {
+          label: 'CanadaBuys Contract History',
+          url: 'https://open.canada.ca/data/en/dataset/4fe645a1-ffcd-40c1-9385-2c771be956a4',
+        },
+        {
+          label: 'Standing Offers and Supply Arrangements',
+          url: 'https://open.canada.ca/data/en/dataset/f5c8a5a0-354d-455a-99ab-8276aa38032e',
+        },
+      ],
+      notes: [
+        'Average contract value, not unit price.',
+        'Nominal CAD, not CPI-adjusted.',
+        'Category labels follow source disclosure fields.',
+      ],
+      results: pageRows,
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Adverse media scan via backend fetches only. Keeps API keys and RSS/CORS handling out of the browser.
 app.get('/api/adverse-media', async (req, res) => {
   const startedAt = Date.now();

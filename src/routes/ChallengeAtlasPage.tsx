@@ -88,9 +88,10 @@ const CHALLENGES: ChallengeAtlasItem[] = [
     id: 9,
     title: 'Contract Intelligence',
     theme: 'Procurement',
-    question: 'What is Canada buying, and are unit costs rising because of price, volume, or concentration?',
-    evidence: 'Contract categories, vendor concentration, quantity proxies, inflation-aware trend checks.',
-    status: 'planned',
+    question: 'What is Canada buying, and is procurement spending rising because of contract count, average contract value, amendments, or concentration?',
+    evidence: 'Contracts over $10K, CanadaBuys award/history context, SOSA context, Bennett decomposition, HHI, CR4, top vendor share.',
+    route: '/contract-intelligence',
+    status: 'live',
   },
   {
     id: 10,

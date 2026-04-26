@@ -17,6 +17,7 @@ import ZombieDetailPage from './routes/ZombieDetailPage';
 import GhostCapacityLandingPage from './routes/GhostCapacityLandingPage';
 import GhostCapacityDetailPage from './routes/GhostCapacityDetailPage';
 import VendorConcentrationPage from './routes/VendorConcentrationPage';
+import ContractIntelligencePage from './routes/ContractIntelligencePage';
 
 const NAV_ITEMS: Array<{ to: string; label: string; end?: boolean }> = [
   { to: '/', label: 'Search', end: true },
@@ -95,6 +96,7 @@ export default function App() {
             element={<GhostCapacityDetailPage />}
           />
           <Route path="/vendor-concentration" element={<VendorConcentrationPage />} />
+          <Route path="/contract-intelligence" element={<ContractIntelligencePage />} />
           <Route path="/people" element={<PeopleSearchPage />} />
           <Route path="/people/:personNorm" element={<PersonDetailPage />} />
         </Routes>
