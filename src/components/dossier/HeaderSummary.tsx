@@ -36,7 +36,7 @@ function RiskMeter({ signals }: { signals: SignalCard[] }) {
           : 'text-green-700';
 
   return (
-    <div className="flex min-w-[190px] flex-col items-center justify-center rounded-2xl border border-[var(--color-border)] bg-stone-50/70 p-4">
+    <div className="flex min-w-[190px] flex-col items-center justify-center rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-subtle)] p-4">
       <div className="relative h-24 w-48 overflow-hidden">
         <svg viewBox="0 0 100 50" className="h-full w-full" aria-hidden="true">
           <defs>
@@ -67,12 +67,12 @@ function RiskMeter({ signals }: { signals: SignalCard[] }) {
           />
         </svg>
         <div
-          className="absolute bottom-0 left-1/2 h-20 w-1 origin-bottom bg-stone-800 transition-transform duration-700"
+          className="absolute bottom-0 left-1/2 h-20 w-1 origin-bottom bg-[var(--color-ink)] transition-transform duration-700"
           style={{ transform: `translateX(-50%) rotate(${rotation}deg)` }}
         >
-          <div className="absolute -top-1 left-1/2 h-3 w-3 -translate-x-1/2 rounded-full bg-stone-800" />
+          <div className="absolute -top-1 left-1/2 h-3 w-3 -translate-x-1/2 rounded-full bg-[var(--color-ink)]" />
         </div>
-        <div className="absolute bottom-0 left-1/2 h-4 w-4 -translate-x-1/2 translate-y-1/2 rounded-full border-2 border-white bg-stone-800 shadow-sm" />
+        <div className="absolute bottom-0 left-1/2 h-4 w-4 -translate-x-1/2 translate-y-1/2 rounded-full border-2 border-white bg-[var(--color-ink)] shadow-sm" />
       </div>
       <div className="mt-2 text-center">
         <p className={`text-xs font-semibold uppercase tracking-[0.16em] ${labelClass}`}>{label}</p>
@@ -106,13 +106,13 @@ export default function HeaderSummary({
       : amendmentCreepCount;
 
   return (
-    <section className="app-card rounded-2xl p-6 sm:p-7">
+    <section className="app-card rounded-lg p-6 sm:p-7">
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
         <div className="flex flex-1 flex-col gap-6 sm:flex-row sm:items-start sm:justify-between lg:justify-start lg:gap-10">
           <div className="space-y-3">
             <p className="section-title">Entity dossier</p>
             <div>
-              <h1 className="text-2xl font-semibold tracking-tight text-[var(--color-ink)] sm:text-4xl">
+              <h1 className="text-2xl font-semibold text-[var(--color-ink)] sm:text-4xl">
                 {summary.canonicalName}
               </h1>
               <p className="mt-2 text-sm text-[var(--color-muted)]">
@@ -142,19 +142,19 @@ export default function HeaderSummary({
         </div>
 
         <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:w-[480px]">
-          <div className="rounded-2xl border border-[var(--color-border)] bg-white/80 p-4">
+          <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-subtle)] p-4">
             <dt className="section-title">Aliases</dt>
             <dd className="metric-value mt-2 text-2xl">{summary.aliasCount}</dd>
           </div>
-          <div className="rounded-2xl border border-[var(--color-border)] bg-white/80 p-4">
+          <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-subtle)] p-4">
             <dt className="section-title">Related</dt>
             <dd className="metric-value mt-2 text-2xl">{summary.relatedCount}</dd>
           </div>
-          <div className="rounded-2xl border border-[var(--color-border)] bg-white/80 p-4">
+          <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-subtle)] p-4">
             <dt className="section-title">Source links</dt>
             <dd className="metric-value mt-2 text-2xl">{summary.linkCount}</dd>
           </div>
-          <div className="rounded-2xl border border-[var(--color-border)] bg-white/80 p-4">
+          <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-subtle)] p-4">
             <dt className="section-title">Adverse news</dt>
             <dd
               className={`metric-value mt-2 text-2xl ${
@@ -165,7 +165,7 @@ export default function HeaderSummary({
               {adverseMediaValue}
             </dd>
           </div>
-          <div className="rounded-2xl border border-[var(--color-border)] bg-white/80 p-4">
+          <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-subtle)] p-4">
             <dt className="section-title">Amendment creep</dt>
             <dd
               className={`metric-value mt-2 text-2xl ${

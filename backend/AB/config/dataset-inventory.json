@@ -1,0 +1,53 @@
+{
+  "description": "Alberta Open Data dataset inventory - pre-downloaded local files (no API)",
+  "datasets": {
+    "grants": {
+      "name": "Alberta Grants",
+      "source": "data/grants/test.opendata.json",
+      "format": "json-stream",
+      "table": "ab_grants"
+    },
+    "grants_fiscal_years": {
+      "name": "Alberta Grants - Fiscal Year Aggregations",
+      "source": "data/grants/test.opendata-fiscalyears.json",
+      "format": "json",
+      "table": "ab_grants_fiscal_years"
+    },
+    "grants_ministries": {
+      "name": "Alberta Grants - Ministry Aggregations",
+      "source": "data/grants/test.opendata-ministries.json",
+      "format": "json",
+      "table": "ab_grants_ministries"
+    },
+    "grants_programs": {
+      "name": "Alberta Grants - Program Aggregations",
+      "source": "data/grants/test.opendata-programs.json",
+      "format": "json",
+      "table": "ab_grants_programs"
+    },
+    "grants_recipients": {
+      "name": "Alberta Grants - Recipient Aggregations",
+      "source": "data/grants/test.opendata-recipients.json",
+      "format": "json",
+      "table": "ab_grants_recipients"
+    },
+    "contracts": {
+      "name": "Alberta Contracts (Blue Book)",
+      "source": "data/contracts/blue-book-master.xlsx",
+      "format": "xlsx",
+      "table": "ab_contracts"
+    },
+    "sole_source": {
+      "name": "Alberta Sole-Source Contracts",
+      "source": "data/sole-source/solesource.xlsx",
+      "format": "xlsx",
+      "table": "ab_sole_source"
+    },
+    "non_profit": {
+      "name": "Alberta Non-Profit Registry",
+      "source": "data/non-profit/non_profit_name_list_for_open_data_portal.xlsx",
+      "format": "xlsx",
+      "table": "ab_non_profit"
+    }
+  }
+}

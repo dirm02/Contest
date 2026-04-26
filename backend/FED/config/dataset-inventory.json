@@ -1,0 +1,23 @@
+{
+  "_metadata": {
+    "description": "Federal Grants and Contributions Open Data resource inventory",
+    "source": "Government of Canada Open Data Portal (open.canada.ca)",
+    "maintainer": "AI For Accountability Hackathon Team",
+    "lastUpdated": "2026-04-09",
+    "notes": [
+      "Unlike CRA data which has separate UUIDs per dataset per year, Federal Grants has a single resource containing all fiscal years",
+      "The dataset contains ~1.2M+ records across all fiscal years and all departments",
+      "Records are identified by _id (internal row ID) and ref_number (department reference)",
+      "The dataset also has a 'grants-nil' resource for nothing-to-report quarters"
+    ]
+  },
+  "datasets": {
+    "grants": {
+      "id": 1,
+      "name": "Grants and Contributions",
+      "table": "grants_contributions",
+      "description": "Federal grants and contributions: recipient, program, financial, and organizational details",
+      "uuid": "1d15a62f-5656-49ad-8c88-f40ce689d831"
+    }
+  }
+}

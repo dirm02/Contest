@@ -1,0 +1,7 @@
+splink>=4.0
+duckdb
+cleanco
+psycopg2-binary
+pyarrow
+python-dotenv
+pandas

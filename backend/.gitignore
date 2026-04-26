@@ -1,0 +1,53 @@
+# Dependencies
+node_modules/
+
+# Environment files (personal overrides)
+.env
+.env.public
+!.env.example
+
+# Data and reports (generated/downloaded)
+data/reports/
+data/cache/
+data/downloads/
+ab/data/grants/*.*
+fed/tooling
+
+/executive/
+# Local database recreation kit — the JSONL row data under .local-db/data/
+# is multi-gigabyte and ships out-of-band (GitHub release / file server).
+# The small artifacts (DDL, manifest, scripts, README) ARE committed so the
+# repo alone documents the full schema.
+.local-db/data/
+.local-db/node_modules/
+.local-db/.env
+
+# Splink pipeline intermediate artifacts — regenerated each run by
+# splink/export_source_data.py (~60 MB of parquet files + DuckDB scratch).
+# The Splink Python pipeline itself is committed; only its runtime output is not.
+general/splink/data/
+
+# Dashboard + dossier ephemeral state
+general/scripts/tools/.phase-pids/
+
+# Ad-hoc entity report exports (large, per-entity snapshots, not pipeline output)
+CRA/*.json
+!CRA/package.json
+!CRA/package-lock.json
+
+# One-off backup zips (should never be committed)
+*.zip
+
+# Archived / superseded scripts kept locally for reference but not in git.
+# Applies to any folder named _archive anywhere in the tree (general/_archive,
+# CRA/_archive, etc.) so each module can stash dead code without polluting
+# the commit history.
+_archive/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/

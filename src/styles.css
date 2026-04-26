@@ -3,23 +3,28 @@
 @import "@xyflow/react/dist/style.css";
 
 :root {
-  --color-bg: #f5f0e8;
-  --color-surface: #fcfaf6;
+  --color-bg: #f4f4f4;
+  --color-surface: #ffffff;
   --color-surface-strong: #ffffff;
-  --color-ink: #1f1a17;
-  --color-muted: #6b645c;
-  --color-border: #d8d0c7;
-  --color-accent: #2551b0;
-  --color-accent-soft: #e7eefc;
+  --color-surface-subtle: #f8f8f8;
+  --color-ink: #161616;
+  --color-muted: #525252;
+  --color-border: #e0e0e0;
+  --color-accent: #0f62fe;
+  --color-accent-hover: #0043ce;
+  --color-accent-soft: #edf5ff;
   --color-relationship: #0f766e;
   --color-relationship-soft: #dff6f2;
-  --color-risk-high: #b42318;
-  --color-risk-high-soft: #fef3f2;
-  --color-risk-medium: #b54708;
-  --color-risk-medium-soft: #fffaeb;
-  --color-risk-low: #027a48;
-  --color-risk-low-soft: #ecfdf3;
-  --shadow-card: 0 10px 30px rgba(31, 26, 23, 0.06);
+  --color-risk-high: #da1e28;
+  --color-risk-high-soft: #fff1f1;
+  --color-risk-medium: #b28600;
+  --color-risk-medium-soft: #fcf4d6;
+  --color-risk-low: #198038;
+  --color-risk-low-soft: #defbe6;
+  --color-success: #198038;
+  --color-warning: #b28600;
+  --color-danger: #da1e28;
+  --shadow-card: 0 1px 2px rgba(22, 22, 22, 0.05);
 }
 
 html,
@@ -30,9 +35,7 @@ body,
 
 body {
   margin: 0;
-  background:
-    radial-gradient(circle at top left, rgba(37, 81, 176, 0.05), transparent 22%),
-    var(--color-bg);
+  background: var(--color-bg);
   color: var(--color-ink);
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
@@ -50,7 +53,7 @@ body {
 
 .app-card {
   border: 1px solid var(--color-border);
-  background: color-mix(in srgb, var(--color-surface-strong) 92%, white);
+  background: var(--color-surface);
   box-shadow: var(--shadow-card);
 }
 
@@ -71,7 +74,7 @@ body {
 
 .dataset-badge {
   border: 1px solid var(--color-border);
-  background: rgba(255, 255, 255, 0.7);
+  background: var(--color-surface-subtle);
   color: var(--color-ink);
 }
 
@@ -100,7 +103,7 @@ body {
 }
 
 .react-flow__background {
-  background: color-mix(in srgb, var(--color-surface) 88%, white);
+  background: var(--color-surface);
 }
 
 .react-flow__controls {

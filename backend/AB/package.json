@@ -1,0 +1,52 @@
+{
+  "name": "ai-for-accountability-ab-data",
+  "version": "1.0.0",
+  "description": "AI For Accountability Hackathon - Alberta Open Data Pipeline (Grants, Contracts, Sole-Source, Non-Profit)",
+  "main": "scripts/01-migrate.js",
+  "scripts": {
+    "migrate": "node scripts/01-migrate.js",
+    "seed": "node scripts/02-seed-reference.js",
+    "import:grants": "node scripts/03-import-grants.js",
+    "import:grants-csv": "node scripts/08-import-grants-csv.js",
+    "import:contracts": "node scripts/04-import-contracts.js",
+    "import:sole-source": "node scripts/05-import-sole-source.js",
+    "import:non-profit": "node scripts/06-import-non-profit.js",
+    "import:all": "npm run import:grants && npm run import:contracts && npm run import:sole-source && npm run import:non-profit",
+    "verify": "node scripts/07-verify.js",
+    "setup": "npm run migrate && npm run seed && npm run import:all && npm run verify",
+    "drop": "node scripts/drop-tables.js",
+    "reset": "npm run drop && npm run setup",
+    "analyze:quality": "node scripts/advanced/01-data-quality-audit.js",
+    "analyze:summary": "node scripts/advanced/02-summary-analysis.js",
+    "analyze:insights": "node scripts/advanced/03-deep-insights.js",
+    "analyze:sole-source": "node scripts/advanced/04-sole-source-deep-dive.js",
+    "analyze:scenarios": "node scripts/advanced/05-grants-contracts-scenarios.js",
+    "analyze:non-profit": "node scripts/advanced/06-non-profit-trends.js",
+    "analyze:all": "npm run analyze:quality && npm run analyze:summary && npm run analyze:insights && npm run analyze:sole-source && npm run analyze:scenarios && npm run analyze:non-profit",
+    "test": "node --test tests/**/*.test.js",
+    "test:unit": "node --test tests/unit/*.test.js",
+    "test:integration": "node --test tests/integration/*.test.js"
+  },
+  "keywords": [
+    "alberta",
+    "grants",
+    "contracts",
+    "sole-source",
+    "non-profit",
+    "open-data",
+    "hackathon",
+    "accountability"
+  ],
+  "author": "AI For Accountability Hackathon Team",
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "pg": "^8.20.0",
+    "stream-chain": "^3.6.1",
+    "stream-json": "^2.1.0",
+    "xlsx": "^0.18.5"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

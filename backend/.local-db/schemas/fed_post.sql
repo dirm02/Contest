@@ -1,0 +1,4 @@
+-- Schema: fed (post-data)
+-- Exported: 2026-04-21T19:20:27.212Z
+-- Apply AFTER loading data/fed/*.csv.
+-- Adds UNIQUE/CHECK/FOREIGN KEY constraints and syncs sequences.

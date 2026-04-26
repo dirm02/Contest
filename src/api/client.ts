@@ -4,6 +4,7 @@ import type {
   AmendmentCreepDetailResponse,
   AmendmentCreepFilters,
   AmendmentCreepResponse,
+  ChallengeComparisonReport,
   ChallengeReviewResponse,
   EntityGovernanceResponseApi,
   EntityResponseApi,
@@ -21,6 +22,8 @@ import type {
   PersonSearchResponseApi,
   RelatedResponseApi,
   SearchResponseApi,
+  VendorConcentrationFilters,
+  VendorConcentrationResponse,
   ZombieDetailResponseApi,
   ZombieFilters,
   ZombiesResponseApi,
@@ -68,7 +71,9 @@ export const queryKeys = {
   adverseMedia: (query: string) => ['adverse-media', query] as const,
   amendmentCreep: (filters: AmendmentCreepFilters) => ['amendment-creep', filters] as const,
   amendmentCreepDetail: (caseId: string) => ['amendment-creep', 'detail', caseId] as const,
+  vendorConcentration: (filters: VendorConcentrationFilters) => ['vendor-concentration', filters] as const,
   challengeReview: () => ['challenge-review'] as const,
+  challengeComparison: (challengeId: string) => ['challenge-review', 'compare', challengeId] as const,
 };
 
 export function searchEntities(query: string) {
@@ -245,6 +250,33 @@ export function fetchAmendmentCreepDetail(caseId: string) {
   );
 }
 
+function buildVendorConcentrationQuery(filters: VendorConcentrationFilters): string {
+  const params = new URLSearchParams();
+  if (filters.limit != null) params.set('limit', String(filters.limit));
+  if (filters.offset != null) params.set('offset', String(filters.offset));
+  if (filters.source) params.set('source', filters.source);
+  if (filters.minHhi != null) params.set('min_hhi', String(filters.minHhi));
+  if (filters.minTotalDollars != null) {
+    params.set('min_total_dollars', String(filters.minTotalDollars));
+  }
+  if (filters.department) params.set('department', filters.department);
+  if (filters.category) params.set('category', filters.category);
+  const qs = params.toString();
+  return qs ? `?${qs}` : '';
+}
+
+export function fetchVendorConcentration(filters: VendorConcentrationFilters = {}) {
+  return getJson<VendorConcentrationResponse>(
+    `/api/vendor-concentration${buildVendorConcentrationQuery(filters)}`,
+  );
+}
+
 export function fetchChallengeReview() {
   return getJson<ChallengeReviewResponse>('/api/challenge-review');
+}
+
+export function fetchChallengeComparison(challengeId: string) {
+  return getJson<ChallengeComparisonReport>(
+    `/api/challenge-review/compare/${encodeURIComponent(challengeId)}`,
+  );
 }

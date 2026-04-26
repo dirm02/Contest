@@ -1,0 +1,8 @@
+node_modules/
+.env
+data/grants/*.json
+data/grants/*.pdf
+data/contracts/*.xlsx
+data/sole-source/*.xlsx
+data/non-profit/*.xlsx
+data/reports/

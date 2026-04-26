@@ -29,7 +29,7 @@ export default function SignalCards({ cards }: SignalCardsProps) {
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {cards.map((card) => (
-          <article key={card.id} className="app-card rounded-2xl p-5">
+          <article key={card.id} className="app-card rounded-lg p-5">
             <div className="flex items-start justify-between gap-3">
               <h3 className="text-base font-semibold text-[var(--color-ink)]">{card.title}</h3>
               <span
@@ -41,7 +41,7 @@ export default function SignalCards({ cards }: SignalCardsProps) {
             <p className="mt-3 text-sm leading-6 text-[var(--color-muted)]">{card.reason}</p>
             <ul className="mt-4 space-y-2 text-sm text-[var(--color-ink)]">
               {card.metrics.map((metric) => (
-                <li key={metric} className="rounded-xl bg-white/70 px-3 py-2">
+                <li key={metric} className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-subtle)] px-3 py-2">
                   {metric}
                 </li>
               ))}

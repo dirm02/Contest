@@ -21,29 +21,23 @@ interface RelationshipGraphProps {
  */
 function getGridPosition(index: number, total: number) {
   if (total <= 0) return { x: 0, y: 0 };
-  
+
   const nodesPerRow = 3;
   const spacingX = 300;
   const spacingY = 160;
-  
-  // Decide if this node goes in the top group or bottom group
-  const isTop = index < total / 2;
-  const groupIndex = isTop ? index : index - Math.ceil(total / 2);
-  const groupTotal = isTop ? Math.ceil(total / 2) : total - Math.ceil(total / 2);
-  
+  const topCount = Math.ceil(total / 2);
+  const isTop = index < topCount;
+  const groupIndex = isTop ? index : index - topCount;
+  const groupTotal = isTop ? topCount : total - topCount;
   const row = Math.floor(groupIndex / nodesPerRow);
   const col = groupIndex % nodesPerRow;
-  
-  // Center the group horizontally
   const currentRowCount = Math.min(nodesPerRow, groupTotal - row * nodesPerRow);
   const rowWidth = (currentRowCount - 1) * spacingX;
-  const startX = -rowWidth / 2;
-  
-  const x = startX + col * spacingX;
-  // Push top group up, bottom group down
-  const y = isTop ? -250 - row * spacingY : 250 + row * spacingY;
-  
-  return { x, y };
+
+  return {
+    x: -rowWidth / 2 + col * spacingX,
+    y: isTop ? -250 - row * spacingY : 250 + row * spacingY,
+  };
 }
 
 function nodeColors(relation: GraphNodeData['relation']) {
@@ -67,49 +61,44 @@ export default function RelationshipGraph({
 }: RelationshipGraphProps) {
   const flowNodes = useMemo<Node[]>(
     () => {
-      const centerNode = nodes.find(n => n.relation === 'center');
-      const otherNodes = nodes.filter(n => n.relation !== 'center');
-      
-      const result: Node[] = [];
-      
-      // 1. Position Center Node
+      const centerNode = nodes.find((node) => node.relation === 'center');
+      const relatedNodes = nodes.filter((node) => node.relation !== 'center');
+      const positionedNodes: Node[] = [];
+
       if (centerNode) {
-        result.push({
+        positionedNodes.push({
           id: centerNode.id,
-          position: { x: -120, y: -45 }, // Centered around 0,0 for its 240x90 size
+          position: { x: -120, y: -45 },
           data: { label: centerNode.label, node: centerNode },
         });
       }
-      
-      // 2. Position Other Nodes in a predictable grid
-      otherNodes.forEach((node, index) => {
-        const pos = getGridPosition(index, otherNodes.length);
-        result.push({
+
+      relatedNodes.forEach((node, index) => {
+        const position = getGridPosition(index, relatedNodes.length);
+
+        positionedNodes.push({
           id: node.id,
-          position: { x: pos.x - 100, y: pos.y - 45 }, // Centered around pos for its 200x90 size
-          data: { label: node.label, node: node },
+          position: { x: position.x - 100, y: position.y - 45 },
+          data: { label: node.label, node },
         });
       });
-      
-      // 3. Apply Styling
-      return result.map(flowNode => {
-        const node = (flowNode.data as any).node as GraphNodeData;
+
+      return positionedNodes.map((flowNode) => {
+        const node = (flowNode.data as { node: GraphNodeData }).node;
         const colors = nodeColors(node.relation);
         const isCenter = node.relation === 'center';
-        const width = isCenter ? 240 : 200;
-        const height = 90;
 
         return {
           ...flowNode,
           data: {
             ...flowNode.data,
             label: (
-              <div className="flex h-full flex-col justify-center px-2 text-center pointer-events-none">
+              <div className="pointer-events-none flex h-full flex-col justify-center px-2 text-center">
                 <div className="line-clamp-2 text-[12px] font-bold leading-tight">
                   {node.label}
                 </div>
                 <div className="mt-1.5 truncate text-[9px] font-medium uppercase tracking-wider opacity-60">
-                  {node.datasets.join(' • ') || 'No Source'}
+                  {node.datasets.join(' • ') || 'No source'}
                 </div>
               </div>
             ),
@@ -119,8 +108,8 @@ export default function RelationshipGraph({
             color: colors.color,
             border: `1.5px solid ${colors.border}`,
             borderRadius: 12,
-            width,
-            height,
+            width: isCenter ? 240 : 200,
+            height: 90,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -164,22 +153,22 @@ export default function RelationshipGraph({
 
   if (nodes.length <= 1) {
     return (
-      <div className="flex h-[420px] items-center justify-center rounded-2xl border border-dashed border-[var(--color-border)] bg-white/70 text-sm text-[var(--color-muted)]">
+      <div className="flex h-[420px] items-center justify-center rounded-lg border border-dashed border-[var(--color-border)] bg-[var(--color-surface-subtle)] text-sm text-[var(--color-muted)]">
         No direct related entities were surfaced for this entity.
       </div>
     );
   }
 
   return (
-    <div className="h-[700px] rounded-2xl border border-[var(--color-border)] bg-white/80">
+    <div className="h-[700px] rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-subtle)]">
       <ReactFlow
-        key={`graph-${nodes.map(n => n.id).join('-')}`}
+        key={`graph-${nodes.map((node) => node.id).join('-')}`}
         nodes={flowNodes}
         edges={flowEdges}
         fitView
         fitViewOptions={{ padding: 0.2 }}
         onNodeClick={(_, flowNode) => {
-          const nodeData = (flowNode.data as any).node as GraphNodeData;
+          const nodeData = (flowNode.data as { node?: GraphNodeData }).node;
           if (nodeData) onSelectNode(nodeData);
         }}
       >

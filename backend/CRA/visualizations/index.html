@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CRA Circular Gifting Visualization</title>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <script src="https://unpkg.com/d3@7/dist/d3.min.js"></script>
+  <style>
+    :root { --bg: #0f1419; --card: #1a2332; --border: #2d3d50; --text: #e1e8f0; --muted: #8899aa; --accent: #4fc3f7; --danger: #ef5350; --success: #66bb6a; --warning: #ffa726; --link: #29b6f6; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'SF Mono', 'Fira Code', monospace; background: var(--bg); color: var(--text); font-size: 13px; }
+    .app { display: grid; grid-template-columns: 340px 1fr 320px; grid-template-rows: auto 1fr; height: 100vh; }
+    header { grid-column: 1 / -1; background: var(--card); border-bottom: 1px solid var(--border); padding: 10px 16px; display: flex; align-items: center; gap: 16px; }
+    header h1 { font-size: 14px; color: var(--accent); font-weight: 600; white-space: nowrap; }
+    header .stats { font-size: 11px; color: var(--muted); display: flex; gap: 12px; }
+    header .stats span { color: var(--text); font-weight: 600; }
+
+    /* Left panel - charity list */
+    .panel-left { background: var(--card); border-right: 1px solid var(--border); overflow-y: auto; }
+    .search { padding: 8px; border-bottom: 1px solid var(--border); }
+    .search input { width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 6px 10px; border-radius: 4px; font-family: inherit; font-size: 12px; }
+    .filters { padding: 6px 8px; border-bottom: 1px solid var(--border); display: flex; gap: 4px; flex-wrap: wrap; }
+    .filters button { background: var(--bg); border: 1px solid var(--border); color: var(--muted); padding: 3px 8px; border-radius: 3px; font-size: 10px; cursor: pointer; font-family: inherit; }
+    .filters button.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+    .charity-list { list-style: none; }
+    .charity-item { padding: 8px 10px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.15s; }
+    .charity-item:hover { background: rgba(79, 195, 247, 0.08); }
+    .charity-item.selected { background: rgba(79, 195, 247, 0.15); border-left: 3px solid var(--accent); }
+    .charity-item .name { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .charity-item .meta { display: flex; gap: 8px; margin-top: 3px; font-size: 10px; color: var(--muted); }
+    .charity-item .score { font-weight: 700; }
+    .charity-item .score.high { color: var(--danger); }
+    .charity-item .score.med { color: var(--warning); }
+    .charity-item .score.low { color: var(--success); }
+
+    /* Center - network viz */
+    .panel-center { position: relative; overflow: hidden; }
+    .panel-center svg { width: 100%; height: 100%; }
+    .timeline { position: absolute; bottom: 0; left: 0; right: 0; background: rgba(26,35,50,0.95); border-top: 1px solid var(--border); padding: 8px 16px; }
+    .timeline label { font-size: 10px; color: var(--muted); }
+    .timeline input[type="range"] { width: 100%; margin-top: 4px; }
+    .timeline .year-label { font-size: 16px; font-weight: 700; color: var(--accent); text-align: center; }
+    .play-btn { background: var(--accent); border: none; color: var(--bg); padding: 4px 12px; border-radius: 3px; cursor: pointer; font-family: inherit; font-weight: 600; font-size: 11px; }
+
+    /* Right panel - details */
+    .panel-right { background: var(--card); border-left: 1px solid var(--border); overflow-y: auto; padding: 12px; }
+    .panel-right h2 { font-size: 13px; color: var(--accent); margin-bottom: 8px; }
+    .panel-right h3 { font-size: 11px; color: var(--muted); margin: 12px 0 6px; text-transform: uppercase; letter-spacing: 1px; }
+    .detail-row { display: flex; justify-content: space-between; padding: 3px 0; font-size: 11px; }
+    .detail-row .label { color: var(--muted); }
+    .detail-row .value { font-weight: 600; text-align: right; }
+    .detail-row .value.danger { color: var(--danger); }
+    .detail-row .value.warning { color: var(--warning); }
+    .detail-row .value.success { color: var(--success); }
+    .loop-badge { display: inline-block; padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: 600; margin: 2px; }
+    .loop-badge.h2 { background: #1a237e; color: #90caf9; }
+    .loop-badge.h3 { background: #1b5e20; color: #a5d6a7; }
+    .loop-badge.h4 { background: #e65100; color: #ffcc80; }
+    .loop-badge.h5 { background: #880e4f; color: #f48fb1; }
+    .loop-badge.h6 { background: #4a148c; color: #ce93d8; }
+    .bar-chart { margin: 6px 0; }
+    .bar-row { display: flex; align-items: center; gap: 6px; margin: 3px 0; font-size: 10px; }
+    .bar-row .bar-label { width: 70px; color: var(--muted); text-align: right; }
+    .bar-row .bar { height: 14px; border-radius: 2px; min-width: 2px; transition: width 0.3s; }
+    .bar-row .bar-val { color: var(--text); min-width: 60px; }
+
+    /* D3 styles */
+    .node circle { stroke: var(--border); stroke-width: 1.5px; }
+    .node text { font-size: 9px; fill: var(--muted); }
+    .node.target circle { stroke: var(--accent); stroke-width: 3px; }
+    .node.inloop circle { stroke: var(--warning); stroke-width: 2px; }
+    .edge { stroke-opacity: 0.4; fill: none; }
+    .edge.out { stroke: var(--accent); }
+    .edge.in { stroke: var(--success); }
+    .edge.circular { stroke: var(--danger); stroke-opacity: 0.7; }
+    .money-particle { fill: var(--warning); opacity: 0.9; }
+    .money-particle.circular { fill: var(--danger); }
+
+    .empty-state { display: flex; align-items: center; justify-content: center; height: 100%; color: var(--muted); font-size: 14px; text-align: center; padding: 40px; }
+
+    /* Loading */
+    .loading { color: var(--muted); padding: 20px; text-align: center; }
+  </style>
+</head>
+<body>
+<div id="app" class="app">
+  <header>
+    <h1>CRA Circular Gifting</h1>
+    <div class="stats" v-if="stats">
+      <div>Loops: <span>{{stats.totalLoops?.toLocaleString()}}</span></div>
+      <div>Charities: <span>{{stats.universeSize?.toLocaleString()}}</span></div>
+      <div>Edges: <span>{{stats.edgeCount?.toLocaleString()}}</span></div>
+      <div v-for="(v,k) in stats.loopCounts">{{k}}: <span>{{v.toLocaleString()}}</span></div>
+    </div>
+  </header>
+
+  <!-- Left: Charity List -->
+  <div class="panel-left">
+    <div class="search">
+      <input v-model="searchText" placeholder="Search charities..." @input="filterList">
+    </div>
+    <div class="filters">
+      <button :class="{active: filter==='all'}" @click="setFilter('all')">All</button>
+      <button :class="{active: filter==='high'}" @click="setFilter('high')">Score 15+</button>
+      <button :class="{active: filter==='C'}" @click="setFilter('C')">Type C</button>
+      <button :class="{active: filter==='lowprog'}" @click="setFilter('lowprog')">Prog &lt;30%</button>
+      <button :class="{active: filter==='highoh'}" @click="setFilter('highoh')">OH &gt;40%</button>
+    </div>
+    <div v-if="!universe.length" class="loading">Loading...</div>
+    <ul class="charity-list">
+      <li v-for="c in filteredUniverse" :key="c.bn"
+          class="charity-item" :class="{selected: selected?.bn === c.bn}"
+          @click="selectCharity(c)">
+        <div class="name">{{c.name || c.bn}}</div>
+        <div class="meta">
+          <span class="score" :class="scoreClass(c.score)">{{c.score}}/30</span>
+          <span>{{c.designation}}/{{c.category}}</span>
+          <span>{{c.totalLoops}} loops</span>
+          <span>OH {{c.overheadPct}}%</span>
+        </div>
+      </li>
+    </ul>
+  </div>
+
+  <!-- Center: Network Visualization -->
+  <div class="panel-center" ref="vizContainer">
+    <div v-if="!selected" class="empty-state">
+      <div>Select a charity from the list to visualize its gift network</div>
+    </div>
+    <svg ref="svg" v-show="selected"></svg>
+    <div class="sim-controls" v-if="selected" style="position:absolute;top:8px;right:8px;background:rgba(26,35,50,0.92);border:1px solid var(--border);border-radius:6px;padding:10px 14px;font-size:10px;z-index:10;width:200px;">
+      <div style="font-weight:600;color:var(--accent);margin-bottom:6px;">Layout Controls</div>
+      <div style="margin:4px 0;">
+        <label style="color:var(--muted);">Edge Length: {{simDistance}}</label>
+        <input type="range" min="40" max="400" v-model.number="simDistance" @input="updateSim" style="width:100%;">
+      </div>
+      <div style="margin:4px 0;">
+        <label style="color:var(--muted);">Repulsion: {{simCharge}}</label>
+        <input type="range" min="-1500" max="-50" v-model.number="simCharge" @input="updateSim" style="width:100%;">
+      </div>
+      <div style="margin:4px 0;">
+        <label style="color:var(--muted);">Link Strength: {{simLinkStrength}}</label>
+        <input type="range" min="1" max="100" v-model.number="simLinkStrength" @input="updateSim" style="width:100%;">
+      </div>
+      <div style="margin:4px 0;">
+        <label style="color:var(--muted);">Collision Padding: {{simCollision}}</label>
+        <input type="range" min="0" max="40" v-model.number="simCollision" @input="updateSim" style="width:100%;">
+      </div>
+      <div style="margin:4px 0;">
+        <label style="color:var(--muted);">Animation Speed: {{animSpeed < 1 ? (animSpeed).toFixed(1) + 'x' : animSpeed.toFixed(1) + 'x'}}</label>
+        <input type="range" min="1" max="50" v-model.number="animSpeedRaw" @input="animSpeed = animSpeedRaw / 10" style="width:100%;">
+      </div>
+      <button class="play-btn" style="font-size:10px;margin-top:4px;width:100%;" @click="resetSimDefaults">Reset Defaults</button>
+    </div>
+    <div class="timeline" v-if="selected">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+        <span style="font-size:10px;color:var(--muted);">Show:</span>
+        <button class="play-btn" :style="{opacity: viewMode==='all' ? 1 : 0.5}" @click="viewMode='all'; renderNetwork()">Full Network</button>
+        <button class="play-btn" :style="{opacity: viewMode==='loops' ? 1 : 0.5}" @click="viewMode='loops'; renderNetwork()">Loop Members Only</button>
+        <span style="font-size:10px;color:var(--muted);margin-left:8px;">Hops:</span>
+        <button v-for="h in [0,2,3,4,5,6]" class="play-btn" :style="{opacity: hopFilter===h ? 1 : 0.5, background: h===0 ? '#4fc3f7' : hopColors[h]}" @click="hopFilter=h; renderNetwork()">
+          {{h === 0 ? 'All' : h + 'h'}}
+        </button>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <button class="play-btn" @click="togglePlay">{{playing ? '⏸ Pause' : '▶ Play'}}</button>
+        <div class="year-label">{{currentYear === 0 ? 'All Years' : currentYear}}</div>
+        <div style="flex:1">
+          <input type="range" :min="0" :max="availableYears.length" v-model.number="yearIndex" @input="onYearChange">
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:2px;">
+        <span>All</span>
+        <span v-for="y in availableYears">{{y}}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: Details Panel -->
+  <div class="panel-right">
+    <div v-if="!selected" class="empty-state" style="height:auto;">
+      <div>Charity details will appear here</div>
+    </div>
+    <template v-if="selected">
+      <h2>{{selected.name}}</h2>
+      <div style="font-size:10px;color:var(--muted);margin-bottom:8px;">{{selected.bn}} [{{selected.designation}}/{{selected.category}}]</div>
+
+      <h3>Risk Score</h3>
+      <div style="font-size: 28px; font-weight: 700; margin: 4px 0;" :style="{color: selected.score >= 18 ? '#ef5350' : selected.score >= 12 ? '#ffa726' : '#66bb6a'}">
+        {{selected.score}}/30
+      </div>
+      <div style="margin:4px 0;">
+        <span v-for="h in [2,3,4,5,6]" v-if="selected.loops['h'+h]" class="loop-badge" :class="'h'+h">
+          {{h}}-hop: {{selected.loops['h'+h]}}
+        </span>
+      </div>
+
+      <h3>Financials (Latest Year)</h3>
+      <div class="detail-row"><span class="label">Revenue</span><span class="value">${{fmt(selected.revenue)}}</span></div>
+      <div class="detail-row"><span class="label">Expenditures</span><span class="value">${{fmt(selected.expenditures)}}</span></div>
+      <div class="detail-row"><span class="label">Programs</span><span class="value" :class="selected.programPct < 30 ? 'danger' : 'success'">{{selected.programPct}}% (${{fmt(selected.programSpending)}})</span></div>
+      <div class="detail-row"><span class="label">Overhead</span><span class="value" :class="selected.overheadPct > 40 ? 'danger' : selected.overheadPct > 25 ? 'warning' : ''">{{selected.overheadPct}}%</span></div>
+      <div class="detail-row"><span class="label">Compensation</span><span class="value">${{fmt(selected.compensation)}}</span></div>
+      <div class="detail-row"><span class="label">Gifts In</span><span class="value">${{fmt(selected.giftsIn)}}</span></div>
+      <div class="detail-row"><span class="label">Gifts Out</span><span class="value">${{fmt(selected.giftsOut)}}</span></div>
+
+      <h3>Financial History</h3>
+      <div class="bar-chart" v-if="financials.length">
+        <div class="bar-row" v-for="f in financials">
+          <span class="bar-label">{{f.year}}</span>
+          <div class="bar" style="background:#66bb6a;" :style="{width: barWidth(f.programSpending, maxRev) + 'px'}"></div>
+          <div class="bar" style="background:#ef5350;" :style="{width: barWidth(f.admin + f.fundraising, maxRev) + 'px'}"></div>
+          <div class="bar" style="background:#ffa726;" :style="{width: barWidth(f.compensation, maxRev) + 'px'}"></div>
+          <span class="bar-val">${{fmt(f.revenue)}}</span>
+        </div>
+        <div style="font-size:9px;color:var(--muted);margin-top:4px;">
+          <span style="color:#66bb6a;">&#9632;</span> Programs
+          <span style="color:#ef5350;">&#9632;</span> Overhead
+          <span style="color:#ffa726;">&#9632;</span> Comp
+        </div>
+      </div>
+
+      <h3>Government Funding</h3>
+      <div v-if="financials.length">
+        <div class="detail-row" v-for="f in financials">
+          <span class="label">{{f.year}}</span>
+          <span class="value">${{fmt(f.govRevenue + f.govGrants)}}</span>
+        </div>
+      </div>
+
+      <h3>Loops ({{charityLoops.length}}) <span style="font-size:9px;color:var(--muted);text-transform:none;">click to animate</span></h3>
+      <div style="margin-bottom:6px;display:flex;gap:4px;flex-wrap:wrap;">
+        <button class="play-btn" style="background:#ef5350;font-size:10px;" @click="animateAllLoops()" v-if="!activeLoop">▶ Animate All Loops</button>
+        <button class="play-btn" style="background:#ef5350;font-size:10px;" @click="stopAnimation()" v-if="activeLoop">■ Stop</button>
+      </div>
+      <div v-for="loop in charityLoops"
+           style="margin:4px 0;padding:6px 8px;background:var(--bg);border-radius:4px;font-size:10px;cursor:pointer;border:1px solid transparent;transition:all 0.15s;"
+           :style="{borderColor: activeLoop?.id === loop.id ? '#ef5350' : 'transparent', background: activeLoop?.id === loop.id ? 'rgba(239,83,80,0.1)' : 'var(--bg)'}"
+           @click="activateLoop(loop)">
+        <span class="loop-badge" :class="'h'+loop.hops">{{loop.hops}}-hop</span>
+        ${{fmt(loop.bottleneck)}} bottleneck
+        <span v-if="activeLoop?.id === loop.id" style="float:right;color:#ef5350;font-weight:700;">● ACTIVE</span>
+        <div style="margin-top:3px;color:var(--muted);">{{loop.pathNames.join(' → ')}}</div>
+      </div>
+    </template>
+  </div>
+</div>
+
+<script>
+const { createApp, ref, computed, watch, onMounted, nextTick } = Vue;
+
+createApp({
+  setup() {
+    const stats = ref(null);
+    const universe = ref([]);
+    const selected = ref(null);
+    const network = ref(null);
+    const financials = ref([]);
+    const charityLoops = ref([]);
+    const searchText = ref('');
+    const filter = ref('all');
+    const yearIndex = ref(0);
+    const playing = ref(false);
+    const viewMode = ref('all'); // 'all' or 'loops'
+    const hopFilter = ref(0);   // 0 = all hops, 2-6 = specific
+    const hopColors = { 2: '#1a237e', 3: '#1b5e20', 4: '#e65100', 5: '#880e4f', 6: '#4a148c' };
+    const activeLoop = ref(null);
+    const simDistance = ref(120);
+    const simCharge = ref(-300);
+    const simLinkStrength = ref(40);  // stored as 1-100, applied as 0.01-1.0
+    const simCollision = ref(8);
+    const animSpeed = ref(1.0);      // 0.1 = very slow, 1.0 = normal, 5.0 = fast
+    const animSpeedRaw = ref(10);    // slider value 1-50, divided by 10
+    const vizContainer = ref(null);
+    const svgRef = ref(null);
+
+    const availableYears = computed(() => {
+      if (!network.value) return [];
+      const years = [...new Set(network.value.edges.map(e => e.year))].sort();
+      return years;
+    });
+
+    const currentYear = computed(() => {
+      if (yearIndex.value === 0) return 0;
+      return availableYears.value[yearIndex.value - 1] || 0;
+    });
+
+    const maxRev = computed(() => Math.max(...financials.value.map(f => f.revenue), 1));
+
+    const filteredUniverse = computed(() => {
+      let list = universe.value;
+      const q = searchText.value.toLowerCase();
+      if (q) list = list.filter(c => (c.name || '').toLowerCase().includes(q) || c.bn.includes(q));
+      if (filter.value === 'high') list = list.filter(c => c.score >= 15);
+      if (filter.value === 'C') list = list.filter(c => c.designation === 'C');
+      if (filter.value === 'lowprog') list = list.filter(c => c.programPct < 30 && c.revenue > 100000);
+      if (filter.value === 'highoh') list = list.filter(c => c.overheadPct > 40);
+      return list;
+    });
+
+    function fmt(n) { return (n || 0).toLocaleString(undefined, { maximumFractionDigits: 0 }); }
+    function scoreClass(s) { return s >= 18 ? 'high' : s >= 12 ? 'med' : 'low'; }
+    function barWidth(val, max) { return Math.max(2, Math.round((val / max) * 140)); }
+    function setFilter(f) { filter.value = f; }
+
+    async function load() {
+      stats.value = await (await fetch('/api/stats')).json();
+      universe.value = await (await fetch('/api/universe')).json();
+    }
+
+    async function selectCharity(c) {
+      selected.value = c;
+      yearIndex.value = 0;
+      activeLoop.value = null;
+      if (particleTimer) { clearInterval(particleTimer); particleTimer = null; }
+      const [net, fin, loops] = await Promise.all([
+        fetch('/api/network/' + c.bn).then(r => r.json()),
+        fetch('/api/financials/' + c.bn).then(r => r.json()),
+        fetch('/api/loops/' + c.bn).then(r => r.json()),
+      ]);
+      network.value = net;
+      financials.value = fin;
+      charityLoops.value = loops;
+      await nextTick();
+      renderNetwork();
+    }
+
+    function onYearChange() { renderNetwork(); }
+
+    function stopAnimation() {
+      activeLoop.value = null;
+      if (particleTimer) { clearInterval(particleTimer); particleTimer = null; }
+
+      // Remove overlay lines and particles without re-rendering
+      if (particleLayerRef) particleLayerRef.selectAll('*').remove();
+      overlayLines = [];
+
+      // Restore all edges and nodes to normal visibility
+      const svg = d3.select(svgRef.value);
+      svg.selectAll('line').each(function(d) {
+        if (!d) return;
+        const srcId = typeof d.source === 'object' ? d.source?.id : d.source;
+        const tgtId = typeof d.target === 'object' ? d.target?.id : d.target;
+        const isCirc = currentCircularSet.has(srcId + '|' + tgtId);
+        d3.select(this)
+          .attr('stroke-opacity', isCirc ? 0.8 : d.inLoopPath ? 0.5 : 0.3)
+          .attr('stroke-width', null); // let original width take effect
+      });
+      svg.selectAll('circle').attr('opacity', 1).each(function(d) {
+        if (!d?.id) return;
+        const bn = network.value?.targetBN;
+        d3.select(this)
+          .attr('stroke', d.id === bn ? '#4fc3f7' : d.inLoop ? '#ffa726' : '#2d3d50')
+          .attr('stroke-width', d.id === bn ? 3 : d.inLoop ? 2 : 1);
+      });
+      svg.selectAll('text').attr('opacity', 1);
+    }
+
+    function updateSim() {
+      if (!simulation) return;
+      simulation.force('link').distance(simDistance.value).strength(simLinkStrength.value / 100);
+      simulation.force('charge').strength(simCharge.value);
+      simulation.force('collision').radius(d => 10 + simCollision.value);
+      simulation.alpha(0.5).restart();
+    }
+
+    function resetSimDefaults() {
+      simDistance.value = 120;
+      simCharge.value = -300;
+      simLinkStrength.value = 40;
+      simCollision.value = 8;
+      animSpeed.value = 1.0;
+      animSpeedRaw.value = 10;
+      updateSim();
+    }
+
+    let playInterval = null;
+    function togglePlay() {
+      if (playing.value) {
+        clearInterval(playInterval);
+        playing.value = false;
+      } else {
+        playing.value = true;
+        playInterval = setInterval(() => {
+          yearIndex.value = (yearIndex.value + 1) % (availableYears.value.length + 1);
+          renderNetwork();
+        }, 2000);
+      }
+    }
+
+    // ─── D3 Network Rendering ──────────────────────────────────
+    let simulation = null;
+    let particleTimer = null;
+
+    function renderNetwork() {
+      if (!network.value || !svgRef.value) return;
+      const svg = d3.select(svgRef.value);
+      svg.selectAll('*').remove();
+      if (particleTimer) { clearInterval(particleTimer); particleTimer = null; }
+      if (simulation) simulation.stop();
+
+      const container = vizContainer.value;
+      const width = container.clientWidth;
+      const height = container.clientHeight - 60;
+      svg.attr('width', width).attr('height', height);
+
+      const g = svg.append('g');
+      svg.call(d3.zoom().scaleExtent([0.1, 8]).on('zoom', (e) => g.attr('transform', e.transform)));
+
+      const { nodes: rawNodes, edges: rawEdges, targetBN, loops: rawLoops, loopMemberBNs } = network.value;
+      const yr = currentYear.value;
+      const hf = hopFilter.value;
+      const vm = viewMode.value;
+
+      // If hop filter is active, find which BNs are in loops of that hop count
+      let hopBNs = null;
+      if (hf > 0 && rawLoops) {
+        hopBNs = new Set();
+        for (const loop of rawLoops) {
+          if (loop.hops === hf) {
+            for (const bn2 of loop.pathBNs) hopBNs.add(bn2);
+          }
+        }
+        hopBNs.add(targetBN);
+      }
+
+      // Filter edges by year
+      let filteredEdges = yr === 0 ? rawEdges : rawEdges.filter(e => e.year === yr);
+
+      // Active loop's BNs must always be included regardless of filters
+      const activePathBNs = activeLoop.value?.pathBNs ? new Set(activeLoop.value.pathBNs) : null;
+
+      // If loops-only mode, only keep edges between loop members (+ active loop)
+      if (vm === 'loops') {
+        const members = new Set(loopMemberBNs || []);
+        if (activePathBNs) activePathBNs.forEach(bn => members.add(bn));
+        filteredEdges = filteredEdges.filter(e => members.has(e.source) && members.has(e.target));
+      }
+
+      // If hop filter, only keep edges between hop-specific BNs (+ active loop)
+      if (hopBNs) {
+        if (activePathBNs) activePathBNs.forEach(bn => hopBNs.add(bn));
+        filteredEdges = filteredEdges.filter(e => hopBNs.has(e.source) && hopBNs.has(e.target));
+      }
+
+      // Force-include edges on the active loop path even if they were filtered
+      if (activePathBNs && rawEdges) {
+        const activeEdgeKeys = new Set();
+        const apArr = activeLoop.value.pathBNs;
+        for (let i = 0; i < apArr.length; i++) {
+          activeEdgeKeys.add(apArr[i] + '|' + apArr[(i+1) % apArr.length]);
+        }
+        const existingKeys = new Set(filteredEdges.map(e => e.source + '|' + e.target));
+        const yearEdges = yr === 0 ? rawEdges : rawEdges.filter(e => e.year === yr);
+        for (const e of yearEdges) {
+          if (activeEdgeKeys.has(e.source + '|' + e.target) && !existingKeys.has(e.source + '|' + e.target)) {
+            filteredEdges.push(e);
+            existingKeys.add(e.source + '|' + e.target);
+          }
+        }
+      }
+
+      // Aggregate: combine same source→target into one edge with total amount
+      const edgeAgg = new Map();
+      for (const e of filteredEdges) {
+        const key = e.source + '→' + e.target;
+        if (!edgeAgg.has(key)) edgeAgg.set(key, { source: e.source, target: e.target, amount: 0, direction: e.direction, inLoopPath: e.inLoopPath, years: [] });
+        const agg = edgeAgg.get(key);
+        agg.amount += e.amount;
+        if (!agg.years.includes(e.year)) agg.years.push(e.year);
+        if (e.inLoopPath) agg.inLoopPath = true;
+      }
+      let simEdges = [...edgeAgg.values()];
+
+      // Find circular pairs (A→B and B→A both exist)
+      const pairSet = new Set(simEdges.map(e => e.source + '|' + e.target));
+      const circularSet = new Set();
+      for (const e of simEdges) {
+        if (pairSet.has(e.target + '|' + e.source)) {
+          circularSet.add(e.source + '|' + e.target);
+        }
+      }
+
+      // Visible nodes
+      const visibleIds = new Set([targetBN]);
+      for (const e of simEdges) { visibleIds.add(e.source); visibleIds.add(e.target); }
+      const simNodes = rawNodes.filter(n => visibleIds.has(n.id)).map(n => ({...n}));
+
+      if (simNodes.length === 0) return;
+
+      // Ensure all edge endpoints exist in the node set
+      const nodeIdSet = new Set(simNodes.map(n => n.id));
+      const validEdges = simEdges.filter(e => nodeIdSet.has(e.source) && nodeIdSet.has(e.target));
+      simEdges = validEdges;
+
+      // Node size by amount
+      const nodeAmts = new Map();
+      for (const e of simEdges) {
+        nodeAmts.set(e.source, (nodeAmts.get(e.source) || 0) + e.amount);
+        nodeAmts.set(e.target, (nodeAmts.get(e.target) || 0) + e.amount);
+      }
+      const rScale = d3.scaleSqrt().domain([0, Math.max(...nodeAmts.values(), 1)]).range([5, 28]);
+      const wScale = d3.scaleSqrt().domain([0, Math.max(...simEdges.map(e => e.amount), 1)]).range([0.5, 5]);
+
+      // Arrow defs
+      const defs = svg.append('defs');
+      ['out', 'in', 'circular'].forEach(cls => {
+        const color = cls === 'circular' ? '#ef5350' : cls === 'out' ? '#4fc3f7' : '#66bb6a';
+        defs.append('marker').attr('id', 'arr-' + cls)
+          .attr('viewBox', '0 -4 8 8').attr('refX', 24).attr('refY', 0)
+          .attr('markerWidth', 8).attr('markerHeight', 8).attr('orient', 'auto')
+          .append('path').attr('d', 'M0,-4L8,0L0,4').attr('fill', color).attr('opacity', 0.7);
+      });
+
+      // Create force link first - this resolves string IDs to node object references
+      const forceLink = d3.forceLink(simEdges).id(d => d.id)
+        .distance(simDistance.value)
+        .strength(simLinkStrength.value / 100);
+
+      simulation = d3.forceSimulation(simNodes)
+        .force('link', forceLink)
+        .force('charge', d3.forceManyBody().strength(simCharge.value))
+        .force('center', d3.forceCenter(width / 2, height / 2))
+        .force('collision', d3.forceCollide().radius(d => rScale(nodeAmts.get(d.id) || 0) + simCollision.value));
+
+      // Run a few ticks synchronously so source/target are resolved before drawing
+      simulation.tick(20);
+
+      // Now source/target on simEdges are node objects with .id, .x, .y
+      // Draw edges
+      const edgeLayer = g.append('g');
+      const link = edgeLayer.selectAll('line')
+        .data(simEdges)
+        .join('line')
+        .each(function(d) {
+          // Determine edge type using resolved node IDs
+          const srcId = typeof d.source === 'object' ? d.source.id : d.source;
+          const tgtId = typeof d.target === 'object' ? d.target.id : d.target;
+          const isCirc = circularSet.has(srcId + '|' + tgtId);
+          const color = isCirc ? '#ef5350' : d.inLoopPath ? '#ffa726' : d.direction === 'out' ? '#4fc3f7' : d.direction === 'in' ? '#66bb6a' : '#7986cb';
+          const opacity = isCirc ? 0.8 : d.inLoopPath ? 0.5 : 0.3;
+          const arrType = isCirc ? 'circular' : d.direction === 'in' ? 'in' : 'out';
+
+          d3.select(this)
+            .attr('stroke', color)
+            .attr('stroke-opacity', opacity)
+            .attr('stroke-width', wScale(d.amount))
+            .attr('marker-end', 'url(#arr-' + arrType + ')')
+            .attr('x1', d.source.x).attr('y1', d.source.y)
+            .attr('x2', d.target.x).attr('y2', d.target.y);
+        });
+
+      // Draw nodes
+      const nodeLayer = g.append('g');
+      const node = nodeLayer.selectAll('g')
+        .data(simNodes)
+        .join('g')
+        .attr('transform', d => `translate(${d.x},${d.y})`)
+        .call(d3.drag()
+          .on('start', (ev, d) => { if (!ev.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
+          .on('drag', (ev, d) => { d.fx = ev.x; d.fy = ev.y; })
+          .on('end', (ev, d) => {
+            if (!ev.active) simulation.alphaTarget(0);
+            // Keep pinned after drag - node stays where you put it
+            // d.fx and d.fy remain set
+          })
+        )
+        .on('dblclick', (ev, d) => {
+          // Double-click to unpin
+          d.fx = null; d.fy = null;
+          simulation.alphaTarget(0.1).restart();
+          d3.select(ev.currentTarget).select('circle')
+            .transition().duration(300).attr('stroke', d.id === targetBN ? '#4fc3f7' : d.inLoop ? '#ffa726' : '#2d3d50');
+        });
+
+      node.append('circle')
+        .attr('r', d => d.id === targetBN ? 22 : rScale(nodeAmts.get(d.id) || 0))
+        .attr('fill', d => d.id === targetBN ? '#1a365d' : d.inLoop ? 'rgba(255,167,38,0.15)' : 'rgba(79,195,247,0.1)')
+        .attr('stroke', d => d.id === targetBN ? '#4fc3f7' : d.inLoop ? '#ffa726' : '#2d3d50')
+        .attr('stroke-width', d => d.id === targetBN ? 3 : d.inLoop ? 2 : 1);
+
+      node.append('text')
+        .text(d => (d.name || d.id).slice(0, 30))
+        .attr('dx', d => (d.id === targetBN ? 26 : rScale(nodeAmts.get(d.id) || 0) + 5))
+        .attr('dy', 4)
+        .style('font-size', d => d.id === targetBN ? '12px' : '9px')
+        .style('fill', d => d.id === targetBN ? '#4fc3f7' : '#7a8a9a');
+
+      // Tick: continue updating positions as simulation runs
+      overlayLines = []; // reset on each render
+      simulation.on('tick', () => {
+        link
+          .attr('x1', d => d.source.x).attr('y1', d => d.source.y)
+          .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
+        node.attr('transform', d => `translate(${d.x},${d.y})`);
+        // Update any overlay lines (loop highlights)
+        for (const ol of overlayLines) {
+          ol.line
+            .attr('x1', ol.fromNode.x).attr('y1', ol.fromNode.y)
+            .attr('x2', ol.toNode.x).attr('y2', ol.toNode.y);
+        }
+      });
+
+      // Restart the simulation (it was paused by the manual ticks)
+      simulation.alpha(1).restart();
+
+      // Store refs for the active loop animation
+      currentSimNodes = simNodes;
+      currentSimEdges = simEdges;
+      currentCircularSet = circularSet;
+      particleLayerRef = g.append('g').attr('class', 'particles');
+
+      // If there's an active loop, start animating after settling
+      if (activeLoop.value && activeLoop.value.id !== 'all') {
+        setTimeout(() => animateActiveLoop(), 1500);
+      }
+      // For 'all' mode, draw overlays for all loops immediately
+      if (activeLoop.value?.id === 'all') {
+        setTimeout(() => {
+          const nm = new Map(currentSimNodes.map(n => [n.id, n]));
+          const allBNs = new Set(activeLoop.value.pathBNs || []);
+          highlightLoop([...allBNs], true);
+        }, 500);
+      }
+    }
+
+    // Store simulation state for loop animation
+    let currentSimNodes = [];
+    let currentSimEdges = [];
+    let currentCircularSet = new Set();
+    let particleLayerRef = null;
+    let overlayLines = []; // [{line, fromNode, toNode}] - updated on tick
+
+    async function activateLoop(loop) {
+      if (activeLoop.value?.id === loop.id) {
+        activeLoop.value = null;
+        renderNetwork();
+        return;
+      }
+      activeLoop.value = loop;
+      renderNetwork();
+    }
+
+    async function animateActiveLoop() {
+      if (!activeLoop.value || !particleLayerRef) return;
+      if (particleTimer) { clearInterval(particleTimer); particleTimer = null; }
+
+      const loop = activeLoop.value;
+      const pathBNs = loop.pathBNs;
+      const nodeMap = new Map(currentSimNodes.map(n => [n.id, n]));
+      const cycleNodes = pathBNs.map(bn => nodeMap.get(bn)).filter(Boolean);
+      if (cycleNodes.length < 2) return;
+
+      // Fetch real transaction data for this loop
+      let flowData;
+      try {
+        flowData = await fetch('/api/loopflow/' + loop.id).then(r => r.json());
+      } catch (e) { return; }
+
+      if (!flowData || flowData.error) return;
+
+      highlightLoop(pathBNs);
+      animateFlowData(flowData, pathBNs, nodeMap);
+    }
+
+    async function animateAllLoops() {
+      if (!network.value || !charityLoops.value.length) return;
+
+      const allLoopBNs = new Set();
+      for (const loop of charityLoops.value) {
+        if (loop.pathBNs) loop.pathBNs.forEach(bn => allLoopBNs.add(bn));
+      }
+
+      activeLoop.value = { id: 'all', pathBNs: [...allLoopBNs], hops: 0 };
+      renderNetwork();
+
+      await new Promise(r => setTimeout(r, 2000));
+      if (activeLoop.value?.id !== 'all') return;
+
+      const nodeMap = new Map(currentSimNodes.map(n => [n.id, n]));
+
+      // Use the network edge data directly - it already has all edges between
+      // loop members with per-year amounts. No need to fetch loopflow for each loop.
+      // This is already deduplicated (one entry per source→target→year).
+      const loopMemberSet = new Set(network.value?.loopMemberBNs || []);
+      const loopEdgeData = (network.value?.edges || []).filter(e =>
+        loopMemberSet.has(e.source) && loopMemberSet.has(e.target) && e.inLoopPath
+      );
+
+      // Group by source→target, collect per-year transactions
+      const uniqueEdgeTxns = new Map();
+      for (const e of loopEdgeData) {
+        const key = e.source + '|' + e.target;
+        if (!uniqueEdgeTxns.has(key)) {
+          uniqueEdgeTxns.set(key, { from: e.source, to: e.target, txns: [], txnIdx: 0, seenTxns: new Set() });
+        }
+        const entry = uniqueEdgeTxns.get(key);
+        const txnKey = e.year + '|' + e.amount;
+        if (!entry.seenTxns.has(txnKey)) {
+          entry.seenTxns.add(txnKey);
+          entry.txns.push({ year: e.year, amount: e.amount });
+        }
+      }
+      for (const entry of uniqueEdgeTxns.values()) {
+        entry.txns.sort((a, b) => a.year - b.year);
+      }
+
+      const allEdgeEntries = [...uniqueEdgeTxns.values()].filter(e => e.txns.length > 0);
+
+      function emitAllRound() {
+        if (activeLoop.value?.id !== 'all') return;
+        const spd = animSpeed.value || 1;
+        const hopDur = Math.round(2500 / spd);
+
+        allEdgeEntries.forEach((entry, idx) => {
+          setTimeout(() => {
+            if (activeLoop.value?.id !== 'all') return;
+            const fromNode = nodeMap.get(entry.from);
+            const toNode = nodeMap.get(entry.to);
+            if (!fromNode?.x || !toNode?.x) return;
+
+            const txn = entry.txns[entry.txnIdx % entry.txns.length];
+            entry.txnIdx++;
+            if (!txn) return;
+
+            const r = Math.max(3, Math.min(10, 5 * Math.sqrt(txn.amount / 50000)));
+
+            particleLayerRef.append('circle')
+              .attr('r', r).attr('fill', '#ef5350').attr('opacity', 0.85)
+              .attr('cx', fromNode.x).attr('cy', fromNode.y)
+              .transition().duration(hopDur).ease(d3.easeLinear)
+              .attr('cx', toNode.x).attr('cy', toNode.y)
+              .transition().duration(Math.round(200 / spd)).attr('r', r * 1.3).attr('opacity', 0.3)
+              .transition().duration(Math.round(150 / spd)).attr('r', 0).remove();
+
+            particleLayerRef.append('text')
+              .attr('x', fromNode.x).attr('y', fromNode.y - r - 3)
+              .attr('text-anchor', 'middle')
+              .attr('fill', '#fff').attr('font-size', '8px').attr('font-weight', '600')
+              .attr('opacity', 0.9)
+              .text('$' + txn.amount.toLocaleString(undefined, {maximumFractionDigits: 0}) + ' \'' + String(txn.year).slice(2))
+              .transition().duration(hopDur).ease(d3.easeLinear)
+              .attr('x', toNode.x).attr('y', toNode.y - r - 3)
+              .transition().duration(Math.round(200 / spd)).attr('opacity', 0).remove();
+          }, idx * 30);
+        });
+      }
+
+      emitAllRound();
+
+      if (particleTimer) clearInterval(particleTimer);
+      function scheduleNext() {
+        const spd = animSpeed.value || 1;
+        const interval = Math.round(3000 / spd);
+        particleTimer = setTimeout(() => {
+          if (activeLoop.value?.id !== 'all') { particleTimer = null; return; }
+          emitAllRound();
+          scheduleNext();
+        }, interval);
+      }
+      scheduleNext();
+    }
+
+    function highlightLoop(pathBNs, allMode = false) {
+      const svg = d3.select(svgRef.value);
+      const activeSet = new Set(pathBNs);
+      const loopMembers = new Set(network.value?.loopMemberBNs || []);
+      const nodeMap = new Map(currentSimNodes.map(n => [n.id, n]));
+
+      // Dim existing edges - but keep loop-path edges somewhat visible
+      svg.selectAll('line').each(function(d) {
+        if (!d) return;
+        const el = d3.select(this);
+        if (d.inLoopPath) {
+          el.attr('stroke-opacity', 0.15).attr('stroke-width', 1);
+        } else {
+          el.attr('stroke-opacity', 0.04).attr('stroke-width', 0.3);
+        }
+      });
+
+      svg.selectAll('circle').each(function(d) {
+        if (!d?.id) return;
+        const el = d3.select(this);
+        if (activeSet.has(d.id)) {
+          el.attr('opacity', 1).attr('stroke', '#ef5350').attr('stroke-width', 3);
+        } else if (loopMembers.has(d.id)) {
+          el.attr('opacity', 0.35).attr('stroke', '#ffa726').attr('stroke-width', 1);
+        } else {
+          el.attr('opacity', 0.08);
+        }
+      });
+
+      svg.selectAll('text').each(function(d) {
+        if (!d?.id) return;
+        d3.select(this).attr('opacity', activeSet.has(d.id) ? 1 : loopMembers.has(d.id) ? 0.25 : 0.05);
+      });
+
+      // DRAW OVERLAY LINES for loop paths - uses global overlayLines array
+      // which the tick handler updates on every frame
+      function addOverlayPath(bns, color, width) {
+        for (let i = 0; i < bns.length; i++) {
+          const fromNode = nodeMap.get(bns[i]);
+          const toNode = nodeMap.get(bns[(i + 1) % bns.length]);
+          if (fromNode && toNode) {
+            const line = particleLayerRef.append('line')
+              .attr('stroke', color)
+              .attr('stroke-width', width)
+              .attr('stroke-opacity', 0.85)
+              .attr('marker-end', 'url(#arr-circular)');
+            overlayLines.push({ line, fromNode, toNode });
+          }
+        }
+      }
+
+      if (!allMode && pathBNs.length >= 2) {
+        addOverlayPath(pathBNs, '#ef5350', 3);
+      } else if (allMode) {
+        // Draw overlay for EVERY loop this charity is in
+        for (const loop of (charityLoops.value || [])) {
+          if (loop.pathBNs?.length >= 2) {
+            addOverlayPath(loop.pathBNs, '#ef5350', 2);
+          }
+        }
+      }
+    }
+
+    function animateFlowData(flowData, pathBNs, nodeMap) {
+      // Add dollar labels on edges
+      for (const edge of flowData.edges) {
+        const fn = nodeMap.get(edge.from);
+        const tn = nodeMap.get(edge.to);
+        if (!fn?.x || !tn?.x) continue;
+        particleLayerRef.append('text')
+          .attr('x', (fn.x + tn.x) / 2).attr('y', (fn.y + tn.y) / 2 - 8)
+          .attr('text-anchor', 'middle')
+          .attr('fill', '#ffa726').attr('font-size', '10px').attr('font-weight', '600')
+          .text('$' + edge.totalAmount.toLocaleString(undefined, {maximumFractionDigits: 0}));
+      }
+
+      // Build transaction list
+      const allTxns = [];
+      for (const edge of flowData.edges) {
+        for (const txn of edge.transactions) {
+          allTxns.push({ ...txn, from: edge.from, to: edge.to });
+        }
+      }
+      allTxns.sort((a, b) => a.year - b.year || a.hopIndex - b.hopIndex);
+
+      animateTransactions(allTxns, nodeMap);
+    }
+
+    function animateTransactions(allTxns, nodeMap) {
+      if (particleTimer) { clearInterval(particleTimer); particleTimer = null; }
+      if (allTxns.length === 0) return;
+
+      const maxAmt = Math.max(...allTxns.map(t => t.amount));
+      const minAmt = Math.min(...allTxns.map(t => t.amount));
+      const sizeScale = d3.scaleSqrt().domain([Math.min(minAmt, 1000), maxAmt]).range([3, 14]);
+      let txnIdx = 0;
+
+      function emitTransaction() {
+        if (!activeLoop.value) { clearInterval(particleTimer); particleTimer = null; return; }
+        if (txnIdx >= allTxns.length) txnIdx = 0;
+
+        const spd = animSpeed.value || 1;
+        const hopDuration = Math.round(1500 / spd);
+
+        const txn = allTxns[txnIdx];
+        const fromNode = nodeMap.get(txn.from);
+        const toNode = nodeMap.get(txn.to);
+
+        if (fromNode?.x && toNode?.x) {
+          const r = sizeScale(txn.amount);
+          const sx = fromNode.x, sy = fromNode.y;
+          const tx = toNode.x, ty = toNode.y;
+
+          particleLayerRef.append('circle')
+            .attr('r', r).attr('fill', '#ef5350').attr('opacity', 0.9)
+            .attr('cx', sx).attr('cy', sy)
+            .transition().duration(hopDuration).ease(d3.easeQuadInOut)
+            .attr('cx', tx).attr('cy', ty)
+            .transition().duration(Math.round(300 / spd)).attr('r', r * 1.3).attr('opacity', 0.3)
+            .transition().duration(Math.round(200 / spd)).attr('r', 0).remove();
+
+          particleLayerRef.append('text')
+            .attr('x', sx).attr('y', sy - r - 4)
+            .attr('text-anchor', 'middle')
+            .attr('fill', '#fff').attr('font-size', '9px').attr('font-weight', '600').attr('opacity', 0.9)
+            .text('$' + txn.amount.toLocaleString(undefined, {maximumFractionDigits: 0}) + ' (' + txn.year + ')')
+            .transition().duration(hopDuration).ease(d3.easeQuadInOut)
+            .attr('x', tx).attr('y', ty - r - 4)
+            .transition().duration(Math.round(300 / spd)).attr('opacity', 0).remove();
+        }
+
+        txnIdx++;
+      }
+
+      function startEmitting() {
+        const spd = animSpeed.value || 1;
+        const interval = Math.round(800 / spd);
+        emitTransaction();
+        if (particleTimer) clearInterval(particleTimer);
+        particleTimer = setInterval(emitTransaction, interval);
+      }
+      setTimeout(startEmitting, 500);
+    }
+
+    onMounted(load);
+
+    return {
+      stats, universe, selected, network, financials, charityLoops,
+      searchText, filter, yearIndex, playing, availableYears, currentYear,
+      filteredUniverse, maxRev, vizContainer, svg: svgRef,
+      fmt, scoreClass, barWidth, setFilter, selectCharity,
+      onYearChange, togglePlay, filterList: () => {},
+      viewMode, hopFilter, hopColors, activeLoop, activateLoop, animateAllLoops, stopAnimation, renderNetwork,
+      simDistance, simCharge, simLinkStrength, simCollision, animSpeed, animSpeedRaw, updateSim, resetSimDefaults,
+    };
+  }
+}).mount('#app');
+</script>
+</body>
+</html>

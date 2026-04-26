@@ -1,0 +1,26 @@
+{
+  "description": "Maps CSV header names from tbf-grants-disclosure-*.csv to ab.ab_grants columns.",
+  "sourceFiles": [
+    "data/grants/tbf-grants-disclosure-2024-25.csv",
+    "data/grants/tbf-grants-disclosure-2025-26.csv"
+  ],
+  "targetTable": "ab.ab_grants",
+  "columns": {
+    "Ministry":          { "target": "ministry",            "type": "text" },
+    "BUName":            { "target": "business_unit_name",  "type": "text" },
+    "Recipient":         { "target": "recipient",           "type": "text" },
+    "Program":           { "target": "program",             "type": "text" },
+    "Amount":            { "target": "amount",              "type": "money"    },
+    "Lottery":           { "target": "lottery",             "type": "text" },
+    "PaymentDate":       { "target": "payment_date",        "type": "date" },
+    "FiscalYear":        { "target": "fiscal_year",         "type": "text" },
+    "DisplayFiscalYear": { "target": "display_fiscal_year", "type": "text" }
+  },
+  "notes": [
+    "Header names are matched case-insensitively and after trimming whitespace and BOM.",
+    "Values that are empty, pure whitespace, or a single space are stored as NULL.",
+    "Amount values may be plain decimals (e.g. '110965.000') or currency strings (e.g. '\"-$7,000.00 \"'). Dollar signs, commas, and surrounding whitespace are stripped before parsing.",
+    "PaymentDate values may be empty or ISO YYYY-MM-DD. Empty becomes NULL. Postgres parses the string.",
+    "No ON CONFLICT clause is used: CSV rows have no mongo_id, so they are inserted as new rows with mongo_id=NULL."
+  ]
+}

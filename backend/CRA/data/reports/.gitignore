@@ -1,0 +1,5 @@
+# Generated reports - excluded from commits
+# Run `npm run analyze:all` to regenerate deterministically
+*
+!.gitignore
+!.gitkeep

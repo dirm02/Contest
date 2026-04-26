@@ -1,0 +1,51 @@
+{
+  "name": "ai-for-accountability-fed-grants",
+  "version": "1.0.0",
+  "description": "AI For Accountability Hackathon - Federal Grants and Contributions Data Pipeline",
+  "main": "scripts/01-migrate.js",
+  "scripts": {
+    "migrate": "node scripts/01-migrate.js",
+    "seed": "node scripts/02-seed-reference.js",
+    "fetch": "node scripts/03-fetch-data.js",
+    "import": "node scripts/04-import-data.js",
+    "verify": "node scripts/05-verify.js",
+    "fix-quality": "node scripts/06-fix-quality.js",
+    "dashboard": "node scripts/run-dashboard.js",
+    "analyze:equity": "node scripts/advanced/01-provincial-equity.js",
+    "analyze:forprofit": "node scripts/advanced/02-for-profit-deep-dive.js",
+    "analyze:amendments": "node scripts/advanced/03-amendment-creep.js",
+    "analyze:concentration": "node scripts/advanced/04-recipient-concentration.js",
+    "analyze:zombies": "node scripts/advanced/05-zombie-and-ghost.js",
+    "analyze:export": "node scripts/advanced/06-entity-export.js",
+    "analyze:risk": "node scripts/advanced/07-risk-register.js",
+    "analyze:individuals": "node scripts/advanced/08-individual-recipients.js",
+    "analyze:all": "npm run analyze:equity && npm run analyze:forprofit && npm run analyze:amendments && npm run analyze:concentration && npm run analyze:zombies && npm run analyze:export && npm run analyze:risk && npm run analyze:individuals",
+    "drop": "node scripts/drop-tables.js",
+    "clear-cache": "node scripts/clear-cache.js",
+    "setup": "npm run migrate && npm run seed && npm run fetch && npm run import && npm run fix-quality && npm run verify",
+    "reset": "npm run drop && npm run setup",
+    "test": "node --test tests/**/*.test.js",
+    "test:unit": "node --test tests/unit/*.test.js",
+    "test:integration": "node --test tests/integration/*.test.js"
+  },
+  "keywords": [
+    "federal",
+    "grants",
+    "contributions",
+    "open-data",
+    "hackathon",
+    "accountability"
+  ],
+  "author": "AI For Accountability Hackathon Team",
+  "license": "MIT",
+  "dependencies": {
+    "chart.js": "^4.5.1",
+    "chartjs-plugin-datalabels": "^2.2.0",
+    "dotenv": "^16.3.1",
+    "pg": "^8.11.3",
+    "puppeteer": "^24.42.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
