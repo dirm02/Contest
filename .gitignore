@@ -36,6 +36,8 @@ backend/**/secrets/
 backend/**/.claude/*.lock
 backend/general/scripts/tools/.phase-pids/
 backend/general/splink/data/
+backend/general/data/c9-procurement/*.json
+backend/general/data/c9-procurement/raw/
 backend/.local-db/data/
 backend/.local-db/node_modules/
 backend/.local-db/.env
