@@ -1020,6 +1020,60 @@ export interface AmendmentCreepDetailResponse {
   };
 }
 
+export interface VendorConcentrationFilters {
+  limit?: number;
+  offset?: number;
+  source?: 'federal' | 'alberta_sole_source' | null;
+  minHhi?: number;
+  minTotalDollars?: number;
+  department?: string | null;
+  category?: string | null;
+}
+
+export interface VendorConcentrationRow {
+  source: 'federal' | 'alberta_sole_source';
+  source_label: string;
+  department: string;
+  category_program_service: string;
+  category_key: string;
+  total_dollars: number;
+  entity_count: number;
+  top5_entities: string;
+  hhi: number;
+  cr4: number;
+  top_share: number;
+  effective_competitors: number;
+  share_sum: number;
+  distinct_raw_labels: number;
+  data_quality_notes: string[];
+  invariant_failed_cell_count: number;
+  invariant_checked_cell_count: number;
+}
+
+export interface VendorConcentrationResponse {
+  filters: {
+    limit: number;
+    offset: number;
+    source: 'federal' | 'alberta_sole_source' | null;
+    min_hhi: number;
+    min_total_dollars: number;
+    department: string | null;
+    category: string | null;
+  };
+  total: number;
+  summary: {
+    total_cells: number;
+    federal_cells: number;
+    alberta_sole_source_cells: number;
+    total_dollars: number;
+    median_hhi: number;
+    highest_hhi: number;
+    invariant_failed_cell_count: number;
+    invariant_checked_cell_count: number;
+  };
+  results: VendorConcentrationRow[];
+}
+
 export interface ChallengeReviewItem {
   id: string;
   title: string;

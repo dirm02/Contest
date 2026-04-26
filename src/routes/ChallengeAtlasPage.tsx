@@ -55,8 +55,9 @@ const CHALLENGES: ChallengeAtlasItem[] = [
     title: 'Vendor Concentration',
     theme: 'Market structure',
     question: 'Where has competition narrowed to one supplier or a small supplier group?',
-    evidence: 'HHI, top vendor share, category, department, region, year-over-year concentration changes.',
-    status: 'planned',
+    evidence: 'HHI, CR4, top share, effective competitors, top entities, source, department, and category.',
+    route: '/vendor-concentration',
+    status: 'live',
   },
   {
     id: 6,
@@ -112,7 +113,7 @@ const WORKFLOWS = [
   {
     title: 'Scan investigations',
     body: 'Use the challenge cards as entry points into ranked watchlists, graphs, tables, and case detail pages.',
-    route: '/investigations',
+    route: '#challenge-cards',
     action: 'View hub',
   },
   {
@@ -175,12 +176,21 @@ export default function ChallengeAtlasPage() {
           <article key={workflow.title} className="app-card rounded-lg p-4">
             <h2 className="text-base font-semibold text-[var(--color-ink)]">{workflow.title}</h2>
             <p className="mt-2 min-h-16 text-sm leading-6 text-[var(--color-muted)]">{workflow.body}</p>
-            <Link
-              to={workflow.route}
-              className="mt-4 inline-flex min-h-10 items-center justify-center rounded-lg border border-[var(--color-border)] bg-white px-3 text-sm font-semibold text-[var(--color-ink)] transition hover:bg-[var(--color-surface)]"
-            >
-              {workflow.action}
-            </Link>
+            {workflow.route.startsWith('#') ? (
+              <a
+                href={workflow.route}
+                className="mt-4 inline-flex min-h-10 items-center justify-center rounded-lg border border-[var(--color-border)] bg-white px-3 text-sm font-semibold text-[var(--color-ink)] transition hover:bg-[var(--color-surface)]"
+              >
+                {workflow.action}
+              </a>
+            ) : (
+              <Link
+                to={workflow.route}
+                className="mt-4 inline-flex min-h-10 items-center justify-center rounded-lg border border-[var(--color-border)] bg-white px-3 text-sm font-semibold text-[var(--color-ink)] transition hover:bg-[var(--color-surface)]"
+              >
+                {workflow.action}
+              </Link>
+            )}
           </article>
         ))}
       </section>
@@ -237,7 +247,7 @@ export default function ChallengeAtlasPage() {
         </div>
       </section>
 
-      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+      <section id="challenge-cards" className="scroll-mt-24 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {CHALLENGES.map((challenge) => (
           <article key={challenge.id} className="app-card flex min-h-72 flex-col rounded-lg p-4">
             <div className="flex flex-wrap items-center gap-2">
