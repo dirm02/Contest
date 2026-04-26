@@ -2,7 +2,6 @@ import { useMemo } from 'react';
 import {
   Background,
   Controls,
-  MiniMap,
   ReactFlow,
   type Edge,
   type Node,
@@ -16,13 +15,35 @@ interface RelationshipGraphProps {
   onSelectNode: (node: GraphNodeData) => void;
 }
 
-function radialPosition(index: number, total: number, radius = 250) {
-  if (total <= 1) return { x: 0, y: 0 };
-  const angle = (index / total) * Math.PI * 2;
-  return {
-    x: Math.cos(angle) * radius,
-    y: Math.sin(angle) * radius,
-  };
+/**
+ * Calculates a fixed grid position for related nodes.
+ * Spreads nodes into two main areas: Top and Bottom, to leave horizontal space for the center.
+ */
+function getGridPosition(index: number, total: number) {
+  if (total <= 0) return { x: 0, y: 0 };
+  
+  const nodesPerRow = 3;
+  const spacingX = 300;
+  const spacingY = 160;
+  
+  // Decide if this node goes in the top group or bottom group
+  const isTop = index < total / 2;
+  const groupIndex = isTop ? index : index - Math.ceil(total / 2);
+  const groupTotal = isTop ? Math.ceil(total / 2) : total - Math.ceil(total / 2);
+  
+  const row = Math.floor(groupIndex / nodesPerRow);
+  const col = groupIndex % nodesPerRow;
+  
+  // Center the group horizontally
+  const currentRowCount = Math.min(nodesPerRow, groupTotal - row * nodesPerRow);
+  const rowWidth = (currentRowCount - 1) * spacingX;
+  const startX = -rowWidth / 2;
+  
+  const x = startX + col * spacingX;
+  // Push top group up, bottom group down
+  const y = isTop ? -250 - row * spacingY : 250 + row * spacingY;
+  
+  return { x, y };
 }
 
 function nodeColors(relation: GraphNodeData['relation']) {
@@ -45,29 +66,50 @@ export default function RelationshipGraph({
   onSelectNode,
 }: RelationshipGraphProps) {
   const flowNodes = useMemo<Node[]>(
-    () =>
-      nodes.map((node, index) => {
+    () => {
+      const centerNode = nodes.find(n => n.relation === 'center');
+      const otherNodes = nodes.filter(n => n.relation !== 'center');
+      
+      const result: Node[] = [];
+      
+      // 1. Position Center Node
+      if (centerNode) {
+        result.push({
+          id: centerNode.id,
+          position: { x: -120, y: -45 }, // Centered around 0,0 for its 240x90 size
+          data: { label: centerNode.label, node: centerNode },
+        });
+      }
+      
+      // 2. Position Other Nodes in a predictable grid
+      otherNodes.forEach((node, index) => {
+        const pos = getGridPosition(index, otherNodes.length);
+        result.push({
+          id: node.id,
+          position: { x: pos.x - 100, y: pos.y - 45 }, // Centered around pos for its 200x90 size
+          data: { label: node.label, node: node },
+        });
+      });
+      
+      // 3. Apply Styling
+      return result.map(flowNode => {
+        const node = (flowNode.data as any).node as GraphNodeData;
         const colors = nodeColors(node.relation);
-        const position =
-          node.relation === 'center'
-            ? { x: 0, y: 0 }
-            : radialPosition(
-                index - 1,
-                Math.max(
-                  nodes.filter((candidate) => candidate.relation !== 'center').length,
-                  1,
-                ),
-              );
+        const isCenter = node.relation === 'center';
+        const width = isCenter ? 240 : 200;
+        const height = 90;
 
         return {
-          id: node.id,
-          position,
+          ...flowNode,
           data: {
+            ...flowNode.data,
             label: (
-              <div className="min-w-[150px] max-w-[190px]">
-                <div className="font-semibold">{node.label}</div>
-                <div className="mt-1 text-[11px] opacity-80">
-                  {node.datasets.join(' • ') || 'No dataset tag'}
+              <div className="flex h-full flex-col justify-center px-2 text-center pointer-events-none">
+                <div className="line-clamp-2 text-[12px] font-bold leading-tight">
+                  {node.label}
+                </div>
+                <div className="mt-1.5 truncate text-[9px] font-medium uppercase tracking-wider opacity-60">
+                  {node.datasets.join(' • ') || 'No Source'}
                 </div>
               </div>
             ),
@@ -75,17 +117,22 @@ export default function RelationshipGraph({
           style: {
             background: colors.background,
             color: colors.color,
-            border: `1px solid ${colors.border}`,
-            borderRadius: 16,
-            padding: 8,
-            width: node.relation === 'center' ? 220 : 190,
+            border: `1.5px solid ${colors.border}`,
+            borderRadius: 12,
+            width,
+            height,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
             boxShadow:
               selectedNodeId === node.id
-                ? '0 0 0 3px rgba(37,81,176,0.15)'
-                : '0 8px 20px rgba(31,26,23,0.08)',
+                ? '0 0 0 4px rgba(37,81,176,0.25)'
+                : '0 4px 12px rgba(0,0,0,0.08)',
           },
         };
-      }),
+      });
+    },
     [nodes, selectedNodeId],
   );
 
@@ -108,7 +155,7 @@ export default function RelationshipGraph({
         },
         labelStyle: {
           fill: '#6b645c',
-          fontSize: 11,
+          fontSize: 10,
           fontWeight: 600,
         },
       })),
@@ -124,17 +171,18 @@ export default function RelationshipGraph({
   }
 
   return (
-    <div className="h-[420px] rounded-2xl border border-[var(--color-border)] bg-white/80">
+    <div className="h-[700px] rounded-2xl border border-[var(--color-border)] bg-white/80">
       <ReactFlow
+        key={`graph-${nodes.map(n => n.id).join('-')}`}
         nodes={flowNodes}
         edges={flowEdges}
         fitView
-        onNodeClick={(_, node) => {
-          const selected = nodes.find((item) => item.id === node.id);
-          if (selected) onSelectNode(selected);
+        fitViewOptions={{ padding: 0.2 }}
+        onNodeClick={(_, flowNode) => {
+          const nodeData = (flowNode.data as any).node as GraphNodeData;
+          if (nodeData) onSelectNode(nodeData);
         }}
       >
-        <MiniMap pannable zoomable />
         <Controls />
         <Background gap={20} />
       </ReactFlow>
