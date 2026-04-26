@@ -39,6 +39,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.88.0",
+    "@google-cloud/bigquery": "^8.1.1",
     "dotenv": "^17.4.2",
     "express": "^4.22.1",
     "jose": "^6.2.2",
