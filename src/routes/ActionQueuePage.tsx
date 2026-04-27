@@ -147,8 +147,8 @@ export default function ActionQueuePage() {
               Challenge 1 review queue
             </h1>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--color-muted)]">
-              Read-only triage for Zombie Recipient cases. Open a row to review the full evidence,
-              sources, graph, and checklist in the Challenge 1 detail page.
+              Read-only triage for Zombie Recipient cases. Open a row to review the evidence,
+              sources, checklist, and advisory action panel in the case workspace.
             </p>
           </div>
           <Link
@@ -413,10 +413,16 @@ export default function ActionQueuePage() {
                     </td>
                     <td className="px-4 py-3">
                       <Link
-                        to={`/zombies/${encodeURIComponent(item.caseId)}`}
-                        className="rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-xs font-semibold text-[var(--color-ink)] transition hover:bg-[var(--color-accent-soft)]"
+                        to={`/cases/${encodeURIComponent(item.caseId)}`}
+                        className="inline-flex min-h-8 items-center rounded-md border border-[var(--color-border)] bg-white px-3 text-xs font-semibold text-[var(--color-ink)] transition hover:bg-[var(--color-accent-soft)]"
                       >
-                        Open
+                        Open review
+                      </Link>
+                      <Link
+                        to={`/zombies/${encodeURIComponent(item.caseId)}`}
+                        className="mt-2 inline-flex min-h-8 items-center rounded-md border border-[var(--color-border)] bg-[var(--color-surface-subtle)] px-3 text-xs font-semibold text-[var(--color-muted)] transition hover:bg-white"
+                      >
+                        Module
                       </Link>
                     </td>
                   </tr>

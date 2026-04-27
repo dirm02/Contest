@@ -104,6 +104,12 @@ export default function ZombieDetailPage() {
         >
           Back to zombies
         </Link>
+        <Link
+          to={`/cases/${encodeURIComponent(recipientKey)}`}
+          className="rounded-full border border-[var(--color-border)] bg-[var(--color-accent)] px-3 py-1.5 text-sm font-semibold text-white transition hover:opacity-90"
+        >
+          Case workspace
+        </Link>
         <span className="section-title">Challenge 1 review case</span>
       </div>
 
