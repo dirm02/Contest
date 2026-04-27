@@ -12,6 +12,15 @@ import {
   CHALLENGE_1_DISCLAIMER,
 } from '../components/risk/challenge1Decision';
 import {
+  ACTION_BRIEF_DISCLAIMER,
+  type ActionBriefSnapshot,
+  buildActionBriefHtmlFragment,
+  buildActionBriefMarkdown,
+  buildActionBriefPrintDocument,
+  buildActionBriefSnapshot,
+  isActionBriefStale,
+} from '../components/risk/actionBrief';
+import {
   MIN_RATIONALE_LENGTH,
   PHASE3_ACTIONS,
   type LocalReviewEntry,
@@ -73,6 +82,9 @@ export default function CaseDecisionPage() {
   const [caveatAck, setCaveatAck] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [reviewLog, setReviewLog] = useState<LocalReviewEntry[]>([]);
+  const [briefOpen, setBriefOpen] = useState(false);
+  const [briefSnapshot, setBriefSnapshot] = useState<ActionBriefSnapshot | null>(null);
+  const [briefMessage, setBriefMessage] = useState<string | null>(null);
 
   const detailQuery = useQuery({
     queryKey: queryKeys.zombieDetail(caseId),
@@ -140,6 +152,7 @@ export default function CaseDecisionPage() {
   const confirmReady = previewReady && checklistAck && caveatAck && allChecklistComplete;
   const selectedActionOption = PHASE3_ACTIONS.find((action) => action.key === selectedAction);
   const latestEntry = reviewLog[0];
+  const briefIsStale = briefSnapshot ? isActionBriefStale(briefSnapshot, detail, envelope) : false;
 
   function handleConfirm() {
     if (!confirmReady || !selectedAction) return;
@@ -153,6 +166,67 @@ export default function CaseDecisionPage() {
     });
     setReviewLog(appendReviewLog(entry));
     setShowPreview(false);
+  }
+
+  function handleRefreshBrief() {
+    if (!detail || !envelope) return;
+    setBriefSnapshot(buildActionBriefSnapshot({
+      detail,
+      envelope,
+      latestReviewEntry: readReviewLog(caseId)[0] ?? null,
+      checklistLabels: CHALLENGE_1_CHECKLIST,
+      checklistValues: checklist,
+      caveatAck,
+    }));
+    setBriefMessage('Brief refreshed from current case data and local review state.');
+  }
+
+  async function copyMarkdown() {
+    if (!briefSnapshot) return;
+    try {
+      await navigator.clipboard.writeText(buildActionBriefMarkdown(briefSnapshot));
+      setBriefMessage('Markdown copied to clipboard.');
+    } catch {
+      setBriefMessage('Clipboard copy failed. Try browser permissions or use Print.');
+    }
+  }
+
+  async function copyHtml() {
+    if (!briefSnapshot) return;
+    const html = buildActionBriefHtmlFragment(briefSnapshot);
+    const plain = buildActionBriefMarkdown(briefSnapshot);
+    try {
+      if ('ClipboardItem' in window) {
+        await navigator.clipboard.write([
+          new ClipboardItem({
+            'text/html': new Blob([html], { type: 'text/html' }),
+            'text/plain': new Blob([plain], { type: 'text/plain' }),
+          }),
+        ]);
+      } else {
+        await navigator.clipboard.writeText(plain);
+      }
+      setBriefMessage('HTML copied to clipboard.');
+    } catch {
+      setBriefMessage('HTML copy failed. Try Markdown copy or Print.');
+    }
+  }
+
+  function printBrief() {
+    if (!briefSnapshot) return;
+    const printWindow = window.open('', '_blank', 'width=960,height=720');
+    if (!printWindow) {
+      setBriefMessage('Print window was blocked. Allow popups for this site or use Copy Markdown.');
+      return;
+    }
+    printWindow.opener = null;
+    printWindow.document.open();
+    printWindow.document.write(buildActionBriefPrintDocument(briefSnapshot));
+    printWindow.document.close();
+    printWindow.focus();
+    window.setTimeout(() => {
+      printWindow.print();
+    }, 250);
   }
 
   return (
@@ -465,6 +539,286 @@ export default function CaseDecisionPage() {
                 <p className="mt-2 text-sm leading-6 text-[var(--color-muted)]">{entry.rationale}</p>
               </article>
             ))}
+          </div>
+        )}
+      </section>
+
+      <section className="app-card rounded-lg p-5">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <p className="section-title">Action brief</p>
+            <h2 className="mt-2 text-xl font-semibold text-[var(--color-ink)]">
+              One-page internal review memo
+            </h2>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--color-muted)]">
+              Generate a memo-style snapshot from this case, the current checklist, and the latest local advisory action.
+              The brief is built in this browser and is not sent to a server.
+            </p>
+          </div>
+          <button
+            type="button"
+            className="inline-flex min-h-10 items-center justify-center rounded-md border border-[var(--color-border)] bg-white px-3 text-sm font-semibold text-[var(--color-ink)] transition hover:bg-[var(--color-accent-soft)]"
+            onClick={() => {
+              const nextOpen = !briefOpen;
+              setBriefOpen(nextOpen);
+              if (nextOpen && !briefSnapshot) {
+                window.setTimeout(handleRefreshBrief, 0);
+              }
+            }}
+          >
+            {briefOpen ? 'Collapse brief' : 'Open brief'}
+          </button>
+        </div>
+
+        {briefOpen && (
+          <div className="mt-5 space-y-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                className="rounded-md bg-[var(--color-accent)] px-3 py-2 text-sm font-semibold text-white"
+                onClick={handleRefreshBrief}
+              >
+                Refresh brief
+              </button>
+              <button
+                type="button"
+                className="rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-semibold text-[var(--color-ink)] disabled:opacity-50"
+                disabled={!briefSnapshot}
+                onClick={printBrief}
+              >
+                Print brief
+              </button>
+              <button
+                type="button"
+                className="rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-semibold text-[var(--color-ink)] disabled:opacity-50"
+                disabled={!briefSnapshot}
+                onClick={copyMarkdown}
+              >
+                Copy Markdown
+              </button>
+              <button
+                type="button"
+                className="rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-semibold text-[var(--color-ink)] disabled:opacity-50"
+                disabled={!briefSnapshot}
+                onClick={copyHtml}
+              >
+                Copy HTML
+              </button>
+            </div>
+
+            {briefMessage && (
+              <p className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-subtle)] px-3 py-2 text-sm text-[var(--color-muted)]">
+                {briefMessage}
+              </p>
+            )}
+
+            {briefIsStale && (
+              <p className="rounded-lg border border-[var(--color-warning)] bg-[var(--color-risk-medium-soft)] px-3 py-2 text-sm text-[var(--color-warning)]">
+                Underlying case data may have changed since this brief was generated. Refresh the brief before sharing.
+              </p>
+            )}
+
+            {!briefSnapshot ? (
+              <div className="rounded-lg border border-dashed border-[var(--color-border)] bg-white/70 p-5">
+                <p className="text-sm text-[var(--color-muted)]">
+                  Opened and ready. Use Refresh brief to generate a one-page snapshot.
+                </p>
+              </div>
+            ) : (
+              <article className="action-brief rounded-lg border border-[var(--color-border)] bg-white p-5">
+                <header className="border-b border-[var(--color-border)] pb-4">
+                  <p className="section-title">Action brief - Challenge 1 (Zombie Recipients)</p>
+                  <h3 className="mt-2 text-2xl font-semibold text-[var(--color-ink)]">
+                    {briefSnapshot.envelope.entityName}
+                  </h3>
+                  <dl className="mt-3 grid gap-3 text-sm md:grid-cols-2">
+                    <div>
+                      <dt className="font-semibold text-[var(--color-muted)]">Case ID</dt>
+                      <dd className="font-mono text-xs text-[var(--color-ink)]">{briefSnapshot.envelope.caseId}</dd>
+                    </div>
+                    <div>
+                      <dt className="font-semibold text-[var(--color-muted)]">Generated</dt>
+                      <dd className="text-[var(--color-ink)]">{formatDate(briefSnapshot.generatedAtIso)}</dd>
+                    </div>
+                  </dl>
+                </header>
+
+                <div className="mt-5 grid gap-5">
+                  <section>
+                    <h4 className="text-base font-semibold text-[var(--color-ink)]">1. Case summary</h4>
+                    <dl className="mt-3 grid gap-2 text-sm md:grid-cols-2">
+                      <div className="rounded-md bg-[var(--color-surface-subtle)] px-3 py-2">
+                        <dt className="font-semibold text-[var(--color-muted)]">Signal</dt>
+                        <dd>{recipientRiskSignalLabel(briefSnapshot.envelope.signalType)}</dd>
+                      </div>
+                      <div className="rounded-md bg-[var(--color-surface-subtle)] px-3 py-2">
+                        <dt className="font-semibold text-[var(--color-muted)]">Score / band</dt>
+                        <dd>{briefSnapshot.envelope.score} - {briefSnapshot.envelope.riskLabel}</dd>
+                      </div>
+                      <div className="rounded-md bg-[var(--color-surface-subtle)] px-3 py-2">
+                        <dt className="font-semibold text-[var(--color-muted)]">Confidence</dt>
+                        <dd>{briefSnapshot.envelope.confidenceLevel ?? 'unknown'}</dd>
+                      </div>
+                      <div className="rounded-md bg-[var(--color-surface-subtle)] px-3 py-2">
+                        <dt className="font-semibold text-[var(--color-muted)]">Match method</dt>
+                        <dd>{briefSnapshot.envelope.matchMethod ?? 'n/a'}</dd>
+                      </div>
+                    </dl>
+                  </section>
+
+                  <section>
+                    <h4 className="text-base font-semibold text-[var(--color-ink)]">2. Why flagged</h4>
+                    <ul className="mt-2 grid gap-2">
+                      {(briefSnapshot.envelope.whyFlagged.length > 0 ? briefSnapshot.envelope.whyFlagged : ['No why-flagged text returned.']).map((item) => (
+                        <li key={item} className="rounded-md bg-[var(--color-surface-subtle)] px-3 py-2 text-sm text-[var(--color-muted)]">{item}</li>
+                      ))}
+                    </ul>
+                  </section>
+
+                  <section>
+                    <h4 className="text-base font-semibold text-[var(--color-ink)]">3. Evidence snapshot</h4>
+                    <dl className="mt-3 grid gap-2 text-sm md:grid-cols-3">
+                      <div className="rounded-md bg-[var(--color-surface-subtle)] px-3 py-2">
+                        <dt className="font-semibold text-[var(--color-muted)]">Funding</dt>
+                        <dd>{formatCurrencyAmount(briefSnapshot.evidenceSnapshot.totalValue ?? 0)}</dd>
+                      </div>
+                      <div className="rounded-md bg-[var(--color-surface-subtle)] px-3 py-2">
+                        <dt className="font-semibold text-[var(--color-muted)]">Grants / departments</dt>
+                        <dd>{briefSnapshot.evidenceSnapshot.grantCount ?? 'n/a'} / {briefSnapshot.evidenceSnapshot.deptCount ?? 'n/a'}</dd>
+                      </div>
+                      <div className="rounded-md bg-[var(--color-surface-subtle)] px-3 py-2">
+                        <dt className="font-semibold text-[var(--color-muted)]">Last activity</dt>
+                        <dd>{briefSnapshot.evidenceSnapshot.lastYear ?? 'n/a'}</dd>
+                      </div>
+                      <div className="rounded-md bg-[var(--color-surface-subtle)] px-3 py-2">
+                        <dt className="font-semibold text-[var(--color-muted)]">Business number</dt>
+                        <dd>{briefSnapshot.evidenceSnapshot.bn ?? 'n/a'}</dd>
+                      </div>
+                      <div className="rounded-md bg-[var(--color-surface-subtle)] px-3 py-2 md:col-span-2">
+                        <dt className="font-semibold text-[var(--color-muted)]">Confidence note</dt>
+                        <dd>{briefSnapshot.evidenceSnapshot.confidenceNote ?? 'n/a'}</dd>
+                      </div>
+                    </dl>
+                    <div className="mt-3 overflow-x-auto">
+                      <table className="min-w-[720px] w-full border-collapse text-left text-sm">
+                        <thead className="bg-[var(--color-surface-subtle)] text-xs uppercase tracking-[0.12em] text-[var(--color-muted)]">
+                          <tr>
+                            <th className="border border-[var(--color-border)] px-3 py-2">Evidence</th>
+                            <th className="border border-[var(--color-border)] px-3 py-2">Detail</th>
+                            <th className="border border-[var(--color-border)] px-3 py-2">Tone</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {briefSnapshot.topEvidenceRows.map((row) => (
+                            <tr key={row.id}>
+                              <td className="border border-[var(--color-border)] px-3 py-2 font-semibold text-[var(--color-ink)]">{row.title}</td>
+                              <td className="border border-[var(--color-border)] px-3 py-2 text-[var(--color-muted)]">{row.detail}</td>
+                              <td className="border border-[var(--color-border)] px-3 py-2 text-[var(--color-muted)]">{row.tone}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </section>
+
+                  <section>
+                    <h4 className="text-base font-semibold text-[var(--color-ink)]">4. Official sources</h4>
+                    <div className="mt-2 grid gap-2">
+                      {briefSnapshot.envelope.sourceLinks.length > 0 ? briefSnapshot.envelope.sourceLinks.map((url) => (
+                        <a key={url} href={url} target="_blank" rel="noreferrer" className="break-all rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-sm text-[var(--color-accent)]">
+                          {sourceLabel(url)}
+                          <span className="ml-2 text-[var(--color-muted)]">{url}</span>
+                        </a>
+                      )) : (
+                        <p className="rounded-md bg-[var(--color-surface-subtle)] px-3 py-2 text-sm text-[var(--color-muted)]">Source verification suggested.</p>
+                      )}
+                    </div>
+                    <p className="mt-3 text-xs text-[var(--color-muted)]">
+                      Source tables: {briefSnapshot.evidenceSnapshot.sourceTables.length > 0 ? briefSnapshot.evidenceSnapshot.sourceTables.join(', ') : 'No source table list returned.'}
+                    </p>
+                  </section>
+
+                  <section>
+                    <h4 className="text-base font-semibold text-[var(--color-ink)]">5. Caveats and data limitations</h4>
+                    <ul className="mt-2 grid gap-2">
+                      {(briefSnapshot.envelope.caveats.length > 0 ? briefSnapshot.envelope.caveats : ['No caveats returned by the source endpoint.']).map((item) => (
+                        <li key={item} className="rounded-md bg-[var(--color-surface-subtle)] px-3 py-2 text-sm text-[var(--color-muted)]">{item}</li>
+                      ))}
+                    </ul>
+                  </section>
+
+                  <section className="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <h4 className="text-base font-semibold text-[var(--color-ink)]">6. Recommended human action</h4>
+                      <p className="mt-2 text-sm font-semibold text-[var(--color-ink)]">{briefSnapshot.envelope.recommendedAction}</p>
+                      <p className="mt-1 text-sm leading-6 text-[var(--color-muted)]">{briefSnapshot.envelope.decision.actionDetail}</p>
+                    </div>
+                    <div>
+                      <h4 className="text-base font-semibold text-[var(--color-ink)]">7. Advisory action (reviewer-selected)</h4>
+                      <p className="mt-2 text-sm text-[var(--color-muted)]">
+                        {briefSnapshot.latestReviewEntry
+                          ? actionLabel(briefSnapshot.latestReviewEntry.action_key)
+                          : 'No advisory action recorded on this device for this case yet.'}
+                      </p>
+                    </div>
+                  </section>
+
+                  <section>
+                    <h4 className="text-base font-semibold text-[var(--color-ink)]">8. Reviewer role and rationale</h4>
+                    <p className="mt-2 text-sm text-[var(--color-muted)]">
+                      Reviewer role: <span className="font-semibold text-[var(--color-ink)]">{briefSnapshot.latestReviewEntry?.reviewer_role ?? '-'}</span>
+                    </p>
+                    <p className="mt-2 rounded-md bg-[var(--color-surface-subtle)] px-3 py-2 text-sm leading-6 text-[var(--color-muted)]">
+                      {briefSnapshot.latestReviewEntry?.rationale ?? '-'}
+                    </p>
+                  </section>
+
+                  <section>
+                    <h4 className="text-base font-semibold text-[var(--color-ink)]">9. Verification checklist status</h4>
+                    <div className="mt-2 overflow-x-auto">
+                      <table className="min-w-[640px] w-full border-collapse text-left text-sm">
+                        <thead className="bg-[var(--color-surface-subtle)] text-xs uppercase tracking-[0.12em] text-[var(--color-muted)]">
+                          <tr>
+                            <th className="border border-[var(--color-border)] px-3 py-2">Checklist item</th>
+                            <th className="border border-[var(--color-border)] px-3 py-2">Checked at generation</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {briefSnapshot.checklistStatus.map((item) => (
+                            <tr key={item.id}>
+                              <td className="border border-[var(--color-border)] px-3 py-2 text-[var(--color-muted)]">{item.label}</td>
+                              <td className="border border-[var(--color-border)] px-3 py-2 font-semibold text-[var(--color-ink)]">{item.checked ? 'Yes' : 'No'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <p className="mt-2 text-xs text-[var(--color-muted)]">
+                      Caveat acknowledgement at generation: {briefSnapshot.caveatAckAtGeneration ? 'Yes' : 'No'}
+                    </p>
+                  </section>
+
+                  <section>
+                    <h4 className="text-base font-semibold text-[var(--color-ink)]">10. What to verify next</h4>
+                    <ul className="mt-2 grid gap-2">
+                      {briefSnapshot.whatToVerifyNext.map((item) => (
+                        <li key={item} className="rounded-md bg-[var(--color-surface-subtle)] px-3 py-2 text-sm text-[var(--color-muted)]">{item}</li>
+                      ))}
+                    </ul>
+                  </section>
+
+                  <section className="rounded-md border border-[var(--color-border)] bg-[var(--color-accent-soft)] px-3 py-2">
+                    <h4 className="text-base font-semibold text-[var(--color-ink)]">11. Required disclaimer</h4>
+                    <p className="mt-1 text-sm text-[var(--color-muted)]">{ACTION_BRIEF_DISCLAIMER}</p>
+                    <p className="mt-1 text-xs text-[var(--color-muted)]">{CHALLENGE_1_DISCLAIMER}</p>
+                  </section>
+
+                  <footer className="border-t border-[var(--color-border)] pt-3 text-xs text-[var(--color-muted)]">
+                    Advisory content generated in the review workspace. Not transmitted by AccountabilityMax. Suitable for internal review processes only.
+                  </footer>
+                </div>
+              </article>
+            )}
           </div>
         )}
       </section>
