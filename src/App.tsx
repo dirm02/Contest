@@ -1,6 +1,7 @@
 import { Link, NavLink, Route, Routes } from 'react-router-dom';
 import SearchPage from './routes/SearchPage';
 import ActionQueuePage from './routes/ActionQueuePage';
+import CaseDecisionPage from './routes/CaseDecisionPage';
 import DossierPage from './routes/DossierPage';
 import ChallengeAtlasPage from './routes/ChallengeAtlasPage';
 import GovernanceLandingPage from './routes/GovernanceLandingPage';
@@ -78,6 +79,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<SearchPage />} />
           <Route path="/action-queue" element={<ActionQueuePage />} />
+          <Route path="/cases/:caseId" element={<CaseDecisionPage />} />
           <Route path="/investigations" element={<ChallengeAtlasPage />} />
           <Route path="/challenge-atlas" element={<ChallengeAtlasPage />} />
           <Route path="/challenge-review" element={<ChallengeReviewPage />} />
