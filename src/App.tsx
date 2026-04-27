@@ -19,6 +19,7 @@ import GhostCapacityDetailPage from './routes/GhostCapacityDetailPage';
 import VendorConcentrationPage from './routes/VendorConcentrationPage';
 import ContractIntelligencePage from './routes/ContractIntelligencePage';
 import DuplicativeFundingPage from './routes/DuplicativeFundingPage';
+import PolicyAlignmentPage from './routes/PolicyAlignmentPage';
 
 const NAV_ITEMS: Array<{ to: string; label: string; end?: boolean }> = [
   { to: '/', label: 'Search', end: true },
@@ -98,6 +99,7 @@ export default function App() {
           />
           <Route path="/vendor-concentration" element={<VendorConcentrationPage />} />
           <Route path="/contract-intelligence" element={<ContractIntelligencePage />} />
+          <Route path="/policy-alignment" element={<PolicyAlignmentPage />} />
           <Route path="/duplicative-funding" element={<DuplicativeFundingPage />} />
           <Route path="/people" element={<PeopleSearchPage />} />
           <Route path="/people/:personNorm" element={<PersonDetailPage />} />

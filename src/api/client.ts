@@ -24,6 +24,8 @@ import type {
   LoopsResponseApi,
   PersonProfileResponseApi,
   PersonSearchResponseApi,
+  PolicyAlignmentFilters,
+  PolicyAlignmentResponse,
   PriorityGapReviewFilters,
   PriorityGapReviewResponse,
   RelatedResponseApi,
@@ -79,6 +81,7 @@ export const queryKeys = {
   amendmentCreepDetail: (caseId: string) => ['amendment-creep', 'detail', caseId] as const,
   vendorConcentration: (filters: VendorConcentrationFilters) => ['vendor-concentration', filters] as const,
   contractIntelligence: (filters: ContractIntelligenceFilters) => ['contract-intelligence', filters] as const,
+  policyAlignment: (filters: PolicyAlignmentFilters) => ['policy-alignment', filters] as const,
   duplicativeFundingOverlap: (filters: DuplicativeFundingOverlapFilters) => ['duplicative-funding', 'overlap', filters] as const,
   priorityGapReview: (filters: PriorityGapReviewFilters) => ['duplicative-funding', 'gaps', filters] as const,
   challengeReview: () => ['challenge-review'] as const,
@@ -296,6 +299,27 @@ function buildContractIntelligenceQuery(filters: ContractIntelligenceFilters): s
 export function fetchContractIntelligence(filters: ContractIntelligenceFilters = {}) {
   return getJson<ContractIntelligenceResponse>(
     `/api/contract-intelligence${buildContractIntelligenceQuery(filters)}`,
+  );
+}
+
+function buildPolicyAlignmentQuery(filters: PolicyAlignmentFilters): string {
+  const params = new URLSearchParams();
+  if (filters.limit != null) params.set('limit', String(filters.limit));
+  if (filters.offset != null) params.set('offset', String(filters.offset));
+  if (filters.policyDomain) params.set('policy_domain', filters.policyDomain);
+  if (filters.sourceDomain) params.set('source_domain', filters.sourceDomain);
+  if (filters.confidenceLevel) params.set('confidence_level', filters.confidenceLevel);
+  if (filters.reviewTier) params.set('review_tier', filters.reviewTier);
+  if (filters.department) params.set('department', filters.department);
+  if (filters.minScore != null) params.set('min_score', String(filters.minScore));
+  if (filters.balanced != null) params.set('balanced', String(filters.balanced));
+  const qs = params.toString();
+  return qs ? `?${qs}` : '';
+}
+
+export function fetchPolicyAlignment(filters: PolicyAlignmentFilters = {}) {
+  return getJson<PolicyAlignmentResponse>(
+    `/api/policy-alignment${buildPolicyAlignmentQuery(filters)}`,
   );
 }
 
