@@ -862,7 +862,7 @@ async function runBqCliJson(cliArgs) {
   const { stdout } = await execFileAsync(
     command,
     commandArgs,
-    { maxBuffer: 1024 * 1024 * 20 },
+    { maxBuffer: 1024 * 1024 * 100 },
   );
   try {
     return JSON.parse(stdout || '[]');
@@ -877,6 +877,7 @@ async function runBigQueryCli(sql) {
     '--format=json',
     'query',
     '--use_legacy_sql=false',
+    '--max_rows=100000',
     sql,
   ]);
 }
@@ -4829,6 +4830,318 @@ app.get('/api/contract-intelligence', async (req, res) => {
         'Average contract value, not unit price.',
         'Nominal CAD, not CPI-adjusted.',
         'Category labels follow source disclosure fields.',
+      ],
+      results: pageRows,
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+const DUPLICATIVE_FUNDING_OVERLAP_SQL = `
+SELECT
+  entity_id,
+  canonical_name,
+  CAST(bn_root AS STRING) AS bn_root,
+  dataset_sources,
+  published_stream_combo,
+  public_sector_like,
+  overlap_year_start,
+  overlap_year_end,
+  overlap_years,
+  fed_total,
+  ab_total,
+  cra_reported_federal,
+  cra_reported_provincial,
+  cra_reported_municipal,
+  cra_reported_total_govt,
+  total_public_funding_observed,
+  fed_award_count,
+  ab_payment_count,
+  cra_year_count,
+  government_level_count,
+  department_ministry_count,
+  fed_departments,
+  ab_ministries,
+  purpose_cluster,
+  purpose_labels,
+  purpose_similarity_score,
+  overlap_score,
+  review_tier,
+  why_flagged,
+  caveats,
+  source_grade
+FROM ${BIGQUERY_DATASET}.challenge8a_overlap_v1
+ORDER BY
+  CASE review_tier WHEN 'HIGH_REVIEW' THEN 1 WHEN 'MEDIUM_REVIEW' THEN 2 ELSE 3 END,
+  overlap_score DESC,
+  total_public_funding_observed DESC
+`;
+
+const PRIORITY_GAP_REVIEW_SQL = `
+SELECT
+  case_id,
+  source_domain,
+  department_or_organization,
+  program_or_project,
+  priority_area,
+  geography,
+  fiscal_year_or_period,
+  planned_amount,
+  actual_or_observed_amount,
+  funding_gap_amount,
+  funding_gap_ratio,
+  target_text,
+  result_text,
+  target_result_status,
+  project_status,
+  CAST(start_date AS STRING) AS start_date,
+  CAST(expected_completion_date AS STRING) AS expected_completion_date,
+  CAST(actual_completion_date AS STRING) AS actual_completion_date,
+  delay_days,
+  evidence_summary,
+  why_flagged,
+  review_tier,
+  caveats,
+  source_tables,
+  case_type,
+  confidence_level,
+  gap_score
+FROM ${BIGQUERY_DATASET}.challenge8b_gap_review_v1
+ORDER BY
+  CASE confidence_level WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END,
+  CASE review_tier WHEN 'HIGH_REVIEW' THEN 1 WHEN 'MEDIUM_REVIEW' THEN 2 ELSE 3 END,
+  gap_score DESC,
+  funding_gap_amount DESC
+`;
+
+function reviewTierRank(tier) {
+  if (tier === 'HIGH_REVIEW') return 1;
+  if (tier === 'MEDIUM_REVIEW') return 2;
+  return 3;
+}
+
+function confidenceRank(confidence) {
+  if (confidence === 'high') return 1;
+  if (confidence === 'medium') return 2;
+  return 3;
+}
+
+function splitTextList(value) {
+  return value
+    ? String(value).split(/[;|]/).map((part) => part.trim()).filter(Boolean)
+    : [];
+}
+
+function toBoolean(value) {
+  if (value === true || value === 'true') return true;
+  if (value === false || value === 'false') return false;
+  return Boolean(value);
+}
+
+app.get('/api/duplicative-funding/overlap', async (req, res) => {
+  try {
+    const limit = parseIntegerQuery(req.query.limit, 50, 1, 200);
+    const offset = parseIntegerQuery(req.query.offset, 0, 0, 100000);
+    const streamCombo = String(req.query.stream_combo || '').trim();
+    const purposeCluster = String(req.query.purpose_cluster || '').trim();
+    const reviewTier = String(req.query.review_tier || '').trim();
+    const publicSectorRaw = String(req.query.public_sector || '').trim().toLowerCase();
+    const publicSector = publicSectorRaw === 'true' ? true : publicSectorRaw === 'false' ? false : null;
+    const minScore = parseNumberQuery(req.query.min_score, 0, 0, 100);
+    const entity = String(req.query.entity || '').trim().toLowerCase();
+
+    const rowsCacheKey = 'duplicative-funding:overlap:challenge8a-v1';
+    let allRows = getCachedJson(rowsCacheKey);
+    if (!allRows) {
+      allRows = await runBigQuerySafe(DUPLICATIVE_FUNDING_OVERLAP_SQL);
+      setCachedJson(rowsCacheKey, allRows, 30 * 60 * 1000);
+    }
+
+    const normalizedRows = allRows.map((row) => ({
+      entity_id: toNumber(row.entity_id),
+      canonical_name: row.canonical_name || '',
+      bn_root: row.bn_root || null,
+      dataset_sources: row.dataset_sources || '',
+      published_stream_combo: row.published_stream_combo || '',
+      public_sector_like: toBoolean(row.public_sector_like),
+      overlap_year_start: toNumber(row.overlap_year_start),
+      overlap_year_end: toNumber(row.overlap_year_end),
+      overlap_years: toNumber(row.overlap_years),
+      fed_total: toNumber(row.fed_total),
+      ab_total: toNumber(row.ab_total),
+      cra_reported_federal: toNumber(row.cra_reported_federal),
+      cra_reported_provincial: toNumber(row.cra_reported_provincial),
+      cra_reported_municipal: toNumber(row.cra_reported_municipal),
+      cra_reported_total_govt: toNumber(row.cra_reported_total_govt),
+      total_public_funding_observed: toNumber(row.total_public_funding_observed),
+      fed_award_count: toNumber(row.fed_award_count),
+      ab_payment_count: toNumber(row.ab_payment_count),
+      cra_year_count: toNumber(row.cra_year_count),
+      government_level_count: toNumber(row.government_level_count),
+      department_ministry_count: toNumber(row.department_ministry_count),
+      fed_departments: row.fed_departments || '',
+      ab_ministries: row.ab_ministries || '',
+      purpose_cluster: row.purpose_cluster || 'unknown_or_mixed',
+      purpose_labels: row.purpose_labels || '',
+      purpose_similarity_score: toNumber(row.purpose_similarity_score),
+      overlap_score: toNumber(row.overlap_score),
+      review_tier: row.review_tier || 'MEDIUM_REVIEW',
+      why_flagged: row.why_flagged || '',
+      caveats: row.caveats || '',
+      source_grade: row.source_grade || 'multi_stream_disclosure_v1',
+    }));
+
+    const filteredRows = normalizedRows.filter((row) => {
+      if (streamCombo && row.published_stream_combo !== streamCombo) return false;
+      if (purposeCluster && row.purpose_cluster !== purposeCluster) return false;
+      if (reviewTier && row.review_tier !== reviewTier) return false;
+      if (publicSector !== null && row.public_sector_like !== publicSector) return false;
+      if (row.overlap_score < minScore) return false;
+      if (entity && !row.canonical_name.toLowerCase().includes(entity)) return false;
+      return true;
+    });
+
+    const pageRows = filteredRows
+      .sort((a, b) => (
+        reviewTierRank(a.review_tier) - reviewTierRank(b.review_tier)
+        || b.overlap_score - a.overlap_score
+        || b.total_public_funding_observed - a.total_public_funding_observed
+      ))
+      .slice(offset, offset + limit);
+
+    const streamComboCounts = filteredRows.reduce((acc, row) => {
+      acc[row.published_stream_combo] = (acc[row.published_stream_combo] || 0) + 1;
+      return acc;
+    }, {});
+
+    res.json({
+      filters: {
+        limit,
+        offset,
+        stream_combo: streamCombo || null,
+        purpose_cluster: purposeCluster || null,
+        review_tier: reviewTier || null,
+        public_sector: publicSector,
+        min_score: minScore,
+        entity: entity || null,
+      },
+      total: filteredRows.length,
+      summary: {
+        total_rows: filteredRows.length,
+        public_sector_count: filteredRows.filter((row) => row.public_sector_like).length,
+        total_observed_funding: filteredRows.reduce((sum, row) => sum + row.total_public_funding_observed, 0),
+        high_review_count: filteredRows.filter((row) => row.review_tier === 'HIGH_REVIEW').length,
+        stream_combo_counts: streamComboCounts,
+      },
+      notes: [
+        'This is a review queue. It does not prove waste, duplication, or delivery failure.',
+        'Public-sector and broad-service organizations often have expected co-funding or disclosure overlap.',
+      ],
+      results: pageRows,
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/duplicative-funding/gaps', async (req, res) => {
+  try {
+    const limit = parseIntegerQuery(req.query.limit, 50, 1, 200);
+    const offset = parseIntegerQuery(req.query.offset, 0, 0, 100000);
+    const sourceDomain = String(req.query.source_domain || '').trim();
+    const caseType = String(req.query.case_type || '').trim();
+    const confidenceLevel = String(req.query.confidence_level || '').trim();
+    const priorityArea = String(req.query.priority_area || '').trim();
+    const reviewTier = String(req.query.review_tier || '').trim();
+    const minGapScore = parseNumberQuery(req.query.min_gap_score, 0, 0, 100);
+    const department = String(req.query.department || '').trim().toLowerCase();
+
+    const rowsCacheKey = 'duplicative-funding:gaps:challenge8b-v1';
+    let allRows = getCachedJson(rowsCacheKey);
+    if (!allRows) {
+      allRows = await runBigQuerySafe(PRIORITY_GAP_REVIEW_SQL);
+      setCachedJson(rowsCacheKey, allRows, 30 * 60 * 1000);
+    }
+
+    const normalizedRows = allRows.map((row) => ({
+      case_id: row.case_id || '',
+      source_domain: row.source_domain || '',
+      department_or_organization: row.department_or_organization || '',
+      program_or_project: row.program_or_project || '',
+      priority_area: row.priority_area || 'unknown_or_mixed',
+      geography: row.geography || null,
+      fiscal_year_or_period: row.fiscal_year_or_period || null,
+      planned_amount: toNumber(row.planned_amount),
+      actual_or_observed_amount: toNumber(row.actual_or_observed_amount),
+      funding_gap_amount: toNumber(row.funding_gap_amount),
+      funding_gap_ratio: toNumber(row.funding_gap_ratio),
+      target_text: row.target_text || null,
+      result_text: row.result_text || null,
+      target_result_status: row.target_result_status || null,
+      project_status: row.project_status || null,
+      start_date: row.start_date || null,
+      expected_completion_date: row.expected_completion_date || null,
+      actual_completion_date: row.actual_completion_date || null,
+      delay_days: row.delay_days == null ? null : toNumber(row.delay_days),
+      evidence_summary: row.evidence_summary || '',
+      why_flagged: row.why_flagged || '',
+      review_tier: row.review_tier || 'MEDIUM_REVIEW',
+      caveats: row.caveats || '',
+      source_tables: row.source_tables || '',
+      case_type: row.case_type || '',
+      confidence_level: row.confidence_level || 'low',
+      gap_score: toNumber(row.gap_score),
+    }));
+
+    const filteredRows = normalizedRows.filter((row) => {
+      if (sourceDomain && row.source_domain !== sourceDomain) return false;
+      if (caseType && row.case_type !== caseType) return false;
+      if (confidenceLevel && row.confidence_level !== confidenceLevel) return false;
+      if (priorityArea && row.priority_area !== priorityArea) return false;
+      if (reviewTier && row.review_tier !== reviewTier) return false;
+      if (row.gap_score < minGapScore) return false;
+      if (department && !row.department_or_organization.toLowerCase().includes(department)) return false;
+      return true;
+    });
+
+    const pageRows = filteredRows
+      .sort((a, b) => (
+        confidenceRank(a.confidence_level) - confidenceRank(b.confidence_level)
+        || reviewTierRank(a.review_tier) - reviewTierRank(b.review_tier)
+        || b.gap_score - a.gap_score
+        || b.funding_gap_amount - a.funding_gap_amount
+      ))
+      .slice(offset, offset + limit);
+
+    const caseTypeCounts = filteredRows.reduce((acc, row) => {
+      acc[row.case_type] = (acc[row.case_type] || 0) + 1;
+      return acc;
+    }, {});
+
+    res.json({
+      filters: {
+        limit,
+        offset,
+        source_domain: sourceDomain || null,
+        case_type: caseType || null,
+        confidence_level: confidenceLevel || null,
+        priority_area: priorityArea || null,
+        review_tier: reviewTier || null,
+        min_gap_score: minGapScore,
+        department: department || null,
+      },
+      total: filteredRows.length,
+      summary: {
+        total_rows: filteredRows.length,
+        high_confidence_count: filteredRows.filter((row) => row.confidence_level === 'high').length,
+        high_review_count: filteredRows.filter((row) => row.review_tier === 'HIGH_REVIEW').length,
+        total_gap_amount: filteredRows.reduce((sum, row) => sum + Math.max(0, row.funding_gap_amount), 0),
+        case_type_counts: caseTypeCounts,
+      },
+      notes: [
+        'This is a review queue. It does not prove waste, duplication, or delivery failure.',
+        'Program spending variance rows are lower-confidence accounting and reporting review items.',
       ],
       results: pageRows,
     });

@@ -1156,6 +1156,140 @@ export interface ContractIntelligenceResponse {
   results: ContractIntelligenceRow[];
 }
 
+export interface DuplicativeFundingOverlapFilters {
+  limit?: number;
+  offset?: number;
+  streamCombo?: string | null;
+  purposeCluster?: string | null;
+  reviewTier?: string | null;
+  publicSector?: boolean | null;
+  minScore?: number;
+  entity?: string | null;
+}
+
+export interface DuplicativeFundingOverlapRow {
+  entity_id: number;
+  canonical_name: string;
+  bn_root: string | null;
+  dataset_sources: string;
+  published_stream_combo: string;
+  public_sector_like: boolean;
+  overlap_year_start: number;
+  overlap_year_end: number;
+  overlap_years: number;
+  fed_total: number;
+  ab_total: number;
+  cra_reported_federal: number;
+  cra_reported_provincial: number;
+  cra_reported_municipal: number;
+  cra_reported_total_govt: number;
+  total_public_funding_observed: number;
+  fed_award_count: number;
+  ab_payment_count: number;
+  cra_year_count: number;
+  government_level_count: number;
+  department_ministry_count: number;
+  fed_departments: string;
+  ab_ministries: string;
+  purpose_cluster: string;
+  purpose_labels: string;
+  purpose_similarity_score: number;
+  overlap_score: number;
+  review_tier: string;
+  why_flagged: string;
+  caveats: string;
+  source_grade: string;
+}
+
+export interface DuplicativeFundingOverlapResponse {
+  filters: {
+    limit: number;
+    offset: number;
+    stream_combo: string | null;
+    purpose_cluster: string | null;
+    review_tier: string | null;
+    public_sector: boolean | null;
+    min_score: number;
+    entity: string | null;
+  };
+  total: number;
+  summary: {
+    total_rows: number;
+    public_sector_count: number;
+    total_observed_funding: number;
+    high_review_count: number;
+    stream_combo_counts: Record<string, number>;
+  };
+  notes: string[];
+  results: DuplicativeFundingOverlapRow[];
+}
+
+export interface PriorityGapReviewFilters {
+  limit?: number;
+  offset?: number;
+  sourceDomain?: string | null;
+  caseType?: string | null;
+  confidenceLevel?: string | null;
+  priorityArea?: string | null;
+  reviewTier?: string | null;
+  minGapScore?: number;
+  department?: string | null;
+}
+
+export interface PriorityGapReviewRow {
+  case_id: string;
+  source_domain: string;
+  department_or_organization: string;
+  program_or_project: string;
+  priority_area: string;
+  geography: string | null;
+  fiscal_year_or_period: string | null;
+  planned_amount: number;
+  actual_or_observed_amount: number;
+  funding_gap_amount: number;
+  funding_gap_ratio: number;
+  target_text: string | null;
+  result_text: string | null;
+  target_result_status: string | null;
+  project_status: string | null;
+  start_date: string | null;
+  expected_completion_date: string | null;
+  actual_completion_date: string | null;
+  delay_days: number | null;
+  evidence_summary: string;
+  why_flagged: string;
+  review_tier: string;
+  caveats: string;
+  source_tables: string;
+  case_type: string;
+  confidence_level: string;
+  gap_score: number;
+}
+
+export interface PriorityGapReviewResponse {
+  filters: {
+    limit: number;
+    offset: number;
+    source_domain: string | null;
+    case_type: string | null;
+    confidence_level: string | null;
+    priority_area: string | null;
+    review_tier: string | null;
+    min_gap_score: number;
+    department: string | null;
+  };
+  total: number;
+  summary: {
+    total_rows: number;
+    high_confidence_count: number;
+    high_review_count: number;
+    total_gap_amount: number;
+    case_type_counts: Record<string, number>;
+  };
+  notes: string[];
+  results: PriorityGapReviewRow[];
+}
+
 export interface ChallengeReviewItem {
   id: string;
   title: string;

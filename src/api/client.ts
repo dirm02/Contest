@@ -8,6 +8,8 @@ import type {
   ChallengeReviewResponse,
   ContractIntelligenceFilters,
   ContractIntelligenceResponse,
+  DuplicativeFundingOverlapFilters,
+  DuplicativeFundingOverlapResponse,
   EntityGovernanceResponseApi,
   EntityResponseApi,
   FundingByYearResponseApi,
@@ -22,6 +24,8 @@ import type {
   LoopsResponseApi,
   PersonProfileResponseApi,
   PersonSearchResponseApi,
+  PriorityGapReviewFilters,
+  PriorityGapReviewResponse,
   RelatedResponseApi,
   SearchResponseApi,
   VendorConcentrationFilters,
@@ -75,6 +79,8 @@ export const queryKeys = {
   amendmentCreepDetail: (caseId: string) => ['amendment-creep', 'detail', caseId] as const,
   vendorConcentration: (filters: VendorConcentrationFilters) => ['vendor-concentration', filters] as const,
   contractIntelligence: (filters: ContractIntelligenceFilters) => ['contract-intelligence', filters] as const,
+  duplicativeFundingOverlap: (filters: DuplicativeFundingOverlapFilters) => ['duplicative-funding', 'overlap', filters] as const,
+  priorityGapReview: (filters: PriorityGapReviewFilters) => ['duplicative-funding', 'gaps', filters] as const,
   challengeReview: () => ['challenge-review'] as const,
   challengeComparison: (challengeId: string) => ['challenge-review', 'compare', challengeId] as const,
 };
@@ -290,6 +296,47 @@ function buildContractIntelligenceQuery(filters: ContractIntelligenceFilters): s
 export function fetchContractIntelligence(filters: ContractIntelligenceFilters = {}) {
   return getJson<ContractIntelligenceResponse>(
     `/api/contract-intelligence${buildContractIntelligenceQuery(filters)}`,
+  );
+}
+
+function buildDuplicativeFundingOverlapQuery(filters: DuplicativeFundingOverlapFilters): string {
+  const params = new URLSearchParams();
+  if (filters.limit != null) params.set('limit', String(filters.limit));
+  if (filters.offset != null) params.set('offset', String(filters.offset));
+  if (filters.streamCombo) params.set('stream_combo', filters.streamCombo);
+  if (filters.purposeCluster) params.set('purpose_cluster', filters.purposeCluster);
+  if (filters.reviewTier) params.set('review_tier', filters.reviewTier);
+  if (filters.publicSector != null) params.set('public_sector', String(filters.publicSector));
+  if (filters.minScore != null) params.set('min_score', String(filters.minScore));
+  if (filters.entity) params.set('entity', filters.entity);
+  const qs = params.toString();
+  return qs ? `?${qs}` : '';
+}
+
+export function fetchDuplicativeFundingOverlap(filters: DuplicativeFundingOverlapFilters = {}) {
+  return getJson<DuplicativeFundingOverlapResponse>(
+    `/api/duplicative-funding/overlap${buildDuplicativeFundingOverlapQuery(filters)}`,
+  );
+}
+
+function buildPriorityGapReviewQuery(filters: PriorityGapReviewFilters): string {
+  const params = new URLSearchParams();
+  if (filters.limit != null) params.set('limit', String(filters.limit));
+  if (filters.offset != null) params.set('offset', String(filters.offset));
+  if (filters.sourceDomain) params.set('source_domain', filters.sourceDomain);
+  if (filters.caseType) params.set('case_type', filters.caseType);
+  if (filters.confidenceLevel) params.set('confidence_level', filters.confidenceLevel);
+  if (filters.priorityArea) params.set('priority_area', filters.priorityArea);
+  if (filters.reviewTier) params.set('review_tier', filters.reviewTier);
+  if (filters.minGapScore != null) params.set('min_gap_score', String(filters.minGapScore));
+  if (filters.department) params.set('department', filters.department);
+  const qs = params.toString();
+  return qs ? `?${qs}` : '';
+}
+
+export function fetchPriorityGapReview(filters: PriorityGapReviewFilters = {}) {
+  return getJson<PriorityGapReviewResponse>(
+    `/api/duplicative-funding/gaps${buildPriorityGapReviewQuery(filters)}`,
   );
 }
 
