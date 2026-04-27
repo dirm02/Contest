@@ -4,6 +4,7 @@ interface HeaderSummaryProps {
   summary: HeaderSummaryData;
   signals: SignalCard[];
   adverseMediaCount?: number;
+  adverseMediaScore?: number;
   isAdverseMediaLoading?: boolean;
   isAdverseMediaError?: boolean;
   amendmentCreepCount?: number;
@@ -38,11 +39,32 @@ function RiskMeter({ signals }: { signals: SignalCard[] }) {
     <div className="flex min-w-[190px] flex-col items-center justify-center rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-subtle)] p-4">
       <div className="relative h-24 w-48 overflow-hidden">
         <svg viewBox="0 0 100 50" className="h-full w-full" aria-hidden="true">
-          <path d="M 10 50 A 40 40 0 0 1 21.7 26.5" fill="none" stroke="#059669" strokeWidth="12" />
-          <path d="M 21.7 26.5 A 40 40 0 0 1 42.4 12" fill="none" stroke="#84cc16" strokeWidth="12" />
-          <path d="M 42.4 12 A 40 40 0 0 1 57.6 12" fill="none" stroke="#eab308" strokeWidth="12" />
-          <path d="M 57.6 12 A 40 40 0 0 1 78.3 26.5" fill="none" stroke="#f97316" strokeWidth="12" />
-          <path d="M 78.3 26.5 A 40 40 0 0 1 90 50" fill="none" stroke="#ef4444" strokeWidth="12" />
+          <defs>
+            <linearGradient id="risk-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#059669" />
+              <stop offset="25%" stopColor="#84cc16" />
+              <stop offset="50%" stopColor="#eab308" />
+              <stop offset="75%" stopColor="#f97316" />
+              <stop offset="100%" stopColor="#ef4444" />
+            </linearGradient>
+          </defs>
+          {/* Background Track */}
+          <path
+            d="M 10 50 A 40 40 0 0 1 90 50"
+            fill="none"
+            stroke="var(--color-border)"
+            strokeWidth="12"
+            strokeLinecap="round"
+            className="opacity-20"
+          />
+          {/* Gradient Arc */}
+          <path
+            d="M 10 50 A 40 40 0 0 1 90 50"
+            fill="none"
+            stroke="url(#risk-gradient)"
+            strokeWidth="12"
+            strokeLinecap="round"
+          />
         </svg>
         <div
           className="absolute bottom-0 left-1/2 h-20 w-1 origin-bottom bg-[var(--color-ink)] transition-transform duration-700"
@@ -64,6 +86,7 @@ export default function HeaderSummary({
   summary,
   signals,
   adverseMediaCount,
+  adverseMediaScore,
   isAdverseMediaLoading = false,
   isAdverseMediaError = false,
   amendmentCreepCount,
@@ -118,7 +141,7 @@ export default function HeaderSummary({
           <RiskMeter signals={signals} />
         </div>
 
-        <dl className="grid grid-cols-2 gap-4 sm:grid-cols-5">
+        <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:w-[480px]">
           <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-subtle)] p-4">
             <dt className="section-title">Aliases</dt>
             <dd className="metric-value mt-2 text-2xl">{summary.aliasCount}</dd>

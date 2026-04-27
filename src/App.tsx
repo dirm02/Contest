@@ -22,6 +22,7 @@ import VendorConcentrationPage from './routes/VendorConcentrationPage';
 import ContractIntelligencePage from './routes/ContractIntelligencePage';
 import DuplicativeFundingPage from './routes/DuplicativeFundingPage';
 import PolicyAlignmentPage from './routes/PolicyAlignmentPage';
+import ChatAssistant from './components/chat/ChatAssistant';
 
 const NAV_ITEMS: Array<{ to: string; label: string; end?: boolean }> = [
   { to: '/', label: 'Search', end: true },
@@ -115,6 +116,7 @@ export default function App() {
           <Route path="/people/:personNorm" element={<PersonDetailPage />} />
         </Routes>
       </main>
+      <ChatAssistant />
     </div>
   );
 }
