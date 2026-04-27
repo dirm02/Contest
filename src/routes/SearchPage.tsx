@@ -36,7 +36,7 @@ export default function SearchPage() {
           Search an organization and open a read-only accountability dossier.
         </h1>
         <p className="max-w-3xl text-sm leading-6 text-[var(--color-muted)] sm:text-base">
-          AccountabilityMax is optimized for fast entity lookup, funding context,
+          Maple DOGE is optimized for fast entity lookup, funding context,
           direct relationships, and evidence review across the existing CRA, FED, and
           Alberta-backed datasets.
         </p>

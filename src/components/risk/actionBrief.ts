@@ -43,7 +43,7 @@ export interface ActionBriefSnapshot {
 }
 
 export const ACTION_BRIEF_DISCLAIMER =
-  'AccountabilityMax prioritizes cases for human review. Scores and signals are not findings of wrongdoing.';
+  'Maple DOGE prioritizes cases for human review. Scores and signals are not findings of wrongdoing.';
 
 function notEmpty(value: string | null | undefined): value is string {
   return Boolean(value && value.trim());
@@ -289,7 +289,7 @@ ${markdownList(snapshot.whatToVerifyNext, 'Document additional review context.')
 
 ${ACTION_BRIEF_DISCLAIMER}
 
-Footer: Advisory content generated in the review workspace. Not transmitted by AccountabilityMax. Suitable for internal review processes only.
+Footer: Advisory content generated in the review workspace. Not transmitted by Maple DOGE. Suitable for internal review processes only.
 `;
 }
 
@@ -372,7 +372,7 @@ export function buildActionBriefHtmlFragment(snapshot: ActionBriefSnapshot) {
   <section><h2>9. Verification checklist status</h2><table><thead><tr><th>Checklist item</th><th>Checked at generation</th></tr></thead><tbody>${checklistRows}</tbody></table><p>Caveat acknowledgement at generation: ${snapshot.caveatAckAtGeneration ? 'Yes' : 'No'}</p></section>
   <section><h2>10. What to verify next</h2><ul>${verifyNext}</ul></section>
   <section><h2>11. Required disclaimer</h2><p><strong>${ACTION_BRIEF_DISCLAIMER}</strong></p></section>
-  <footer>Advisory content generated in the review workspace. Not transmitted by AccountabilityMax. Suitable for internal review processes only.</footer>
+  <footer>Advisory content generated in the review workspace. Not transmitted by Maple DOGE. Suitable for internal review processes only.</footer>
 </article>`.trim();
 }
 
