@@ -4838,6 +4838,222 @@ app.get('/api/contract-intelligence', async (req, res) => {
   }
 });
 
+const POLICY_ALIGNMENT_SQL = `
+SELECT
+  case_id,
+  policy_domain,
+  department_or_organization,
+  program_or_commitment,
+  geography,
+  fiscal_year_or_period,
+  stated_priority_or_target,
+  measured_result_or_status,
+  planned_amount,
+  actual_or_observed_amount,
+  funding_gap_amount,
+  funding_gap_ratio,
+  performance_gap_label,
+  spending_alignment_label,
+  confidence_level,
+  review_tier,
+  source_domain,
+  source_tables,
+  source_links,
+  why_flagged,
+  caveats,
+  normalized_alignment_gap_score
+FROM ${BIGQUERY_DATASET}.challenge7_policy_alignment_v1
+ORDER BY
+  CASE confidence_level WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END,
+  CASE review_tier WHEN 'HIGH_REVIEW' THEN 1 WHEN 'MEDIUM_REVIEW' THEN 2 ELSE 3 END,
+  normalized_alignment_gap_score DESC,
+  funding_gap_amount DESC
+`;
+
+function policyDomainRank(domain) {
+  const order = [
+    'housing',
+    'healthcare',
+    'climate_emissions',
+    'reconciliation_indigenous_services',
+    'infrastructure',
+    'public_safety',
+    'unknown_or_mixed',
+  ];
+  const index = order.indexOf(domain);
+  return index >= 0 ? index + 1 : 99;
+}
+
+function sortPolicyAlignmentRows(rows) {
+  return [...rows].sort((a, b) => (
+    confidenceRank(a.confidence_level) - confidenceRank(b.confidence_level)
+    || reviewTierRank(a.review_tier) - reviewTierRank(b.review_tier)
+    || b.normalized_alignment_gap_score - a.normalized_alignment_gap_score
+    || b.funding_gap_amount - a.funding_gap_amount
+  ));
+}
+
+function balancedPolicyAlignmentRows(rows, limit) {
+  const sorted = sortPolicyAlignmentRows(rows);
+  const selected = [];
+  const seen = new Set();
+  const add = (row) => {
+    if (selected.length >= limit || seen.has(row.case_id)) return;
+    seen.add(row.case_id);
+    selected.push(row);
+  };
+
+  const sourceDomains = [...new Set(sorted.map((row) => row.source_domain).filter(Boolean))].sort();
+  const policyDomains = [...new Set(sorted.map((row) => row.policy_domain).filter(Boolean))]
+    .sort((a, b) => policyDomainRank(a) - policyDomainRank(b) || a.localeCompare(b));
+
+  for (const sourceDomain of sourceDomains) {
+    const candidate = sorted.find((row) => row.source_domain === sourceDomain);
+    if (candidate) add(candidate);
+  }
+
+  for (const policyDomain of policyDomains) {
+    const candidate = sorted.find((row) => row.policy_domain === policyDomain);
+    if (candidate) add(candidate);
+  }
+
+  for (const sourceDomain of sourceDomains) {
+    for (const policyDomain of policyDomains) {
+      const candidate = sorted.find(
+        (row) => row.source_domain === sourceDomain && row.policy_domain === policyDomain,
+      );
+      if (candidate) add(candidate);
+      if (selected.length >= limit) break;
+    }
+    if (selected.length >= limit) break;
+  }
+
+  for (const row of sorted) add(row);
+  return selected;
+}
+
+app.get('/api/policy-alignment', async (req, res) => {
+  try {
+    const limit = parseIntegerQuery(req.query.limit, 50, 1, 200);
+    const offset = parseIntegerQuery(req.query.offset, 0, 0, 100000);
+    const policyDomain = String(req.query.policy_domain || '').trim();
+    const sourceDomain = String(req.query.source_domain || '').trim();
+    const confidenceLevel = String(req.query.confidence_level || '').trim();
+    const reviewTier = String(req.query.review_tier || '').trim();
+    const department = String(req.query.department || '').trim().toLowerCase();
+    const minScore = parseNumberQuery(req.query.min_score, 0, 0, 100);
+    const balanced = String(req.query.balanced || '').trim().toLowerCase() === 'true';
+
+    const rowsCacheKey = 'policy-alignment:challenge7-v1';
+    let allRows = getCachedJson(rowsCacheKey);
+    if (!allRows) {
+      allRows = await runBigQuerySafe(POLICY_ALIGNMENT_SQL);
+      setCachedJson(rowsCacheKey, allRows, 30 * 60 * 1000);
+    }
+
+    const normalizedRows = allRows.map((row) => ({
+      case_id: row.case_id || '',
+      policy_domain: row.policy_domain || 'unknown_or_mixed',
+      department_or_organization: row.department_or_organization || '',
+      program_or_commitment: row.program_or_commitment || '',
+      geography: row.geography || null,
+      fiscal_year_or_period: row.fiscal_year_or_period || null,
+      stated_priority_or_target: row.stated_priority_or_target || null,
+      measured_result_or_status: row.measured_result_or_status || null,
+      planned_amount: toNumber(row.planned_amount),
+      actual_or_observed_amount: toNumber(row.actual_or_observed_amount),
+      funding_gap_amount: toNumber(row.funding_gap_amount),
+      funding_gap_ratio: row.funding_gap_ratio == null ? null : toNumber(row.funding_gap_ratio),
+      performance_gap_label: row.performance_gap_label || '',
+      spending_alignment_label: row.spending_alignment_label || '',
+      confidence_level: row.confidence_level || 'low',
+      review_tier: row.review_tier || 'MEDIUM_REVIEW',
+      source_domain: row.source_domain || '',
+      source_tables: row.source_tables || '',
+      source_links: row.source_links || '',
+      why_flagged: row.why_flagged || '',
+      caveats: row.caveats || '',
+      normalized_alignment_gap_score: toNumber(row.normalized_alignment_gap_score),
+    }));
+
+    const filteredRows = normalizedRows.filter((row) => {
+      if (policyDomain && row.policy_domain !== policyDomain) return false;
+      if (sourceDomain && row.source_domain !== sourceDomain) return false;
+      if (confidenceLevel && row.confidence_level !== confidenceLevel) return false;
+      if (reviewTier && row.review_tier !== reviewTier) return false;
+      if (department && !row.department_or_organization.toLowerCase().includes(department)) return false;
+      if (row.normalized_alignment_gap_score < minScore) return false;
+      return true;
+    });
+
+    const sortedRows = balanced
+      ? balancedPolicyAlignmentRows(filteredRows, Math.max(limit + offset, limit))
+      : sortPolicyAlignmentRows(filteredRows);
+    const pageRows = sortedRows.slice(offset, offset + limit);
+    const sourceDomainCounts = filteredRows.reduce((acc, row) => {
+      acc[row.source_domain] = (acc[row.source_domain] || 0) + 1;
+      return acc;
+    }, {});
+    const policyDomainCounts = filteredRows.reduce((acc, row) => {
+      acc[row.policy_domain] = (acc[row.policy_domain] || 0) + 1;
+      return acc;
+    }, {});
+
+    res.json({
+      filters: {
+        limit,
+        offset,
+        policy_domain: policyDomain || null,
+        source_domain: sourceDomain || null,
+        confidence_level: confidenceLevel || null,
+        review_tier: reviewTier || null,
+        department: department || null,
+        min_score: minScore,
+        balanced,
+      },
+      total: filteredRows.length,
+      summary: {
+        total_rows: filteredRows.length,
+        high_confidence_count: filteredRows.filter((row) => row.confidence_level === 'high').length,
+        high_review_count: filteredRows.filter((row) => row.review_tier === 'HIGH_REVIEW').length,
+        total_gap_amount: filteredRows.reduce((sum, row) => sum + Math.max(0, row.funding_gap_amount), 0),
+        source_domain_counts: sourceDomainCounts,
+        policy_domain_counts: policyDomainCounts,
+      },
+      sources: [
+        {
+          label: 'GC InfoBase plans/results',
+          url: 'https://open.canada.ca/data/en/dataset/b15ee8d7-2ac0-4656-8330-6c60d085cda8',
+        },
+        {
+          label: 'Mandate Letter Tracker',
+          url: 'https://open.canada.ca/data/en/dataset/8f6b5490-8684-4a0d-91a3-97ba28acc9cd',
+        },
+        {
+          label: 'CMHC housing starts',
+          url: 'https://open.canada.ca/data/en/dataset/d0e77820-0bd2-4fcd-9098-17fb3283ae12',
+        },
+        {
+          label: 'Health indicators',
+          url: 'https://open.canada.ca/data/en/dataset/88567476-f69f-4ed1-bf25-e982cb38f8de',
+        },
+        {
+          label: 'Infrastructure projects',
+          url: 'https://open.canada.ca/data/en/dataset/beee0771-dab9-4be8-9b80-f8e8b3fdfd9d',
+        },
+      ],
+      notes: [
+        'This is a policy-alignment review queue. It does not prove waste, misuse, or under-delivery.',
+        'Housing and health indicators are context only, not direct program causality.',
+        'Climate rows use citation-only ECCC source links until structured climate tables are parsed.',
+      ],
+      results: pageRows,
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 const DUPLICATIVE_FUNDING_OVERLAP_SQL = `
 SELECT
   entity_id,

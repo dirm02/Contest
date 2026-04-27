@@ -1156,6 +1156,69 @@ export interface ContractIntelligenceResponse {
   results: ContractIntelligenceRow[];
 }
 
+export interface PolicyAlignmentFilters {
+  limit?: number;
+  offset?: number;
+  policyDomain?: string | null;
+  sourceDomain?: string | null;
+  confidenceLevel?: string | null;
+  reviewTier?: string | null;
+  department?: string | null;
+  minScore?: number;
+  balanced?: boolean;
+}
+
+export interface PolicyAlignmentRow {
+  case_id: string;
+  policy_domain: string;
+  department_or_organization: string;
+  program_or_commitment: string;
+  geography: string | null;
+  fiscal_year_or_period: string | null;
+  stated_priority_or_target: string | null;
+  measured_result_or_status: string | null;
+  planned_amount: number;
+  actual_or_observed_amount: number;
+  funding_gap_amount: number;
+  funding_gap_ratio: number | null;
+  performance_gap_label: string;
+  spending_alignment_label: string;
+  confidence_level: string;
+  review_tier: string;
+  source_domain: string;
+  source_tables: string;
+  source_links: string;
+  why_flagged: string;
+  caveats: string;
+  normalized_alignment_gap_score: number;
+}
+
+export interface PolicyAlignmentResponse {
+  filters: {
+    limit: number;
+    offset: number;
+    policy_domain: string | null;
+    source_domain: string | null;
+    confidence_level: string | null;
+    review_tier: string | null;
+    department: string | null;
+    min_score: number;
+    balanced: boolean;
+  };
+  total: number;
+  summary: {
+    total_rows: number;
+    high_confidence_count: number;
+    high_review_count: number;
+    total_gap_amount: number;
+    source_domain_counts: Record<string, number>;
+    policy_domain_counts: Record<string, number>;
+  };
+  sources: Array<{ label: string; url: string }>;
+  notes: string[];
+  results: PolicyAlignmentRow[];
+}
+
 export interface DuplicativeFundingOverlapFilters {
   limit?: number;
   offset?: number;

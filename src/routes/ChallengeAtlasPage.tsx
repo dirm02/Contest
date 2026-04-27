@@ -73,8 +73,9 @@ const CHALLENGES: ChallengeAtlasItem[] = [
     title: 'Policy Misalignment',
     theme: 'Policy fit',
     question: 'Does actual spending match the priorities governments say they are funding?',
-    evidence: 'Policy commitments, program categories, regional allocation, gap and alignment measures.',
-    status: 'planned',
+    evidence: 'GC InfoBase plans/results, mandate commitments, CMHC housing context, PHAC health indicators, Infrastructure Canada projects.',
+    route: '/policy-alignment',
+    status: 'live',
   },
   {
     id: 8,
