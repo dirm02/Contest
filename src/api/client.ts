@@ -116,11 +116,16 @@ function buildZombieQuery(filters: ZombieFilters): string {
   if (filters.lastSeenBeforeYear != null) {
     params.set('last_seen_before_year', String(filters.lastSeenBeforeYear));
   }
+  if (filters.minScore != null) params.set('min_score', String(filters.minScore));
+  if (filters.confidenceLevel) params.set('confidence_level', filters.confidenceLevel);
   if (filters.signalType) params.set('signal_type', filters.signalType);
   if (filters.recipientType) params.set('recipient_type', filters.recipientType);
   if (filters.province) params.set('province', filters.province);
   if (filters.requireEntityMatch != null) {
     params.set('require_entity_match', String(filters.requireEntityMatch));
+  }
+  if (filters.requireRegistryMatch != null) {
+    params.set('require_registry_match', String(filters.requireRegistryMatch));
   }
   const qs = params.toString();
   return qs ? `?${qs}` : '';

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { fetchZombies, queryKeys } from '../api/client';
 import { mapZombies } from '../api/mappers';
@@ -36,13 +37,23 @@ export default function ZombiesLandingPage() {
     <section className="space-y-6">
       <div className="space-y-2">
         <p className="section-title">Zombie recipients</p>
-        <h1 className="max-w-4xl text-3xl font-semibold tracking-tight text-[var(--color-ink)] sm:text-5xl">
-          Prioritize registry-backed lifecycle review cases
-        </h1>
-        <p className="max-w-3xl text-sm leading-6 text-[var(--color-muted)] sm:text-base">
-          Challenge 1 now starts as a human-in-the-loop pilot: registry-backed signals appear first,
-          fallback rows remain available for support and data-quality follow-up.
-        </p>
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h1 className="max-w-4xl text-3xl font-semibold tracking-tight text-[var(--color-ink)] sm:text-5xl">
+              Prioritize registry-backed lifecycle review cases
+            </h1>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--color-muted)] sm:text-base">
+              Challenge 1 now starts as a human-in-the-loop pilot: registry-backed signals appear first,
+              fallback rows remain available for support and data-quality follow-up.
+            </p>
+          </div>
+          <Link
+            to="/action-queue"
+            className="inline-flex min-h-10 items-center justify-center rounded-md border border-[var(--color-border)] bg-[var(--color-surface-subtle)] px-3 text-sm font-semibold text-[var(--color-ink)] transition hover:bg-[var(--color-accent-soft)]"
+          >
+            Open action queue
+          </Link>
+        </div>
         <p className="max-w-3xl rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-subtle)] px-4 py-3 text-sm leading-6 text-[var(--color-muted)]">
           {CHALLENGE_1_DISCLAIMER}
         </p>
