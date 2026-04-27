@@ -7,6 +7,11 @@ import {
   mapZombieDetail,
   recipientRiskSignalLabel,
 } from '../api/mappers';
+import {
+  CHALLENGE_1_CHECKLIST,
+  CHALLENGE_1_DISCLAIMER,
+  challenge1Decision,
+} from '../components/risk/challenge1Decision';
 import CrossDatasetContextCard from '../components/risk/CrossDatasetContextCard';
 import RecipientRiskGraph from '../components/risk/RecipientRiskGraph';
 import RiskTimelineChart from '../components/risk/RiskTimelineChart';
@@ -28,7 +33,7 @@ function sourceLabel(url: string) {
 
 function LoadingSection({ label }: { label: string }) {
   return (
-    <div className="app-card rounded-2xl p-6">
+    <div className="app-card rounded-lg p-6">
       <div className="animate-pulse space-y-3">
         <div className="h-4 w-32 rounded bg-stone-200" />
         <div className="h-8 w-1/2 rounded bg-stone-200" />
@@ -57,7 +62,7 @@ export default function ZombieDetailPage() {
 
   if (!recipientKey) {
     return (
-      <div className="app-card rounded-2xl p-6">
+      <div className="app-card rounded-lg p-6">
         <p className="section-title">Invalid recipient</p>
         <p className="mt-2 text-sm text-[var(--color-muted)]">A recipient key is required.</p>
       </div>
@@ -67,15 +72,15 @@ export default function ZombieDetailPage() {
   if (detailQuery.isLoading) {
     return (
       <section className="space-y-6">
-        <LoadingSection label="Loading recipient summary…" />
-        <LoadingSection label="Loading zombie evidence…" />
+        <LoadingSection label="Loading recipient summary..." />
+        <LoadingSection label="Loading zombie evidence..." />
       </section>
     );
   }
 
   if (detailQuery.isError) {
     return (
-      <div className="app-card rounded-2xl border-[var(--color-risk-high)] p-6">
+      <div className="app-card rounded-lg border-[var(--color-risk-high)] p-6">
         <p className="section-title">Zombie detail failed to load</p>
         <p className="mt-2 text-sm text-[var(--color-risk-high)]">
           {detailQuery.error instanceof Error
@@ -88,6 +93,8 @@ export default function ZombieDetailPage() {
 
   if (!detail) return null;
 
+  const decision = challenge1Decision(detail.summary);
+
   return (
     <section className="space-y-6">
       <div className="flex flex-wrap items-center gap-3">
@@ -97,53 +104,100 @@ export default function ZombieDetailPage() {
         >
           Back to zombies
         </Link>
-        <span className="section-title">Zombie detail</span>
+        <span className="section-title">Challenge 1 review case</span>
       </div>
 
-      <section className="app-card rounded-2xl p-6 sm:p-7">
+      <section className="app-card rounded-lg p-6 sm:p-7">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="section-title">Recipient summary</p>
+            <p className="section-title">Recipient review summary</p>
             <h1 className="mt-2 max-w-5xl text-2xl font-semibold tracking-tight text-[var(--color-ink)] sm:text-4xl">
               {detail.summary.name}
             </h1>
             <div className="mt-3 flex flex-wrap gap-2">
-              <span className="rounded-full px-2.5 py-1 text-xs font-semibold uppercase tracking-wide signal-badge-medium">
+              <span className={`rounded-full px-2.5 py-1 text-xs font-semibold uppercase tracking-wide ${decision.tone}`}>
                 Score {detail.summary.challengeScore}
               </span>
+              <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${decision.tone}`}>
+                {decision.label}
+              </span>
+              {detail.summary.confidenceLevel && (
+                <span className="rounded-full px-2.5 py-1 text-[11px] font-medium signal-badge-info">
+                  {detail.summary.confidenceLevel} confidence
+                </span>
+              )}
               <span className="rounded-full px-2.5 py-1 text-[11px] font-medium signal-badge-info">
                 {recipientRiskSignalLabel(detail.summary.signalType)}
               </span>
             </div>
+            <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--color-muted)]">
+              {CHALLENGE_1_DISCLAIMER}
+            </p>
           </div>
-          <div className="rounded-2xl border border-[var(--color-border)] bg-white/80 px-4 py-3 text-sm text-[var(--color-muted)]">
-            <div>Last seen {detail.summary.lastYear ?? '—'}</div>
+          <div className="rounded-lg border border-[var(--color-border)] bg-white/80 px-4 py-3 text-sm text-[var(--color-muted)]">
+            <div>Last seen {detail.summary.lastYear ?? 'n/a'}</div>
             <div className="mt-1">{detail.summary.recipientTypeName ?? detail.summary.recipientType ?? 'Unknown recipient'}</div>
           </div>
         </div>
 
         <dl className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <div className="rounded-2xl border border-[var(--color-border)] bg-white/80 p-4">
+          <div className="rounded-lg border border-[var(--color-border)] bg-white/80 p-4">
             <dt className="section-title">Total funding</dt>
             <dd className="metric-value mt-2 text-2xl">{formatCurrencyAmount(detail.summary.totalValue)}</dd>
           </div>
-          <div className="rounded-2xl border border-[var(--color-border)] bg-white/80 p-4">
+          <div className="rounded-lg border border-[var(--color-border)] bg-white/80 p-4">
             <dt className="section-title">Grant count</dt>
             <dd className="metric-value mt-2 text-2xl">{detail.summary.grantCount}</dd>
           </div>
-          <div className="rounded-2xl border border-[var(--color-border)] bg-white/80 p-4">
+          <div className="rounded-lg border border-[var(--color-border)] bg-white/80 p-4">
             <dt className="section-title">Years since seen</dt>
             <dd className="metric-value mt-2 text-2xl">{detail.summary.yearsSinceLastSeen}</dd>
           </div>
-          <div className="rounded-2xl border border-[var(--color-border)] bg-white/80 p-4">
+          <div className="rounded-lg border border-[var(--color-border)] bg-white/80 p-4">
             <dt className="section-title">Departments</dt>
             <dd className="metric-value mt-2 text-2xl">{detail.summary.deptCount}</dd>
           </div>
         </dl>
       </section>
 
+      <section className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
+        <article className="app-card rounded-lg p-5">
+          <p className="section-title">Recommended human action</p>
+          <h2 className="mt-2 text-xl font-semibold text-[var(--color-ink)]">
+            {decision.recommendedAction}
+          </h2>
+          <p className="mt-2 text-sm leading-6 text-[var(--color-muted)]">
+            {decision.actionDetail}
+          </p>
+          <div className="mt-4 grid gap-2 text-sm">
+            <div className="rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2">
+              Risk band: <span className="font-semibold text-[var(--color-ink)]">{decision.label}</span>
+              <span className="text-[var(--color-muted)]"> ({decision.range})</span>
+            </div>
+            <div className="rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2">
+              Suggested reviewer: <span className="font-semibold text-[var(--color-ink)]">{decision.reviewerRole}</span>
+            </div>
+          </div>
+        </article>
+
+        <article className="app-card rounded-lg p-5">
+          <p className="section-title">Human verification checklist</p>
+          <h2 className="mt-2 text-xl font-semibold text-[var(--color-ink)]">
+            Verify before recording an action
+          </h2>
+          <div className="mt-4 grid gap-2">
+            {CHALLENGE_1_CHECKLIST.map((item) => (
+              <label key={item} className="flex gap-3 rounded-lg border border-[var(--color-border)] bg-white/80 px-3 py-2 text-sm leading-5 text-[var(--color-muted)]">
+                <input type="checkbox" className="mt-1 h-4 w-4 rounded border-[var(--color-border)]" />
+                <span>{item}</span>
+              </label>
+            ))}
+          </div>
+        </article>
+      </section>
+
       {(detail.summary.sourceLinks.length > 0 || detail.summary.caveats.length > 0) && (
-        <section className="app-card rounded-2xl p-5">
+        <section className="app-card rounded-lg p-5">
           <p className="section-title">Sources and caveats</p>
           <h2 className="mt-2 text-xl font-semibold text-[var(--color-ink)]">
             Registry-backed review evidence
@@ -160,7 +214,7 @@ export default function ZombieDetailPage() {
           {detail.summary.caveats.length > 0 && (
             <ul className="mt-4 grid gap-2">
               {detail.summary.caveats.map((caveat) => (
-                <li key={caveat} className="rounded-xl bg-white/70 px-3 py-2 text-sm text-[var(--color-muted)]">
+                <li key={caveat} className="rounded-lg bg-white/70 px-3 py-2 text-sm text-[var(--color-muted)]">
                   {caveat}
                 </li>
               ))}
@@ -193,7 +247,7 @@ export default function ZombieDetailPage() {
                 ? 'signal-badge-info'
                 : 'signal-badge-low';
           return (
-            <article key={item.id} className="app-card rounded-2xl p-5">
+            <article key={item.id} className="app-card rounded-lg p-5">
               <div className="flex items-center justify-between gap-3">
                 <p className="section-title">Why flagged</p>
                 <span className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${tone}`}>
@@ -207,7 +261,7 @@ export default function ZombieDetailPage() {
         })}
       </section>
 
-      <section className="app-card rounded-2xl p-5">
+      <section className="app-card rounded-lg p-5">
         <div className="mb-4">
           <p className="section-title">Recipient graph</p>
           <h2 className="mt-2 text-xl font-semibold text-[var(--color-ink)]">
@@ -222,7 +276,7 @@ export default function ZombieDetailPage() {
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[1.3fr_0.9fr]">
-        <article className="app-card rounded-2xl p-5">
+        <article className="app-card rounded-lg p-5">
           <div className="mb-4">
             <p className="section-title">Funding timeline</p>
             <h2 className="mt-2 text-xl font-semibold text-[var(--color-ink)]">Yearly federal activity</h2>
@@ -234,19 +288,19 @@ export default function ZombieDetailPage() {
       </section>
 
       <section className="grid gap-6 xl:grid-cols-2">
-        <article className="app-card rounded-2xl p-5">
+        <article className="app-card rounded-lg p-5">
           <div className="mb-4">
             <p className="section-title">Departments</p>
             <h2 className="mt-2 text-xl font-semibold text-[var(--color-ink)]">Department history</h2>
           </div>
           <div className="space-y-3">
             {detail.departmentHistory.map((item) => (
-              <div key={item.label} className="rounded-2xl border border-[var(--color-border)] bg-white/80 p-4">
+              <div key={item.label} className="rounded-lg border border-[var(--color-border)] bg-white/80 p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <h3 className="font-semibold text-[var(--color-ink)]">{item.label}</h3>
                     <p className="mt-1 text-sm text-[var(--color-muted)]">
-                      {item.grantCount} grants · last year {item.lastYear ?? '—'}
+                      {item.grantCount} grants - last year {item.lastYear ?? 'n/a'}
                     </p>
                   </div>
                   <span className="text-sm font-medium text-[var(--color-ink)]">
@@ -258,19 +312,19 @@ export default function ZombieDetailPage() {
           </div>
         </article>
 
-        <article className="app-card rounded-2xl p-5">
+        <article className="app-card rounded-lg p-5">
           <div className="mb-4">
             <p className="section-title">Programs</p>
             <h2 className="mt-2 text-xl font-semibold text-[var(--color-ink)]">Program history</h2>
           </div>
           <div className="space-y-3">
             {detail.programHistory.map((item) => (
-              <div key={item.label} className="rounded-2xl border border-[var(--color-border)] bg-white/80 p-4">
+              <div key={item.label} className="rounded-lg border border-[var(--color-border)] bg-white/80 p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <h3 className="font-semibold text-[var(--color-ink)]">{item.label}</h3>
                     <p className="mt-1 text-sm text-[var(--color-muted)]">
-                      {item.grantCount} grants · last year {item.lastYear ?? '—'}
+                      {item.grantCount} grants - last year {item.lastYear ?? 'n/a'}
                     </p>
                   </div>
                   <span className="text-sm font-medium text-[var(--color-ink)]">
