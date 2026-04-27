@@ -11,6 +11,21 @@ import CrossDatasetContextCard from '../components/risk/CrossDatasetContextCard'
 import RecipientRiskGraph from '../components/risk/RecipientRiskGraph';
 import RiskTimelineChart from '../components/risk/RiskTimelineChart';
 
+function sourceLabel(url: string) {
+  try {
+    const { hostname, pathname } = new URL(url);
+    if (hostname.includes('open.canada.ca')) return 'Federal Corporations open dataset';
+    if (hostname.includes('ised-isde.canada.ca') && pathname.includes('glossary')) return 'Corporations Canada status definitions';
+    if (hostname.includes('ised-isde.canada.ca') && pathname.includes('fdrlCrpSrch')) return 'Corporations Canada search';
+    if (hostname.includes('ised-isde.canada.ca') && pathname.includes('cbr-rec')) return "Canada's Business Registries";
+    if (hostname.includes('canada.ca') && pathname.includes('charities')) return 'CRA charity registration status';
+    if (hostname.includes('alberta.ca')) return 'Alberta corporation details';
+    return hostname.replace(/^www\./, '');
+  } catch {
+    return url;
+  }
+}
+
 function LoadingSection({ label }: { label: string }) {
   return (
     <div className="app-card rounded-2xl p-6">
@@ -126,6 +141,48 @@ export default function ZombieDetailPage() {
           </div>
         </dl>
       </section>
+
+      {(detail.summary.sourceLinks.length > 0 || detail.summary.caveats.length > 0) && (
+        <section className="app-card rounded-2xl p-5">
+          <p className="section-title">Sources and caveats</p>
+          <h2 className="mt-2 text-xl font-semibold text-[var(--color-ink)]">
+            Registry-backed review evidence
+          </h2>
+          <p className="mt-2 text-sm leading-6 text-[var(--color-muted)]">
+            Challenge 1 uses federal grant records matched to official registry status sources. This is a review queue:
+            registry timing and funding records need case-by-case interpretation before any conclusion is drawn.
+          </p>
+          {detail.summary.sourceTables && (
+            <p className="mt-3 text-xs text-[var(--color-muted)]">
+              Source tables: <span className="font-medium text-[var(--color-ink)]">{detail.summary.sourceTables}</span>
+            </p>
+          )}
+          {detail.summary.caveats.length > 0 && (
+            <ul className="mt-4 grid gap-2">
+              {detail.summary.caveats.map((caveat) => (
+                <li key={caveat} className="rounded-xl bg-white/70 px-3 py-2 text-sm text-[var(--color-muted)]">
+                  {caveat}
+                </li>
+              ))}
+            </ul>
+          )}
+          {detail.summary.sourceLinks.length > 0 && (
+            <div className="mt-4 flex flex-wrap gap-2 text-sm">
+              {detail.summary.sourceLinks.map((url) => (
+                <a
+                  key={url}
+                  href={url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-full border border-[var(--color-border)] bg-white/80 px-3 py-1.5 font-medium text-[var(--color-accent)] hover:bg-white"
+                >
+                  {sourceLabel(url)}
+                </a>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
 
       <section className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
         {detail.evidence.map((item) => {
