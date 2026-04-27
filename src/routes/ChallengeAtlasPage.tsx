@@ -19,9 +19,9 @@ const CHALLENGES: ChallengeAtlasItem[] = [
     title: 'Zombie Recipients',
     theme: 'Entity risk',
     question: 'Which funded recipients disappear, dissolve, or stop showing signs of life after public money arrives?',
-    evidence: 'Federal grants, recipient rollups, last-seen year, amendment count, entity identity keys.',
+    evidence: 'Federal grants, Corporations Canada registry status, BN-root matching, post-status funding, and low-confidence fallback labels.',
     route: '/zombies',
-    status: 'validation',
+    status: 'live',
   },
   {
     id: 2,

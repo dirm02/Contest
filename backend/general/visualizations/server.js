@@ -1,43 +1,43 @@
 #!/usr/bin/env node
 /**
- * visualizations/server.js — Dossier API server.
+ * visualizations/server.js â€” Dossier API server.
  *
  * Dossier JSON API only (no bundled HTML UI). Use the AccountibilityMax React
  * app or any other client against these endpoints. Runs on port 3801 by default
  * so it can coexist with the pipeline dashboard (3800).
  *
  * Endpoints:
- *   GET  /api/search?q=...               — find entities by name or BN
- *   GET  /api/entity/:id                 — full dossier (canonical, aliases,
+ *   GET  /api/search?q=...               â€” find entities by name or BN
+ *   GET  /api/entity/:id                 â€” full dossier (canonical, aliases,
  *                                           datasets, links, merge history,
  *                                           financial rollup)
- *   GET  /api/entity/:id/cra-years       — per-year T3010 detail: financials,
+ *   GET  /api/entity/:id/cra-years       â€” per-year T3010 detail: financials,
  *                                           directors, program areas, comp
- *   GET  /api/entity/:id/gifts-received  — qualified_donees where this entity
+ *   GET  /api/entity/:id/gifts-received  â€” qualified_donees where this entity
  *                                           is the DONEE (cross-charity gifts in)
- *   GET  /api/entity/:id/gifts-given     — qualified_donees where this entity
+ *   GET  /api/entity/:id/gifts-given     â€” qualified_donees where this entity
  *                                           is the DONOR (cross-charity gifts out)
- *   GET  /api/entity/:id/related         — candidate matches + splink partners
+ *   GET  /api/entity/:id/related         â€” candidate matches + splink partners
  *                                           that could be merged in-browser
- *   GET  /api/entity/:id/links           — every source link with its source
+ *   GET  /api/entity/:id/links           â€” every source link with its source
  *                                           record (join through fed/ab tables)
  *
- * Challenge 6 — Governance / shared-director endpoints:
- *   GET  /api/governance/pairs                       — ranked shared-governance pairs
- *   GET  /api/governance/pairs/:a/:b/graph           — pair detail graph payload
- *   GET  /api/governance/people/search?q=...         — person search
- *   GET  /api/governance/people/:personNorm          — person profile + linked entities
- *   GET  /api/governance/entity/:id/people           — entity governance tab people list
+ * Challenge 6 â€” Governance / shared-director endpoints:
+ *   GET  /api/governance/pairs                       â€” ranked shared-governance pairs
+ *   GET  /api/governance/pairs/:a/:b/graph           â€” pair detail graph payload
+ *   GET  /api/governance/people/search?q=...         â€” person search
+ *   GET  /api/governance/people/:personNorm          â€” person profile + linked entities
+ *   GET  /api/governance/entity/:id/people           â€” entity governance tab people list
  *
- * Challenge 3 — Funding loop endpoints:
- *   GET  /api/loops                                  — ranked loop watchlist
- *   GET  /api/loops/:loopId                          — loop detail + graph payload
+ * Challenge 3 â€” Funding loop endpoints:
+ *   GET  /api/loops                                  â€” ranked loop watchlist
+ *   GET  /api/loops/:loopId                          â€” loop detail + graph payload
  *
- * Challenges 1 & 2 — Recipient risk endpoints:
- *   GET  /api/zombies                                — ranked zombie-recipient watchlist
- *   GET  /api/zombies/:recipientKey                  — zombie recipient detail
- *   GET  /api/ghost-capacity                         — ranked ghost-capacity watchlist
- *   GET  /api/ghost-capacity/:recipientKey           — ghost-capacity detail
+ * Challenges 1 & 2 â€” Recipient risk endpoints:
+ *   GET  /api/zombies                                â€” ranked zombie-recipient watchlist
+ *   GET  /api/zombies/:recipientKey                  â€” zombie recipient detail
+ *   GET  /api/ghost-capacity                         â€” ranked ghost-capacity watchlist
+ *   GET  /api/ghost-capacity/:recipientKey           â€” ghost-capacity detail
  *
  * Challenge 4 procurement endpoint:
  *   GET  /api/amendment-creep                        - ranked procurement watchlist
@@ -539,6 +539,113 @@ function buildZombieSummary(row, lastSeenBeforeYear) {
     challenge_score: challengeScore,
     why_flagged: whyFlagged,
     cross_dataset_context: buildCrossDatasetContext(row),
+  };
+}
+
+function splitPipeList(value) {
+  if (!value || typeof value !== 'string') return [];
+  return value
+    .split('|')
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
+function bigQueryStringLiteral(value) {
+  if (value == null || value === '') return 'NULL';
+  return `'${String(value).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
+}
+
+function optionalBigQueryEquals(fieldSql, value, { lower = false, upper = false } = {}) {
+  if (value == null || value === '') return 'TRUE';
+  const literal = bigQueryStringLiteral(value);
+  if (lower) return `LOWER(${fieldSql}) = LOWER(${literal})`;
+  if (upper) return `UPPER(${fieldSql}) = UPPER(${literal})`;
+  return `${fieldSql} = ${literal}`;
+}
+
+function buildZombieSummaryV2(row) {
+  const totalValue = Number(row.total_funding_value || 0);
+  const grantCount = Number(row.grant_count || 0);
+  const lastYear = Number(row.last_funding_year || 0) || null;
+  const firstFundingDate = row.first_funding_date ?? null;
+  const lastFundingDate = row.last_funding_date ?? null;
+  const score = Number(row.challenge1_score || 0);
+  const departments = Array.isArray(row.departments)
+    ? row.departments
+    : splitPipeList(row.departments);
+  const programs = Array.isArray(row.programs)
+    ? row.programs
+    : splitPipeList(row.programs);
+
+  return {
+    recipient_key: row.recipient_key,
+    name: row.recipient_name ?? null,
+    bn: row.bn_root ?? null,
+    bn_root: row.bn_root ?? null,
+    recipient_type: row.recipient_type ?? null,
+    recipient_type_name: formatRecipientTypeLabel(row.recipient_type, row.recipient_type),
+    province: row.province ?? null,
+    city: row.city ?? null,
+    grant_count: grantCount,
+    total_value: totalValue,
+    avg_value: grantCount > 0 ? totalValue / grantCount : 0,
+    max_value: null,
+    first_grant: firstFundingDate,
+    last_grant: lastFundingDate,
+    last_year: lastYear,
+    dept_count: Number(row.department_count || 0),
+    departments,
+    programs,
+    amendment_count: Number(row.amendment_count || 0),
+    years_since_last_seen: lastYear ? Math.max(new Date().getUTCFullYear() - lastYear, 0) : null,
+    signal_type: row.signal_type,
+    matched_signals: [row.signal_type],
+    challenge_score: score,
+    challenge1_score: score,
+    confidence_level: row.confidence_level ?? null,
+    confidence_note:
+      row.signal_type === 'no_bn_funding_disappearance_review'
+        ? 'Low confidence: funding-record disappearance only.'
+        : null,
+    review_tier: row.review_tier ?? null,
+    match_method: row.match_method ?? null,
+    registry: {
+      corporation_id: row.registry_corporation_id ?? null,
+      name: row.registry_name ?? null,
+      status_code: row.registry_status_code ?? null,
+      status_label: row.registry_status_label ?? null,
+      status_effective_date: row.registry_status_effective_date ?? null,
+      inactive_flag: row.registry_inactive_flag ?? null,
+      dissolution_signal: row.registry_dissolution_signal ?? null,
+      latest_annual_return_year: row.registry_latest_annual_return_year ?? null,
+      latest_activity_date: row.registry_latest_activity_date ?? null,
+      registered_province: row.registry_registered_province ?? null,
+    },
+    months_between_last_funding_and_registry_status:
+      row.months_between_last_funding_and_registry_status == null
+        ? null
+        : Number(row.months_between_last_funding_and_registry_status),
+    post_status_funding_value: Number(row.post_status_funding_value || 0),
+    post_status_funding_count: Number(row.post_status_funding_count || 0),
+    why_flagged: [row.why_flagged].filter(Boolean),
+    caveats: [row.caveats].filter(Boolean),
+    source_tables: row.source_tables ?? null,
+    source_links: splitPipeList(row.source_links),
+    cross_dataset_context: {
+      resolved_entity_id: null,
+      resolved_entity_name: null,
+      resolved_bn_root: row.bn_root ?? null,
+      dataset_sources: [],
+      total_all_funding: totalValue,
+      fed_total_grants: totalValue,
+      ab_total_grants: 0,
+      ab_total_contracts: 0,
+      ab_total_sole_source: 0,
+      cra_total_revenue: 0,
+      ab_non_profit_status: null,
+      ab_non_profit_status_description: null,
+      ab_non_profit_registration_date: null,
+    },
   };
 }
 
@@ -1797,10 +1904,10 @@ const RECIPIENT_RISK_FOUNDATION_CTE = `
   )
 `;
 
-// ────────────────────────────────────────────────────────────────────────────
-// /api/search — find entities by name or BN.
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// /api/search â€” find entities by name or BN.
 // Ranks by: exact match > prefix > trigram similarity. Returns top 30.
-// ────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 app.get('/api/search', async (req, res) => {
   try {
@@ -1855,9 +1962,9 @@ app.get('/api/search', async (req, res) => {
   }
 });
 
-// ────────────────────────────────────────────────────────────────────────────
-// /api/entity/:id — full dossier
-// ────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// /api/entity/:id â€” full dossier
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 app.get('/api/entity/:id', async (req, res) => {
   try {
@@ -1900,12 +2007,12 @@ app.get('/api/entity/:id', async (req, res) => {
   }
 });
 
-// ────────────────────────────────────────────────────────────────────────────
-// /api/entity/:id/cra-years — per-year T3010 detail.
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// /api/entity/:id/cra-years â€” per-year T3010 detail.
 // Only has data if the entity has a BN root that matches CRA.
 // Returns: [{ fiscal_year, fpe, identification, financials, directors[],
 //             program_areas[], compensation, programs[] }, ...]
-// ────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 app.get('/api/entity/:id/cra-years', async (req, res) => {
   try {
@@ -2030,7 +2137,7 @@ app.get('/api/entity/:id/cra-years', async (req, res) => {
         FROM cra.cra_charitable_programs
         WHERE LEFT(bn, 9) = $1 ORDER BY fpe DESC
       `, [bn]),
-      // Schedule 1 — foundations only (most charities have no row here)
+      // Schedule 1 â€” foundations only (most charities have no row here)
       pool.query(`
         SELECT bn, fpe, EXTRACT(YEAR FROM fpe)::int AS yr,
                field_100 AS acquired_corp_control,
@@ -2042,7 +2149,7 @@ app.get('/api/entity/:id/cra-years', async (req, res) => {
         FROM cra.cra_foundation_info
         WHERE LEFT(bn, 9) = $1 ORDER BY fpe DESC
       `, [bn]).catch(() => ({ rows: [] })),
-      // Schedule 5 — gifts in kind received
+      // Schedule 5 â€” gifts in kind received
       pool.query(`
         SELECT bn, fpe, EXTRACT(YEAR FROM fpe)::int AS yr,
                field_500 AS gik_artwork_wine_jewellery,
@@ -2063,7 +2170,7 @@ app.get('/api/entity/:id/cra-years', async (req, res) => {
         FROM cra.cra_gifts_in_kind
         WHERE LEFT(bn, 9) = $1 ORDER BY fpe DESC
       `, [bn]).catch(() => ({ rows: [] })),
-      // Schedule 8 — disbursement quota (v27+, 2024 data)
+      // Schedule 8 â€” disbursement quota (v27+, 2024 data)
       pool.query(`
         SELECT bn, fpe, EXTRACT(YEAR FROM fpe)::int AS yr,
                field_805 AS dq_avg_property_value,
@@ -2116,10 +2223,10 @@ app.get('/api/entity/:id/cra-years', async (req, res) => {
   }
 });
 
-// ────────────────────────────────────────────────────────────────────────────
-// /api/entity/:id/gifts-received — other charities that gifted to this entity.
-// Matches cra_qualified_donees where donee_bn ≈ this entity's BN.
-// ────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// /api/entity/:id/gifts-received â€” other charities that gifted to this entity.
+// Matches cra_qualified_donees where donee_bn â‰ˆ this entity's BN.
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 app.get('/api/entity/:id/gifts-received', async (req, res) => {
   try {
@@ -2170,10 +2277,10 @@ app.get('/api/entity/:id/gifts-received', async (req, res) => {
   }
 });
 
-// ────────────────────────────────────────────────────────────────────────────
-// /api/entity/:id/gifts-given — this entity's own gifts to other charities
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// /api/entity/:id/gifts-given â€” this entity's own gifts to other charities
 // (this entity appears as the donor in cra_qualified_donees).
-// ────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 app.get('/api/entity/:id/gifts-given', async (req, res) => {
   try {
@@ -2199,11 +2306,11 @@ app.get('/api/entity/:id/gifts-given', async (req, res) => {
   }
 });
 
-// ────────────────────────────────────────────────────────────────────────────
-// /api/entity/:id/related — potentially-same entities surfaced by the pipeline
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// /api/entity/:id/related â€” potentially-same entities surfaced by the pipeline
 // that weren't actually merged. Helps the analyst spot anything missed.
 // Source: entity_merge_candidates with verdict != DIFFERENT, plus splink_predictions.
-// ────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 app.get('/api/entity/:id/related', async (req, res) => {
   try {
@@ -2269,14 +2376,14 @@ app.get('/api/entity/:id/related', async (req, res) => {
   }
 });
 
-// ────────────────────────────────────────────────────────────────────────────
-// /api/entity/:id/funding-by-year — consolidated multi-source funding rollup.
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// /api/entity/:id/funding-by-year â€” consolidated multi-source funding rollup.
 // Combines CRA revenue/expenses, FED grant agreements, AB grants, AB contracts,
 // AB sole-source into one per-year dataset for the funding chart.
 //
 // CRA uses bn_root to join. Non-CRA uses entity_source_links joined back to
 // the source row.
-// ────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 app.get('/api/entity/:id/funding-by-year', async (req, res) => {
   try {
@@ -2300,8 +2407,8 @@ app.get('/api/entity/:id/funding-by-year', async (req, res) => {
       `, [bn]));
     } else queries.push(Promise.resolve({ rows: [] }));
 
-    // FED — bucket into Canadian federal fiscal year string "YYYY-YYYY".
-    // FY runs April 1 → March 31. A grant starting 2023-10-01 is FY "2023-2024".
+    // FED â€” bucket into Canadian federal fiscal year string "YYYY-YYYY".
+    // FY runs April 1 â†’ March 31. A grant starting 2023-10-01 is FY "2023-2024".
     // A grant starting 2024-02-15 is still FY "2023-2024" (the fiscal year
     // that ends 2024-03-31). This label format matches AB's display_fiscal_year.
     queries.push(pool.query(`
@@ -2324,7 +2431,7 @@ app.get('/api/entity/:id/funding-by-year', async (req, res) => {
       GROUP BY 1 ORDER BY 1
     `, [id]));
 
-    // AB grants — display_fiscal_year as-is, spaces stripped so "2023 - 2024"
+    // AB grants â€” display_fiscal_year as-is, spaces stripped so "2023 - 2024"
     // becomes "2023-2024" (aligns with FED label format).
     queries.push(pool.query(`
       SELECT REPLACE(g.display_fiscal_year, ' ', '') AS fy,
@@ -2336,7 +2443,7 @@ app.get('/api/entity/:id/funding-by-year', async (req, res) => {
       GROUP BY 1 ORDER BY 1
     `, [id]));
 
-    // AB contracts — same normalization.
+    // AB contracts â€” same normalization.
     queries.push(pool.query(`
       SELECT REPLACE(c.display_fiscal_year, ' ', '') AS fy,
              COALESCE(SUM(c.amount), 0)::float AS ab_contracts_total,
@@ -2347,7 +2454,7 @@ app.get('/api/entity/:id/funding-by-year', async (req, res) => {
       GROUP BY 1 ORDER BY 1
     `, [id]));
 
-    // AB sole-source — same normalization.
+    // AB sole-source â€” same normalization.
     queries.push(pool.query(`
       SELECT REPLACE(ss.display_fiscal_year, ' ', '') AS fy,
              COALESCE(SUM(ss.amount), 0)::float AS ab_ss_total,
@@ -2363,7 +2470,7 @@ app.get('/api/entity/:id/funding-by-year', async (req, res) => {
     // Two separate outputs with native year formats preserved:
     //   - cra_calendar_years[]: integer calendar year from fpe
     //   - external_fiscal_years[]: "YYYY-YYYY" fiscal-year labels
-    // NOT merged — CRA calendar years and government fiscal years are
+    // NOT merged â€” CRA calendar years and government fiscal years are
     // different conceptual periods, so forcing them onto one axis would
     // be lossy. The dossier renders them as two charts.
     const craByYear = {};
@@ -2400,10 +2507,10 @@ app.get('/api/entity/:id/funding-by-year', async (req, res) => {
   }
 });
 
-// ────────────────────────────────────────────────────────────────────────────
-// /api/entity/:id/accountability — overhead ratios, government funding
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// /api/entity/:id/accountability â€” overhead ratios, government funding
 // breakdown, T3010 data-quality violations, loop-network participation.
-// ────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 app.get('/api/entity/:id/accountability', async (req, res) => {
   try {
@@ -2478,9 +2585,9 @@ app.get('/api/entity/:id/accountability', async (req, res) => {
   }
 });
 
-// ────────────────────────────────────────────────────────────────────────────
-// /api/entity/:id/international — money and activities outside Canada.
-// ────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// /api/entity/:id/international â€” money and activities outside Canada.
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 app.get('/api/entity/:id/international', async (req, res) => {
   try {
@@ -2525,147 +2632,126 @@ app.get('/api/entity/:id/international', async (req, res) => {
   }
 });
 
-// ════════════════════════════════════════════════════════════════════════════
-// Challenge 3 — Funding Loops
-// ════════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// Challenge 3 â€” Funding Loops
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-// Challenge 1 — Zombie Recipients
+// Challenge 1 â€” Zombie Recipients
 app.get('/api/zombies', async (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit, 10) || 50, 200);
     const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
-    const minTotalValue = Math.max(parseFloat(req.query.min_total_value) || 500000, 0);
-    const lastSeenBeforeYear = Math.max(parseInt(req.query.last_seen_before_year, 10) || 2022, 2000);
+    const minTotalValue = Math.max(parseFloat(req.query.min_total_value) || 0, 0);
     const signalType = (req.query.signal_type || '').trim() || null;
     const recipientType = (req.query.recipient_type || '').trim() || null;
     const province = (req.query.province || '').trim() || null;
-    const requireEntityMatch = parseBooleanQuery(req.query.require_entity_match, false);
+    const confidenceLevel = (req.query.confidence_level || '').trim() || null;
+    const reviewTier = (req.query.review_tier || '').trim() || null;
+    const minScore = Math.max(parseFloat(req.query.min_score) || 0, 0);
+    const registryStatus = (req.query.registry_status || '').trim() || null;
+    const requireRegistryMatch = parseBooleanQuery(req.query.require_registry_match, true);
 
     const cacheKey = `zombies:${JSON.stringify({
       limit,
       offset,
       minTotalValue,
-      lastSeenBeforeYear,
       signalType,
+      confidenceLevel,
+      reviewTier,
+      minScore,
+      registryStatus,
       recipientType,
       province,
-      requireEntityMatch,
+      requireRegistryMatch,
     })}`;
     const cached = getCachedJson(cacheKey);
     if (cached) return res.json(cached);
 
-    const params = [
-      minTotalValue,
-      lastSeenBeforeYear,
-      recipientType,
-      province ? province.toUpperCase() : null,
-      requireEntityMatch,
-      signalType,
-    ];
+    const minTotalValueSql = Number.isFinite(minTotalValue) ? minTotalValue : 0;
+    const minScoreSql = Number.isFinite(minScore) ? minScore : 0;
+    const limitSql = Number.isFinite(limit) ? limit : 50;
+    const offsetSql = Number.isFinite(offset) ? offset : 0;
+    const requireRegistryMatchSql = requireRegistryMatch ? 'TRUE' : 'FALSE';
+    const signalTypeFilterSql = optionalBigQueryEquals('signal_type', signalType);
+    const confidenceLevelFilterSql = optionalBigQueryEquals('confidence_level', confidenceLevel);
+    const reviewTierFilterSql = optionalBigQueryEquals('review_tier', reviewTier);
+    const registryStatusFilterSql = optionalBigQueryEquals(
+      "COALESCE(registry_status_label, '')",
+      registryStatus,
+      { lower: true },
+    );
+    const provinceFilterSql = optionalBigQueryEquals("COALESCE(province, '')", province, { upper: true });
+    const recipientTypeFilterSql = optionalBigQueryEquals('recipient_type', recipientType);
 
     const sql = `
-      WITH ${RECIPIENT_RISK_FOUNDATION_CTE},
-      zombie_screened AS (
+      WITH filtered AS (
         SELECT
-          re.*,
-          (
-            re.last_year IS NOT NULL
-            AND re.last_year < $2
-            AND re.total_value >= 500000
-          ) AS is_zombie,
-          (
-            re.grant_count > 0
-            AND re.grant_count <= 2
-            AND re.total_value >= 1000000
-          ) AS is_high_dependency,
-          (
-            re.recipient_type = 'F'
-            AND re.last_year IS NOT NULL
-            AND re.last_year < 2020
-            AND re.total_value >= 1000000
-          ) AS is_disappeared_for_profit,
-          (
-            COALESCE(re.years_since_last_seen, 0)
-            + CASE
-                WHEN re.total_value >= 50000000 THEN 5
-                WHEN re.total_value >= 10000000 THEN 4
-                WHEN re.total_value >= 1000000 THEN 3
-                WHEN re.total_value >= 500000 THEN 2
-                ELSE 1
-              END
-            + CASE
-                WHEN re.grant_count <= 1 THEN 3
-                WHEN re.grant_count <= 2 THEN 2
-                WHEN re.grant_count <= 5 THEN 1
-                ELSE 0
-              END
-            + CASE
-                WHEN re.last_amendment_date IS NULL
-                  OR EXTRACT(YEAR FROM re.last_amendment_date)::int < $2
-                THEN 2
-                ELSE 0
-              END
-            + CASE
-                WHEN re.recipient_type = 'F'
-                  AND re.last_year IS NOT NULL
-                  AND re.last_year < 2020
-                  AND re.total_value >= 1000000
-                THEN 3
-                ELSE 0
-              END
-          )::int AS challenge1_score,
-          CASE
-            WHEN (
-              re.recipient_type = 'F'
-              AND re.last_year IS NOT NULL
-              AND re.last_year < 2020
-              AND re.total_value >= 1000000
-            ) THEN 'disappeared_for_profit'
-            WHEN (
-              re.last_year IS NOT NULL
-              AND re.last_year < $2
-              AND re.total_value >= 500000
-            ) THEN 'zombie'
-            ELSE 'high_dependency'
-          END AS signal_type
-        FROM recipient_enriched re
-        WHERE re.total_value >= $1
-          AND ($3::text IS NULL OR re.recipient_type = $3)
-          AND ($4::text IS NULL OR UPPER(COALESCE(re.province, '')) = $4)
-          AND ($5::boolean = FALSE OR re.resolved_entity_id IS NOT NULL)
+          *,
+          COUNT(*) OVER() AS total_rows
+        FROM \`my-project-45978-resume.accountibilitymax_raw.challenge1_zombie_recipients_v2\`
+        WHERE total_funding_value >= ${minTotalValueSql}
+          AND ${signalTypeFilterSql}
+          AND ${confidenceLevelFilterSql}
+          AND ${reviewTierFilterSql}
+          AND (${minScoreSql} <= 0 OR challenge1_score >= ${minScoreSql})
+          AND ${registryStatusFilterSql}
+          AND ${provinceFilterSql}
+          AND ${recipientTypeFilterSql}
+          AND (${requireRegistryMatchSql} = FALSE OR match_method = 'bn_root_registry_match')
       )
-      SELECT
-        *,
-        COUNT(*) OVER()::int AS total_rows
-      FROM zombie_screened
-      WHERE (is_zombie OR is_high_dependency OR is_disappeared_for_profit)
-        AND ($6::text IS NULL OR signal_type = $6)
-      ORDER BY
-        challenge1_score DESC,
-        total_value DESC,
-        last_year ASC NULLS FIRST,
-        name ASC
-      LIMIT ${limit}
-      OFFSET ${offset};
+      SELECT *
+      FROM filtered
+      ORDER BY challenge1_score DESC, total_funding_value DESC, last_funding_date ASC, recipient_name ASC
+      LIMIT ${limitSql}
+      OFFSET ${offsetSql}
     `;
 
-    const result = await pool.query(sql, params);
-    const summaries = result.rows
-      .map((row) => buildZombieSummary(row, lastSeenBeforeYear))
-      .filter(Boolean);
+    const summaryCountsSql = `
+      SELECT
+        COUNT(*) AS total_candidate_count,
+        COUNTIF(match_method = 'bn_root_registry_match') AS registry_backed_count,
+        COUNTIF(signal_type = 'no_bn_funding_disappearance_review') AS no_bn_fallback_count,
+        COUNTIF(signal_type = 'post_inactive_funding') AS post_status_funding_count
+      FROM \`my-project-45978-resume.accountibilitymax_raw.challenge1_zombie_recipients_v2\`
+      WHERE total_funding_value >= ${minTotalValueSql}
+        AND ${signalTypeFilterSql}
+        AND ${confidenceLevelFilterSql}
+        AND ${reviewTierFilterSql}
+        AND (${minScoreSql} <= 0 OR challenge1_score >= ${minScoreSql})
+        AND ${registryStatusFilterSql}
+        AND ${provinceFilterSql}
+        AND ${recipientTypeFilterSql}
+    `;
+
+    const [rows, summaryCountsRows] = await Promise.all([
+      runBigQuerySafe(sql),
+      runBigQuerySafe(summaryCountsSql),
+    ]);
+
+    const summaries = rows.map((row) => buildZombieSummaryV2(row));
+    const summaryCounts = summaryCountsRows[0] || {};
 
     const payload = {
       filters: {
         limit,
         offset,
         min_total_value: minTotalValue,
-        last_seen_before_year: lastSeenBeforeYear,
         signal_type: signalType,
+        confidence_level: confidenceLevel,
+        review_tier: reviewTier,
+        min_score: minScore,
+        registry_status: registryStatus,
         recipient_type: recipientType,
         province,
-        require_entity_match: requireEntityMatch,
+        require_registry_match: requireRegistryMatch,
       },
-      total: result.rows[0]?.total_rows ?? 0,
+      total: Number(rows[0]?.total_rows || 0),
+      summary_counts: {
+        registry_backed_count: Number(summaryCounts.registry_backed_count || 0),
+        no_bn_fallback_count: Number(summaryCounts.no_bn_fallback_count || 0),
+        post_status_funding_count: Number(summaryCounts.post_status_funding_count || 0),
+        total_candidate_count: Number(summaryCounts.total_candidate_count || 0),
+      },
       results: summaries,
     };
     setCachedJson(cacheKey, payload);
@@ -2685,17 +2771,15 @@ app.get('/api/zombies/:recipientKey', async (req, res) => {
     if (cached) return res.json(cached);
 
     const summarySql = `
-      WITH ${RECIPIENT_RISK_FOUNDATION_CTE}
       SELECT *
-      FROM recipient_enriched
-      WHERE recipient_key = $1
-      LIMIT 1;
+      FROM \`my-project-45978-resume.accountibilitymax_raw.challenge1_zombie_recipients_v2\`
+      WHERE recipient_key = ${bigQueryStringLiteral(recipientKey)}
+      ORDER BY challenge1_score DESC, total_funding_value DESC
+      LIMIT 1
     `;
-    const summaryResult = await pool.query(summarySql, [recipientKey]);
-    if (!summaryResult.rows.length) return res.status(404).json({ error: 'recipient not found' });
-
-    const summary = buildZombieSummary(summaryResult.rows[0], 2022);
-    if (!summary) return res.status(404).json({ error: 'recipient does not match zombie screening' });
+    const summaryRows = await runBigQuerySafe(summarySql);
+    if (!summaryRows.length) return res.status(404).json({ error: 'recipient not found' });
+    const summary = buildZombieSummaryV2(summaryRows[0]);
 
     const [timelineResult, departmentResult, programResult] = await Promise.all([
       pool.query(
@@ -2764,7 +2848,7 @@ app.get('/api/zombies/:recipientKey', async (req, res) => {
   }
 });
 
-// Challenge 2 — Ghost Capacity
+// Challenge 2 â€” Ghost Capacity
 app.get('/api/ghost-capacity', async (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit, 10) || 50, 200);
@@ -3295,7 +3379,7 @@ app.get('/api/loops/:loopId', async (req, res) => {
         hop_idx: row.hop_idx,
         source: `bn-${row.src}`,
         target: `bn-${row.dst}`,
-        label: `${formatCad(row.year_flow)} · ${row.gift_count} gift${Number(row.gift_count || 0) === 1 ? '' : 's'}`,
+        label: `${formatCad(row.year_flow)} Â· ${row.gift_count} gift${Number(row.gift_count || 0) === 1 ? '' : 's'}`,
         year_flow: Number(row.year_flow || 0),
         gift_count: Number(row.gift_count || 0),
       })),
@@ -3355,9 +3439,9 @@ app.get('/api/loops/:loopId', async (req, res) => {
   }
 });
 
-// ════════════════════════════════════════════════════════════════════════════
-// Challenge 6 — Governance / Shared-Director Endpoints
-// ════════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// Challenge 6 â€” Governance / Shared-Director Endpoints
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // Shared CTEs reused across governance queries.
 //
 // - normalized_directors: one row per raw CRA director filing with normalized
@@ -3365,7 +3449,7 @@ app.get('/api/loops/:loopId', async (req, res) => {
 // - director_entity_links: collapses director filings into one row per
 //   (entity, person_name_norm) with year span, positions, arms-length signal,
 //   and funding rollups from general.vw_entity_funding.
-// ────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const GOV_NORMALIZED_DIRECTORS = `
   normalized_directors AS (
@@ -3431,8 +3515,8 @@ const GOV_DIRECTOR_ENTITY_LINKS = `
   )
 `;
 
-// ────────────────────────────────────────────────────────────────────────────
-// /api/governance/pairs — ranked shared-governance pairs (Query 2)
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// /api/governance/pairs â€” ranked shared-governance pairs (Query 2)
 // Query params:
 //   limit             default 100, max 500
 //   offset            default 0
@@ -3441,7 +3525,7 @@ const GOV_DIRECTOR_ENTITY_LINKS = `
 //   min_funding       combined funding floor (default 0)
 //   interpretation    network_interpretation filter
 //   entity_type       entity_a_type/entity_b_type filter
-// ────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 app.get('/api/governance/pairs', async (req, res) => {
   try {
@@ -3608,10 +3692,10 @@ app.get('/api/governance/pairs', async (req, res) => {
   }
 });
 
-// ────────────────────────────────────────────────────────────────────────────
-// /api/governance/pairs/:a/:b/graph — pair graph payload (Query 4)
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// /api/governance/pairs/:a/:b/graph â€” pair graph payload (Query 4)
 // Returns all shared people between entities A and B, plus per-entity metadata.
-// ────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 app.get('/api/governance/pairs/:a/:b/graph', async (req, res) => {
   try {
@@ -3707,10 +3791,10 @@ app.get('/api/governance/pairs/:a/:b/graph', async (req, res) => {
   }
 });
 
-// ────────────────────────────────────────────────────────────────────────────
-// /api/governance/people/search?q= — people search (Query 3)
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// /api/governance/people/search?q= â€” people search (Query 3)
 // Returns person rollups grouped by person_name_norm with linked entities.
-// ────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 app.get('/api/governance/people/search', async (req, res) => {
   try {
@@ -3771,9 +3855,9 @@ app.get('/api/governance/people/search', async (req, res) => {
   }
 });
 
-// ────────────────────────────────────────────────────────────────────────────
-// /api/governance/people/:personNorm — person profile + linked entities (Query 1)
-// ────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// /api/governance/people/:personNorm â€” person profile + linked entities (Query 1)
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 app.get('/api/governance/people/:personNorm', async (req, res) => {
   try {
@@ -3835,9 +3919,9 @@ app.get('/api/governance/people/:personNorm', async (req, res) => {
   }
 });
 
-// ────────────────────────────────────────────────────────────────────────────
-// /api/governance/entity/:id/people — governance tab on entity dossier (Query 1)
-// ────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// /api/governance/entity/:id/people â€” governance tab on entity dossier (Query 1)
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 app.get('/api/governance/entity/:id/people', async (req, res) => {
   try {
@@ -3896,9 +3980,9 @@ app.get('/api/governance/entity/:id/people', async (req, res) => {
   }
 });
 
-// ────────────────────────────────────────────────────────────────────────────
-// Root — small JSON only (browser UI lives in accountibilitymax-app or similar).
-// ────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Root â€” small JSON only (browser UI lives in accountibilitymax-app or similar).
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const AMENDMENT_CREEP_CASES_SQL = `
   WITH fed_keyed AS (
@@ -5507,7 +5591,7 @@ app.get('/', (req, res) => {
   res.json({
     service: 'dossier-api',
     endpoints: [
-      'GET /api/search?q=…',
+      'GET /api/search?q=â€¦',
       'GET /api/entity/:id',
       'GET /api/entity/:id/funding-by-year',
       'GET /api/entity/:id/accountability',
@@ -5525,10 +5609,10 @@ app.get('/', (req, res) => {
       'GET /api/challenge-review/compare/:challengeId',
       'GET /api/governance/pairs',
       'GET /api/governance/pairs/:a/:b/graph',
-      'GET /api/governance/people/search?q=…',
+      'GET /api/governance/people/search?q=â€¦',
       'GET /api/governance/people/:personNorm',
       'GET /api/governance/entity/:id/people',
-      '…see server.js header for full list',
+      'â€¦see server.js header for full list',
     ],
   });
 });
