@@ -43,6 +43,9 @@ backend/general/data/c8b-policy/raw/
 backend/general/data/c7-policy/*.json
 backend/general/data/c7-policy/*.csv
 backend/general/data/c7-policy/raw/
+backend/general/data/c1-registry/*.json
+backend/general/data/c1-registry/*.csv
+backend/general/data/c1-registry/raw/
 backend/.local-db/data/
 backend/.local-db/node_modules/
 backend/.local-db/.env
