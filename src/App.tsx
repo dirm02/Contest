@@ -29,6 +29,8 @@ const NAV_ITEMS: Array<{ to: string; label: string; end?: boolean }> = [
   { to: '/people', label: 'People' },
 ];
 
+const LOGO_SRC = '/Maple%20DOGE.png';
+
 export default function App() {
   return (
     <div className="app-shell">
@@ -36,11 +38,15 @@ export default function App() {
         <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:gap-6 lg:px-8">
           <div className="flex items-center justify-between gap-4">
             <Link to="/" className="flex min-w-0 items-center gap-3 text-[var(--color-ink)]">
-              <span className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-subtle)] text-sm font-bold text-[var(--color-accent)]">
-                AM
+              <span className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-subtle)]">
+                <img
+                  src={LOGO_SRC}
+                  alt="Maple DOGE logo"
+                  className="h-full w-full object-contain"
+                />
               </span>
               <span className="truncate text-lg font-semibold">
-                AccountabilityMax
+                Maple DOGE
               </span>
             </Link>
             <span className="inline-flex shrink-0 items-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-surface-subtle)] px-3 py-1.5 text-xs font-medium text-[var(--color-muted)] lg:hidden">

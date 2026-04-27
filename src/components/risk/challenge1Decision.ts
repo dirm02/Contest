@@ -13,7 +13,7 @@ export interface Challenge1Decision {
 }
 
 export const CHALLENGE_1_DISCLAIMER =
-  'AccountabilityMax prioritizes cases for human review. Scores and signals are not findings of wrongdoing.';
+  'Maple DOGE prioritizes cases for human review. Scores and signals are not findings of wrongdoing.';
 
 export const CHALLENGE_1_CHECKLIST = [
   'Confirm the legal identity and BN/root match.',

@@ -814,7 +814,7 @@ export default function CaseDecisionPage() {
                   </section>
 
                   <footer className="border-t border-[var(--color-border)] pt-3 text-xs text-[var(--color-muted)]">
-                    Advisory content generated in the review workspace. Not transmitted by AccountabilityMax. Suitable for internal review processes only.
+                    Advisory content generated in the review workspace. Not transmitted by Maple DOGE. Suitable for internal review processes only.
                   </footer>
                 </div>
               </article>
