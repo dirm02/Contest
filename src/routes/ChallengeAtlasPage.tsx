@@ -127,6 +127,104 @@ const WORKFLOWS = [
   },
 ];
 
+const EXTERNAL_SOURCES = [
+  {
+    challenge: 'Challenge 1',
+    title: 'Zombie Recipients',
+    sources: [
+      {
+        label: 'Federal Corporations open dataset',
+        url: 'https://open.canada.ca/data/en/dataset/0032ce54-c5dd-4b66-99a0-320a7b5e99f2',
+        note: 'Corporation status, names, business numbers, and registry metadata used for BN-root matching.',
+      },
+      {
+        label: 'Corporations Canada status definitions',
+        url: 'https://ised-isde.canada.ca/site/corporations-canada/en/glossary-terms',
+        note: 'Explains status labels such as dissolved, discontinued, amalgamated, and pending status changes.',
+      },
+      {
+        label: "Canada's Business Registries",
+        url: 'https://ised-isde.canada.ca/cbr-rec/',
+        note: 'Federated search context for business registry status across participating jurisdictions.',
+      },
+    ],
+  },
+  {
+    challenge: 'Challenge 7',
+    title: 'Policy Misalignment',
+    sources: [
+      {
+        label: 'GC InfoBase plans and results',
+        url: 'https://www.tbs-sct.canada.ca/ems-sgd/edb-bdd/index-eng.html',
+        note: 'Structured planned spending, actual spending, and performance-result context.',
+      },
+      {
+        label: 'Departmental Plans / Results open data',
+        url: 'https://open.canada.ca/data/en/dataset/b15ee8d7-2ac0-4656-8330-6c60d085cda8',
+        note: 'Official program-level planning and reporting source used for review-queue comparisons.',
+      },
+      {
+        label: 'CMHC housing starts data',
+        url: 'https://open.canada.ca/data/en/dataset/d0e77820-0bd2-4fcd-9098-17fb3283ae12',
+        note: 'Housing context used conservatively where policy rows relate to starts and completions.',
+      },
+    ],
+  },
+  {
+    challenge: 'Challenge 8',
+    title: 'Duplicative Funding & Gaps',
+    sources: [
+      {
+        label: 'Infrastructure Canada projects',
+        url: 'https://open.canada.ca/data/en/dataset/f348614b-7ccf-4d05-a11f-5974b6c5a44f',
+        note: 'Project, transfer, and forecast records used for delay and allocation review queues.',
+      },
+      {
+        label: 'GC InfoBase',
+        url: 'https://www.canada.ca/GCInfoBase',
+        note: 'Government-wide program spending and results used to compare planned and observed activity.',
+      },
+    ],
+  },
+  {
+    challenge: 'Challenge 9',
+    title: 'Contract Intelligence',
+    sources: [
+      {
+        label: 'Contracts over $10K',
+        url: 'https://open.canada.ca/data/en/dataset/d8f85d91-7dec-4fd1-8055-483b77225d8b',
+        note: 'Federal contract disclosure baseline for procurement-grade growth and concentration analysis.',
+      },
+      {
+        label: 'CanadaBuys Award Notices',
+        url: 'https://open.canada.ca/data/en/dataset/a1acb126-9ce8-40a9-b889-5da2b1dd20cb',
+        note: 'Award notices and procurement lifecycle context for future enrichment.',
+      },
+      {
+        label: 'Standing Offers and Supply Arrangements',
+        url: 'https://open.canada.ca/data/en/dataset/f5c8a5a0-354d-455a-99ab-8276aa38032e',
+        note: 'Supplier-framework context for standing-offer share and competition interpretation.',
+      },
+    ],
+  },
+  {
+    challenge: 'Challenge 10',
+    title: 'Adverse Media',
+    sources: [
+      {
+        label: 'Google News RSS',
+        url: 'https://news.google.com/rss',
+        note: 'RSS headline scan used with explicit warning states when a source fails.',
+      },
+      {
+        label: 'NewsAPI',
+        url: 'https://newsapi.org/',
+        note: 'Secondary media source for deduped adverse-media review signals.',
+      },
+    ],
+  },
+];
+
 function statusBadgeClass(status: ChallengeStatus) {
   if (status === 'live') return 'signal-badge-low';
   if (status === 'validation') return 'signal-badge-medium';
@@ -226,26 +324,48 @@ export default function ChallengeAtlasPage() {
         </div>
 
         <div className="app-card rounded-lg p-5">
-          <p className="section-title">Recommended navigation</p>
-          <div className="mt-3 grid gap-3">
-            <div className="border-t border-[var(--color-border)] py-3">
-              <p className="text-sm font-semibold text-[var(--color-ink)]">Header</p>
-              <p className="mt-1 text-sm text-[var(--color-muted)]">
-                Search, Admin Panel, People. Keep the main bar short and predictable.
-              </p>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="section-title">External source register</p>
+              <h2 className="mt-2 text-xl font-semibold text-[var(--color-ink)]">
+                Official data behind the live challenges
+              </h2>
             </div>
-            <div className="border-t border-[var(--color-border)] py-3">
-              <p className="text-sm font-semibold text-[var(--color-ink)]">Admin Panel</p>
-              <p className="mt-1 text-sm text-[var(--color-muted)]">
-                Challenge cards, status, evidence type, and routes to the live modules.
-              </p>
-            </div>
-            <div className="border-t border-[var(--color-border)] py-3">
-              <p className="text-sm font-semibold text-[var(--color-ink)]">Dossier</p>
-              <p className="mt-1 text-sm text-[var(--color-muted)]">
-                Compact boxes show which challenge signals apply to the selected organization.
-              </p>
-            </div>
+            <span className="rounded-full px-2.5 py-1 text-xs font-semibold signal-badge-info">
+              Scroll
+            </span>
+          </div>
+          <p className="mt-3 text-sm leading-6 text-[var(--color-muted)]">
+            Sources are grouped by challenge and quoted as review inputs. They explain where the
+            evidence comes from, not a final finding by themselves.
+          </p>
+          <div className="mt-4 max-h-72 space-y-4 overflow-y-auto pr-2">
+            {EXTERNAL_SOURCES.map((group) => (
+              <section key={group.challenge} className="border-t border-[var(--color-border)] pt-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-muted)]">
+                  {group.challenge}
+                </p>
+                <h3 className="mt-1 text-sm font-semibold text-[var(--color-ink)]">{group.title}</h3>
+                <div className="mt-2 grid gap-2">
+                  {group.sources.map((source) => (
+                    <a
+                      key={source.url}
+                      href={source.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="rounded-md border border-[var(--color-border)] bg-white/70 p-3 transition hover:bg-white"
+                    >
+                      <span className="text-sm font-semibold text-[var(--color-accent)]">
+                        {source.label}
+                      </span>
+                      <span className="mt-1 block text-xs leading-5 text-[var(--color-muted)]">
+                        {source.note}
+                      </span>
+                    </a>
+                  ))}
+                </div>
+              </section>
+            ))}
           </div>
         </div>
       </section>
