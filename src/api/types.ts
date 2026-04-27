@@ -254,10 +254,13 @@ export interface ZombieFilters {
   offset?: number;
   minTotalValue?: number;
   lastSeenBeforeYear?: number;
+  minScore?: number;
+  confidenceLevel?: string | null;
   signalType?: string | null;
   recipientType?: string | null;
   province?: string | null;
   requireEntityMatch?: boolean;
+  requireRegistryMatch?: boolean;
 }
 
 export interface GhostCapacityFilters {
@@ -328,10 +331,19 @@ export interface ZombiesResponseApi {
     offset: number;
     min_total_value: number;
     last_seen_before_year: number;
+    min_score?: number;
+    confidence_level?: string | null;
     signal_type: string | null;
     recipient_type: string | null;
     province: string | null;
     require_entity_match: boolean;
+    require_registry_match?: boolean;
+  };
+  summary_counts?: {
+    registry_backed_count?: number | string;
+    no_bn_fallback_count?: number | string;
+    post_status_funding_count?: number | string;
+    total_candidate_count?: number | string;
   };
   total: number;
   results: RecipientRiskSummaryApi[];

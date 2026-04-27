@@ -1,5 +1,6 @@
 import { Link, NavLink, Route, Routes } from 'react-router-dom';
 import SearchPage from './routes/SearchPage';
+import ActionQueuePage from './routes/ActionQueuePage';
 import DossierPage from './routes/DossierPage';
 import ChallengeAtlasPage from './routes/ChallengeAtlasPage';
 import GovernanceLandingPage from './routes/GovernanceLandingPage';
@@ -76,6 +77,7 @@ export default function App() {
       <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col px-4 py-6 sm:px-6 lg:px-8">
         <Routes>
           <Route path="/" element={<SearchPage />} />
+          <Route path="/action-queue" element={<ActionQueuePage />} />
           <Route path="/investigations" element={<ChallengeAtlasPage />} />
           <Route path="/challenge-atlas" element={<ChallengeAtlasPage />} />
           <Route path="/challenge-review" element={<ChallengeReviewPage />} />

@@ -396,12 +396,22 @@ export default function ChallengeAtlasPage() {
             </div>
             <div className="mt-auto pt-4">
               {challenge.route ? (
-                <Link
-                  to={challenge.route}
-                  className="inline-flex min-h-10 items-center justify-center rounded-md border border-[var(--color-border)] bg-[var(--color-surface-subtle)] px-3 text-sm font-semibold text-[var(--color-ink)] transition hover:bg-[var(--color-accent-soft)]"
-                >
-                  Open module
-                </Link>
+                <div className="flex flex-wrap gap-2">
+                  <Link
+                    to={challenge.route}
+                    className="inline-flex min-h-10 items-center justify-center rounded-md border border-[var(--color-border)] bg-[var(--color-surface-subtle)] px-3 text-sm font-semibold text-[var(--color-ink)] transition hover:bg-[var(--color-accent-soft)]"
+                  >
+                    Open module
+                  </Link>
+                  {challenge.id === 1 && (
+                    <Link
+                      to="/action-queue"
+                      className="inline-flex min-h-10 items-center justify-center rounded-md border border-[var(--color-border)] bg-white px-3 text-sm font-semibold text-[var(--color-accent)] transition hover:bg-[var(--color-accent-soft)]"
+                    >
+                      Action queue
+                    </Link>
+                  )}
+                </div>
               ) : (
                 <span className="inline-flex min-h-10 items-center justify-center rounded-md border border-[var(--color-border)] bg-[var(--color-surface-subtle)] px-3 text-sm font-semibold text-[var(--color-muted)]">
                   Planned module
