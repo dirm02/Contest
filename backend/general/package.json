@@ -36,6 +36,8 @@
     "entities:audit:nobn": "node scripts/tools/data-quality/audit-nobn-bridging.js",
     "c9:procurement:metadata": "node scripts/c9-ingest/procurement-loader.js --metadata-only",
     "c9:procurement:load": "node scripts/c9-ingest/procurement-loader.js --download --load",
+    "c7:policy:metadata": "node scripts/c7-ingest/policy-source-loader.js --metadata-only",
+    "c7:policy:load": "node scripts/c7-ingest/policy-source-loader.js --download --load",
     "c8b:policy:metadata": "node scripts/c8b-ingest/policy-loader.js --metadata-only",
     "c8b:policy:load": "node scripts/c8b-ingest/policy-loader.js --download --load",
     "pipeline:run": "npm run entities:migrate && npm run entities:resolve && npm run entities:splink && npm run entities:detect && npm run entities:smart-match && npm run entities:llm && npm run entities:build-golden && npm run entities:donee-fallback",
