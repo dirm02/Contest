@@ -314,6 +314,7 @@ export interface RecipientRiskSummaryApi {
   challenge_score: number;
   confidence_level?: string | null;
   confidence_note?: string | null;
+  match_method?: string | null;
   why_flagged: string[];
   caveats?: string[];
   source_tables?: string | null;
@@ -430,6 +431,7 @@ export interface RecipientRiskRow {
   challengeScore: number;
   confidenceLevel?: string | null;
   confidenceNote?: string | null;
+  matchMethod?: string | null;
   whyFlagged: string[];
   caveats: string[];
   sourceTables?: string | null;

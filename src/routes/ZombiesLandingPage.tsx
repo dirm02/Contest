@@ -5,6 +5,7 @@ import { mapZombies } from '../api/mappers';
 import type { ZombieFilters } from '../api/types';
 import RecipientRiskTable from '../components/risk/RecipientRiskTable';
 import ZombieFiltersForm from '../components/risk/ZombieFilters';
+import { CHALLENGE_1_DISCLAIMER } from '../components/risk/challenge1Decision';
 
 const DEFAULT_FILTERS: ZombieFilters = {
   limit: 50,
@@ -36,11 +37,14 @@ export default function ZombiesLandingPage() {
       <div className="space-y-2">
         <p className="section-title">Zombie recipients</p>
         <h1 className="max-w-4xl text-3xl font-semibold tracking-tight text-[var(--color-ink)] sm:text-5xl">
-          Find recipients that absorbed funding and then went quiet
+          Prioritize registry-backed lifecycle review cases
         </h1>
         <p className="max-w-3xl text-sm leading-6 text-[var(--color-muted)] sm:text-base">
-          FED-first screening for recipients whose material grant history appears to stop, thin out,
-          or depend on only one or two major grants.
+          Challenge 1 now starts as a human-in-the-loop pilot: registry-backed signals appear first,
+          fallback rows remain available for support and data-quality follow-up.
+        </p>
+        <p className="max-w-3xl rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-subtle)] px-4 py-3 text-sm leading-6 text-[var(--color-muted)]">
+          {CHALLENGE_1_DISCLAIMER}
         </p>
       </div>
 
