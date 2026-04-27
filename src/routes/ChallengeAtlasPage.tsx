@@ -80,9 +80,10 @@ const CHALLENGES: ChallengeAtlasItem[] = [
     id: 8,
     title: 'Duplicative Funding & Gaps',
     theme: 'Policy fit',
-    question: 'Which organizations receive overlapping support while other stated priorities receive little or none?',
-    evidence: 'Purpose matching across federal, provincial, municipal, and program-level datasets.',
-    status: 'planned',
+    question: 'Which organizations receive overlapping public streams, and where do priority plans, projects, or targets need gap review?',
+    evidence: 'Federal, Alberta, and CRA funding overlap; GC InfoBase plans/results; Infrastructure Canada projects and transfer allocations.',
+    route: '/duplicative-funding',
+    status: 'live',
   },
   {
     id: 9,
