@@ -530,7 +530,12 @@ function mapRecipientRiskRow(summary: RecipientRiskSummaryApi): RecipientRiskRow
     signalType: summary.signal_type,
     matchedSignals: summary.matched_signals ?? [],
     challengeScore: toNumber(summary.challenge_score),
+    confidenceLevel: summary.confidence_level ?? null,
+    confidenceNote: summary.confidence_note ?? null,
     whyFlagged: summary.why_flagged ?? [],
+    caveats: summary.caveats ?? [],
+    sourceTables: summary.source_tables ?? null,
+    sourceLinks: summary.source_links ?? [],
   };
 }
 

@@ -312,7 +312,12 @@ export interface RecipientRiskSummaryApi {
   signal_type: string;
   matched_signals: string[];
   challenge_score: number;
+  confidence_level?: string | null;
+  confidence_note?: string | null;
   why_flagged: string[];
+  caveats?: string[];
+  source_tables?: string | null;
+  source_links?: string[];
   cross_dataset_context: CrossDatasetContextApi;
 }
 
@@ -423,7 +428,12 @@ export interface RecipientRiskRow {
   signalType: string;
   matchedSignals: string[];
   challengeScore: number;
+  confidenceLevel?: string | null;
+  confidenceNote?: string | null;
   whyFlagged: string[];
+  caveats: string[];
+  sourceTables?: string | null;
+  sourceLinks: string[];
 }
 
 export interface RecipientRiskTimelinePoint {

@@ -45,6 +45,21 @@ function signalTone(signalType: string) {
   return 'signal-badge-info';
 }
 
+function sourceLabel(url: string) {
+  try {
+    const { hostname, pathname } = new URL(url);
+    if (hostname.includes('open.canada.ca')) return 'Open Government dataset';
+    if (hostname.includes('ised-isde.canada.ca') && pathname.includes('glossary')) return 'Corporations Canada status glossary';
+    if (hostname.includes('ised-isde.canada.ca') && pathname.includes('fdrlCrpSrch')) return 'Corporations Canada search';
+    if (hostname.includes('ised-isde.canada.ca') && pathname.includes('cbr-rec')) return "Canada's Business Registries";
+    if (hostname.includes('canada.ca') && pathname.includes('charities')) return 'CRA charity status guidance';
+    if (hostname.includes('alberta.ca')) return 'Alberta corporation details';
+    return hostname.replace(/^www\./, '');
+  } catch {
+    return url;
+  }
+}
+
 export default function RecipientRiskTable({
   mode,
   rows,
@@ -142,6 +157,34 @@ export default function RecipientRiskTable({
                       </li>
                     ))}
                   </ul>
+                )}
+
+                {mode === 'zombies' && row.confidenceNote && (
+                  <p className="rounded-xl bg-white/70 px-3 py-2 text-sm text-[var(--color-muted)]">
+                    {row.confidenceNote}
+                  </p>
+                )}
+
+                {mode === 'zombies' && row.caveats.length > 0 && (
+                  <p className="text-xs leading-5 text-[var(--color-muted)]">
+                    {row.caveats[0]}
+                  </p>
+                )}
+
+                {mode === 'zombies' && row.sourceLinks.length > 0 && (
+                  <div className="flex flex-wrap gap-2 text-xs">
+                    {row.sourceLinks.slice(0, 4).map((url) => (
+                      <a
+                        key={url}
+                        href={url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="rounded-full border border-[var(--color-border)] bg-white/80 px-2.5 py-1 font-medium text-[var(--color-accent)] hover:bg-white"
+                      >
+                        {sourceLabel(url)}
+                      </a>
+                    ))}
+                  </div>
                 )}
               </div>
 
