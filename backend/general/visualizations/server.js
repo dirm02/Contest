@@ -2014,6 +2014,144 @@ app.get('/api/entity/:id', async (req, res) => {
 //             program_areas[], compensation, programs[] }, ...]
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
+function parseSourcePk(value) {
+  if (!value) return {};
+  if (typeof value === 'object') return value;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return {};
+  }
+}
+
+async function fetchSourceDetailRows(link, entity) {
+  const key = `${link.source_schema}.${link.source_table}`;
+  const pk = parseSourcePk(link.source_pk);
+  const bnRoot = pk.bn_root || entity.bn_root;
+
+  switch (key) {
+    case 'cra.cra_identification': {
+      if (!bnRoot) return [];
+      const result = await pool.query(`
+        SELECT *
+        FROM cra.cra_identification
+        WHERE LEFT(bn, 9) = $1
+        ORDER BY fiscal_year DESC NULLS LAST
+        LIMIT 25
+      `, [bnRoot]);
+      return result.rows;
+    }
+    case 'cra.cra_qualified_donees': {
+      if (!pk.bn || !pk.fpe || pk.seq == null) return [];
+      const result = await pool.query(`
+        SELECT *
+        FROM cra.cra_qualified_donees
+        WHERE bn = $1
+          AND fpe = $2::date
+          AND sequence_number = $3
+        LIMIT 1
+      `, [pk.bn, pk.fpe, pk.seq]);
+      return result.rows;
+    }
+    case 'fed.grants_contributions': {
+      if (pk._id == null) return [];
+      const result = await pool.query(`
+        SELECT *
+        FROM fed.grants_contributions
+        WHERE _id = $1::int
+        LIMIT 1
+      `, [pk._id]);
+      return result.rows;
+    }
+    case 'ab.ab_grants': {
+      if (pk.id == null) return [];
+      const result = await pool.query(`
+        SELECT *
+        FROM ab.ab_grants
+        WHERE id = $1::int
+        LIMIT 1
+      `, [pk.id]);
+      return result.rows;
+    }
+    case 'ab.ab_contracts':
+    case 'ab.ab_sole_source':
+    case 'ab.ab_non_profit': {
+      if (pk.id == null) return [];
+      const table = link.source_table;
+      const result = await pool.query(`
+        SELECT *
+        FROM ab.${table}
+        WHERE id = $1::uuid
+        LIMIT 1
+      `, [pk.id]);
+      return result.rows;
+    }
+    default:
+      return [];
+  }
+}
+
+function dedupeRows(rows) {
+  const seen = new Set();
+  const unique = [];
+  for (const row of rows) {
+    const key = JSON.stringify(row);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    unique.push(row);
+  }
+  return unique;
+}
+
+app.get('/api/entity/:id/links/detailed', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!id) return res.status(400).json({ error: 'bad id' });
+
+    const [ent, links] = await Promise.all([
+      pool.query(`SELECT id, bn_root FROM general.entities WHERE id = $1`, [id]),
+      pool.query(`
+        SELECT source_schema, source_table, source_pk, source_name
+        FROM general.entity_source_links
+        WHERE entity_id = $1
+        ORDER BY source_schema, source_table, source_name
+        LIMIT 250
+      `, [id]),
+    ]);
+
+    if (!ent.rows[0]) return res.status(404).json({ error: 'not found' });
+
+    const groupedLinks = links.rows.reduce((acc, link) => {
+      const key = `${link.source_schema}.${link.source_table}`;
+      acc[key] = acc[key] || [];
+      acc[key].push(link);
+      return acc;
+    }, {});
+
+    const payload = {};
+    for (const [key, group] of Object.entries(groupedLinks)) {
+      const rows = [];
+      for (const link of group.slice(0, 50)) {
+        try {
+          rows.push(...await fetchSourceDetailRows(link, ent.rows[0]));
+        } catch (detailError) {
+          rows.push({
+            _detail_error: detailError.message,
+            source_schema: link.source_schema,
+            source_table: link.source_table,
+            source_name: link.source_name,
+          });
+        }
+      }
+      payload[key] = dedupeRows(rows).slice(0, 50);
+    }
+
+    res.json(payload);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.get('/api/entity/:id/cra-years', async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);

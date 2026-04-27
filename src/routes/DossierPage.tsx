@@ -251,7 +251,15 @@ export default function DossierPage() {
         errorMessage={governanceQuery.error instanceof Error ? governanceQuery.error.message : undefined}
       />
 
-      <EvidencePanel sections={viewModel.evidence} detailedLinks={detailedLinksQuery.data} />
+      <EvidencePanel
+        sections={viewModel.evidence}
+        detailedLinks={detailedLinksQuery.data}
+        isDetailedLinksLoading={detailedLinksQuery.isLoading || detailedLinksQuery.isFetching}
+        isDetailedLinksError={detailedLinksQuery.isError}
+        detailedLinksErrorMessage={
+          detailedLinksQuery.error instanceof Error ? detailedLinksQuery.error.message : undefined
+        }
+      />
     </section>
   );
 }

@@ -4,6 +4,9 @@ import type { EvidenceSection } from '../../api/types';
 interface EvidencePanelProps {
   sections: EvidenceSection[];
   detailedLinks?: Record<string, any[]>;
+  isDetailedLinksLoading?: boolean;
+  isDetailedLinksError?: boolean;
+  detailedLinksErrorMessage?: string;
 }
 
 function formatVal(val: any): string {
@@ -24,7 +27,13 @@ function formatVal(val: any): string {
   return String(val);
 }
 
-export default function EvidencePanel({ sections, detailedLinks }: EvidencePanelProps) {
+export default function EvidencePanel({
+  sections,
+  detailedLinks,
+  isDetailedLinksLoading = false,
+  isDetailedLinksError = false,
+  detailedLinksErrorMessage,
+}: EvidencePanelProps) {
   const [openSources, setOpenSources] = useState<Record<string, boolean>>({});
 
   const toggleSource = (id: string) => {
@@ -97,7 +106,15 @@ export default function EvidencePanel({ sections, detailedLinks }: EvidencePanel
 
                     {isSource && isOpen && (
                       <div className="bg-[var(--color-surface)]/50 border-t border-[var(--color-border)] overflow-hidden">
-                        {rows && rows.length > 0 ? (
+                        {isDetailedLinksLoading ? (
+                          <div className="px-5 py-4 text-[var(--color-muted)]">
+                            Loading linked record details...
+                          </div>
+                        ) : isDetailedLinksError ? (
+                          <div className="px-5 py-4 text-[var(--color-risk-high)]">
+                            Could not load linked record details{detailedLinksErrorMessage ? `: ${detailedLinksErrorMessage}` : '.'}
+                          </div>
+                        ) : rows && rows.length > 0 ? (
                           <div className="overflow-x-auto">
                             <table className="w-full text-left text-xs border-collapse">
                               <thead>
@@ -130,7 +147,7 @@ export default function EvidencePanel({ sections, detailedLinks }: EvidencePanel
                           </div>
                         ) : (
                           <div className="px-5 py-4 text-[var(--color-muted)] italic">
-                            No detailed records found or loading...
+                            No detailed records found for this source group.
                           </div>
                         )}
                       </div>
