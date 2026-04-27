@@ -63,6 +63,33 @@ const CASE_TYPES = [
 const SOURCE_DOMAINS = ['infrastructure_projects', 'federal_program_performance', 'federal_program_spending'];
 const CONFIDENCE_LEVELS = ['high', 'medium', 'low'];
 
+const SOURCE_LINKS = [
+  {
+    label: 'Federal grants and contributions',
+    url: 'https://search.open.canada.ca/grants/',
+  },
+  {
+    label: 'CRA charity government funding filings',
+    url: 'https://apps.cra-arc.gc.ca/ebci/hacc/srch/pub/dsplyBscSrch',
+  },
+  {
+    label: 'GC InfoBase open datasets',
+    url: 'https://open.canada.ca/data/en/dataset/a35cf382-690c-4221-a971-cf0fd189a46f',
+  },
+  {
+    label: 'GC InfoBase departmental plans/results',
+    url: 'https://open.canada.ca/data/en/dataset/b15ee8d7-2ac0-4656-8330-6c60d085cda8',
+  },
+  {
+    label: 'Infrastructure Canada projects',
+    url: 'https://open.canada.ca/data/en/dataset/beee0771-dab9-4be8-9b80-f8e8b3fdfd9d',
+  },
+  {
+    label: 'Infrastructure transfer allocations',
+    url: 'https://open.canada.ca/data/en/dataset/9401f5c7-0787-4261-a99d-ac78c970b73e',
+  },
+];
+
 function labelize(value: string) {
   return value
     .split(/[_+-]/)
@@ -373,10 +400,29 @@ export default function DuplicativeFundingPage() {
       <section className="app-card rounded-lg p-5">
         <p className="section-title">Source and method</p>
         <div className="mt-3 grid gap-3 lg:grid-cols-2">
-          <div className="text-sm leading-6 text-[var(--color-muted)]">
-            8A uses federal grants, Alberta grants, and CRA charity government funding from
-            `challenge8a_overlap_v1`. 8B uses GC InfoBase, Departmental Plans/Results, and
-            Infrastructure Canada project/transfer tables from `challenge8b_gap_review_v1`.
+          <div className="space-y-3 text-sm leading-6 text-[var(--color-muted)]">
+            <p>
+              8A uses federal grants, Alberta grants, and CRA charity government funding from
+              `challenge8a_overlap_v1`. 8B uses GC InfoBase, Departmental Plans/Results, and
+              Infrastructure Canada project/transfer tables from `challenge8b_gap_review_v1`.
+            </p>
+            <p>
+              External source records are official open-data portals used to build the BigQuery
+              review tables; row-level source table names are shown in expanded evidence.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {SOURCE_LINKS.map((source) => (
+                <a
+                  key={source.url}
+                  href={source.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-full border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs font-semibold text-[var(--color-ink)] hover:bg-[var(--color-accent-soft)]"
+                >
+                  {source.label}
+                </a>
+              ))}
+            </div>
           </div>
           <div className="flex flex-wrap gap-2">
             {(activeNotes ?? [
