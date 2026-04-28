@@ -50,6 +50,7 @@ import {
   mapZombieDetailToCaseEnvelope,
   readReviewLog,
 } from '../components/risk/caseDecision';
+import { parseCaseId, sourceModulePath } from '../components/risk/caseEnvelope';
 import CrossDatasetContextCard from '../components/risk/CrossDatasetContextCard';
 import OutcomeTrackingPanel from '../components/risk/OutcomeTrackingPanel';
 import RecipientRiskGraph from '../components/risk/RecipientRiskGraph';
@@ -113,7 +114,11 @@ function mapServerOutcomeEntry(entry: ServerOutcomeEntry): LocalOutcomeEntry {
 
 export default function CaseDecisionPage() {
   const params = useParams<{ caseId: string }>();
-  const caseId = params.caseId ?? '';
+  const routeCaseId = params.caseId ?? '';
+  const parsedCase = useMemo(() => parseCaseId(routeCaseId, 1), [routeCaseId]);
+  const caseId = parsedCase.caseId;
+  const nativeCaseKey = parsedCase.nativeCaseKey;
+  const sourcePath = sourceModulePath(parsedCase);
   const [selectedAction, setSelectedAction] = useState<Phase3ActionKey | ''>('');
   const [reviewerRole, setReviewerRole] = useState('');
   const [rationale, setRationale] = useState('');
@@ -127,9 +132,9 @@ export default function CaseDecisionPage() {
   const [briefMessage, setBriefMessage] = useState<string | null>(null);
 
   const detailQuery = useQuery({
-    queryKey: queryKeys.zombieDetail(caseId),
-    queryFn: () => fetchZombieDetail(caseId),
-    enabled: caseId.length > 0,
+    queryKey: queryKeys.zombieDetail(nativeCaseKey),
+    queryFn: () => fetchZombieDetail(nativeCaseKey),
+    enabled: nativeCaseKey.length > 0 && parsedCase.challengeId === 1,
     staleTime: 60_000,
   });
 
@@ -153,8 +158,8 @@ export default function CaseDecisionPage() {
   );
 
   const envelope = useMemo(
-    () => (detail ? mapZombieDetailToCaseEnvelope(detail, caseId) : null),
-    [caseId, detail],
+    () => (detail ? mapZombieDetailToCaseEnvelope(detail, nativeCaseKey, caseId) : null),
+    [caseId, nativeCaseKey, detail],
   );
 
   const outcomeEntries = useMemo(() => {
@@ -170,7 +175,7 @@ export default function CaseDecisionPage() {
     if (caseId) setReviewLog(readReviewLog(caseId));
   }, [caseId]);
 
-  if (!caseId) {
+  if (!routeCaseId || !nativeCaseKey) {
     return (
       <div className="app-card rounded-lg p-6">
         <p className="section-title">Invalid case</p>
@@ -328,10 +333,12 @@ export default function CaseDecisionPage() {
                 Action queue
               </Link>
               <span className="text-sm text-[var(--color-muted)]">/</span>
-              <Link to={`/zombies/${encodeURIComponent(caseId)}`} className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--color-accent)] hover:underline">
-                <FileText className="icon-sm" aria-hidden="true" />
-                Module view
-              </Link>
+              {sourcePath && (
+                <Link to={sourcePath} className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--color-accent)] hover:underline">
+                  <FileText className="icon-sm" aria-hidden="true" />
+                  Module view
+                </Link>
+              )}
             </div>
             <p className="section-title mt-4">Case review workspace</p>
             <h1 className="mt-2 max-w-5xl text-3xl font-semibold tracking-tight text-[var(--color-ink)]">
@@ -340,6 +347,11 @@ export default function CaseDecisionPage() {
             <p className="mt-2 font-mono text-xs text-[var(--color-muted)]">
               {envelope.challengeName} - {envelope.caseId}
             </p>
+            {!parsedCase.isCanonical && (
+              <p className="mt-1 text-xs text-[var(--color-muted)]">
+                Opened from a legacy raw key. Workflow records now use canonical case ID {envelope.caseId}.
+              </p>
+            )}
             <div className="mt-4 flex flex-wrap gap-2">
               <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${envelope.riskTone}`}>
                 {envelope.riskLabel}

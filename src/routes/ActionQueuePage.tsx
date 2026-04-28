@@ -462,7 +462,7 @@ export default function ActionQueuePage() {
                         <ArrowRight className="icon-sm" aria-hidden="true" />
                       </Link>
                       <Link
-                        to={`/zombies/${encodeURIComponent(item.caseId)}`}
+                        to={`/zombies/${encodeURIComponent(item.nativeCaseKey)}`}
                         className="interactive-surface mt-2 inline-flex min-h-8 items-center gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-subtle)] px-3 text-xs font-semibold text-[var(--color-muted)] hover:bg-white"
                       >
                         Module
