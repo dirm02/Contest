@@ -1834,6 +1834,32 @@ function summarizeActionQueue(rows) {
   };
 }
 
+function balanceActionQueueRowsByChallenge(rows) {
+  const grouped = new Map();
+  rows.forEach((row) => {
+    const key = Number(row.challenge_id || 0);
+    if (!grouped.has(key)) grouped.set(key, []);
+    grouped.get(key).push(row);
+  });
+
+  const challengeOrder = [...grouped.keys()].sort((a, b) => a - b);
+  const balanced = [];
+  let added = true;
+  let index = 0;
+  while (added) {
+    added = false;
+    challengeOrder.forEach((challengeId) => {
+      const row = grouped.get(challengeId)?.[index];
+      if (row) {
+        balanced.push(row);
+        added = true;
+      }
+    });
+    index += 1;
+  }
+  return balanced;
+}
+
 async function collectActionQueueRows(filters = {}) {
   const challenge = parseActionQueueChallenge(filters.challenge);
   const limit = parseActionQueueLimit(filters.limit, 50, 200);
@@ -1933,6 +1959,9 @@ async function collectActionQueueRows(filters = {}) {
 
   const candidateRows = sortActionQueueRows(rows);
   const filteredRows = filterActionQueueRows(candidateRows, filters);
+  const presentationRows = challenge === 'all'
+    ? balanceActionQueueRowsByChallenge(filteredRows)
+    : filteredRows;
   return {
     generated_at: new Date().toISOString(),
     filters: {
@@ -1945,10 +1974,13 @@ async function collectActionQueueRows(filters = {}) {
     },
     candidate_total: candidateRows.length,
     total: filteredRows.length,
-    results: filteredRows.slice(offset, offset + limit),
+    results: presentationRows.slice(offset, offset + limit),
     summary: summarizeActionQueue(filteredRows),
     readiness,
     warnings,
+    presentation: {
+      balanced_by_challenge: challenge === 'all',
+    },
   };
 }
 
