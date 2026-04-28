@@ -56,6 +56,7 @@ const { execFile } = require('child_process');
 const os = require('os');
 const path = require('path');
 const { promisify } = require('util');
+const { Pool } = require('pg');
 const { pool } = require('../lib/db');
 
 let BigQuery = null;
@@ -74,6 +75,8 @@ const BIGQUERY_DATASET = process.env.BIGQUERY_DATASET || 'accountibilitymax_raw'
 const BIGQUERY_LOCATION = process.env.BIGQUERY_LOCATION || 'northamerica-northeast1';
 const USE_BIGQUERY_CLIENT = process.env.USE_BIGQUERY_CLIENT === 'true'
   || Boolean(process.env.GOOGLE_APPLICATION_CREDENTIALS);
+const DECISION_DB_CONNECTION_STRING = process.env.DECISION_DB_CONNECTION_STRING || '';
+const DECISION_DB_SSL = process.env.DECISION_DB_SSL === 'true';
 const BQ_CLI_PATH = process.env.BQ_CLI_PATH || (
   process.platform === 'win32'
     ? path.join(os.homedir(), 'AppData', 'Local', 'Google', 'Cloud SDK', 'google-cloud-sdk', 'bin', 'bq.cmd')
@@ -81,6 +84,16 @@ const BQ_CLI_PATH = process.env.BQ_CLI_PATH || (
 );
 const bigQueryClient = BigQuery && USE_BIGQUERY_CLIENT
   ? new BigQuery({ projectId: BIGQUERY_PROJECT_ID, location: BIGQUERY_LOCATION })
+  : null;
+const decisionPool = DECISION_DB_CONNECTION_STRING
+  ? new Pool({
+    connectionString: DECISION_DB_CONNECTION_STRING,
+    max: parseInt(process.env.DECISION_DB_POOL_MAX || '5', 10),
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 30000,
+    ssl: DECISION_DB_SSL ? { rejectUnauthorized: false } : undefined,
+    options: '-c search_path=general,public',
+  })
   : null;
 
 const app = express();
@@ -124,6 +137,12 @@ const CASE_OUTCOME_STATUSES = new Set([
 ]);
 let decisionTablesReadyPromise = null;
 
+if (decisionPool) {
+  decisionPool.on('error', (err) => {
+    console.error('Unexpected decision database pool error:', err.message);
+  });
+}
+
 function getCachedJson(key) {
   const hit = apiCache.get(key);
   if (!hit) return null;
@@ -142,8 +161,13 @@ function setCachedJson(key, value, ttlMs = API_CACHE_TTL_MS) {
 }
 
 function ensureDecisionTables() {
+  if (!decisionPool) {
+    const error = new Error('Decision database is not configured. Set DECISION_DB_CONNECTION_STRING to enable server persistence.');
+    error.code = 'DECISION_DB_NOT_CONFIGURED';
+    throw error;
+  }
   if (!decisionTablesReadyPromise) {
-    decisionTablesReadyPromise = pool.query(`
+    decisionTablesReadyPromise = decisionPool.query(`
       CREATE TABLE IF NOT EXISTS general.case_action_briefs (
         id text PRIMARY KEY,
         case_id text NOT NULL,
@@ -178,6 +202,11 @@ function ensureDecisionTables() {
     `).then(() => true);
   }
   return decisionTablesReadyPromise;
+}
+
+async function getDecisionPoolReady() {
+  await ensureDecisionTables();
+  return decisionPool;
 }
 
 function normalizeCaseId(value) {
@@ -5785,11 +5814,22 @@ app.get('/api/challenge-review', async (_req, res) => {
 // in the client.
 app.get('/api/cases/:caseId/briefs', async (req, res) => {
   try {
-    await ensureDecisionTables();
     const caseId = normalizeCaseId(req.params.caseId);
     if (!caseId) return res.status(400).json({ error: 'case id is required' });
+    if (!decisionPool) {
+      return res.json({
+        case_id: caseId,
+        briefs: [],
+        persistence: {
+          available: false,
+          reason: 'decision_db_not_configured',
+          message: 'Server brief persistence is disabled until DECISION_DB_CONNECTION_STRING is configured.',
+        },
+      });
+    }
+    const db = await getDecisionPoolReady();
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit || '20', 10) || 20));
-    const result = await pool.query(`
+    const result = await db.query(`
       SELECT id, case_id, challenge_id, title, payload,
              created_by_role, created_by_label, source, created_at
       FROM general.case_action_briefs
@@ -5805,10 +5845,16 @@ app.get('/api/cases/:caseId/briefs', async (req, res) => {
 
 app.get('/api/cases/:caseId/briefs/:briefId', async (req, res) => {
   try {
-    await ensureDecisionTables();
     const caseId = normalizeCaseId(req.params.caseId);
     const briefId = normalizeCaseId(req.params.briefId);
-    const result = await pool.query(`
+    if (!decisionPool) {
+      return res.status(503).json({
+        error: 'decision database not configured',
+        code: 'DECISION_DB_NOT_CONFIGURED',
+      });
+    }
+    const db = await getDecisionPoolReady();
+    const result = await db.query(`
       SELECT id, case_id, challenge_id, title, payload,
              created_by_role, created_by_label, source, created_at
       FROM general.case_action_briefs
@@ -5824,16 +5870,23 @@ app.get('/api/cases/:caseId/briefs/:briefId', async (req, res) => {
 
 app.post('/api/cases/:caseId/briefs', async (req, res) => {
   try {
-    await ensureDecisionTables();
     const caseId = normalizeCaseId(req.params.caseId);
     const snapshot = req.body?.snapshot;
     if (!caseId) return res.status(400).json({ error: 'case id is required' });
+    if (!decisionPool) {
+      return res.status(503).json({
+        error: 'decision database not configured',
+        code: 'DECISION_DB_NOT_CONFIGURED',
+        message: 'Server brief persistence is disabled; keep the browser-local fallback until an owned decision database is configured.',
+      });
+    }
     if (!snapshot || typeof snapshot !== 'object') {
       return res.status(400).json({ error: 'snapshot object is required' });
     }
 
+    const db = await getDecisionPoolReady();
     const id = randomUUID();
-    const result = await pool.query(`
+    const result = await db.query(`
       INSERT INTO general.case_action_briefs (
         id, case_id, challenge_id, title, payload,
         created_by_role, created_by_label, source
@@ -5859,10 +5912,22 @@ app.post('/api/cases/:caseId/briefs', async (req, res) => {
 
 app.get('/api/cases/:caseId/outcomes', async (req, res) => {
   try {
-    await ensureDecisionTables();
     const caseId = normalizeCaseId(req.params.caseId);
     if (!caseId) return res.status(400).json({ error: 'case id is required' });
-    const result = await pool.query(`
+    if (!decisionPool) {
+      return res.json({
+        case_id: caseId,
+        current_status: null,
+        outcomes: [],
+        persistence: {
+          available: false,
+          reason: 'decision_db_not_configured',
+          message: 'Server outcome persistence is disabled until DECISION_DB_CONNECTION_STRING is configured.',
+        },
+      });
+    }
+    const db = await getDecisionPoolReady();
+    const result = await db.query(`
       SELECT id, case_id, challenge_id, from_status, to_status, actor_role,
              actor_label, note, related_advisory_entry_id, app_version, created_at
       FROM general.case_outcome_transitions
@@ -5882,7 +5947,6 @@ app.get('/api/cases/:caseId/outcomes', async (req, res) => {
 
 app.post('/api/cases/:caseId/outcomes', async (req, res) => {
   try {
-    await ensureDecisionTables();
     const caseId = normalizeCaseId(req.params.caseId);
     const toStatus = normalizeCaseId(req.body?.to_status);
     const actorRole = normalizeCaseId(req.body?.actor_role);
@@ -5891,8 +5955,16 @@ app.post('/api/cases/:caseId/outcomes', async (req, res) => {
     if (!CASE_OUTCOME_STATUSES.has(toStatus)) return res.status(400).json({ error: 'invalid outcome status' });
     if (!actorRole) return res.status(400).json({ error: 'actor role is required' });
     if (note.length < 15) return res.status(400).json({ error: 'note must be at least 15 characters' });
+    if (!decisionPool) {
+      return res.status(503).json({
+        error: 'decision database not configured',
+        code: 'DECISION_DB_NOT_CONFIGURED',
+        message: 'Server outcome persistence is disabled; keep the browser-local fallback until an owned decision database is configured.',
+      });
+    }
 
-    const latest = await pool.query(`
+    const db = await getDecisionPoolReady();
+    const latest = await db.query(`
       SELECT to_status
       FROM general.case_outcome_transitions
       WHERE case_id = $1
@@ -5905,7 +5977,7 @@ app.post('/api/cases/:caseId/outcomes', async (req, res) => {
     }
 
     const id = randomUUID();
-    const result = await pool.query(`
+    const result = await db.query(`
       INSERT INTO general.case_outcome_transitions (
         id, case_id, challenge_id, from_status, to_status, actor_role,
         actor_label, note, related_advisory_entry_id, app_version
@@ -5925,7 +5997,7 @@ app.post('/api/cases/:caseId/outcomes', async (req, res) => {
       req.body?.app_version ? String(req.body.app_version).slice(0, 80) : 'phase5b-c1-server',
     ]);
 
-    const all = await pool.query(`
+    const all = await db.query(`
       SELECT id, case_id, challenge_id, from_status, to_status, actor_role,
              actor_label, note, related_advisory_entry_id, app_version, created_at
       FROM general.case_outcome_transitions
