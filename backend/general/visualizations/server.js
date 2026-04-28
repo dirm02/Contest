@@ -918,6 +918,539 @@ function buildGhostEvidence(summary) {
   return evidence;
 }
 
+const ACTION_QUEUE_CHALLENGES = new Set(['all', '1', '2', '3']);
+const ACTION_QUEUE_RISK_BANDS = new Set(['low', 'elevated', 'critical']);
+const ACTION_QUEUE_CONFIDENCE_LEVELS = new Set(['low', 'medium', 'high']);
+
+function makeCanonicalCaseId(challengeId, nativeKey) {
+  return `c${challengeId}:${String(nativeKey || 'unknown').trim() || 'unknown'}`;
+}
+
+function normalizeEntityName(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function entityKeyFromRecipient(summary) {
+  const bn = String(summary.bn || summary.bn_root || '').replace(/\D/g, '').slice(0, 9);
+  if (bn) return `bn:${bn}`;
+  if (summary.cross_dataset_context?.resolved_entity_id) {
+    return `entity:${summary.cross_dataset_context.resolved_entity_id}`;
+  }
+  const name = normalizeEntityName(summary.name);
+  const province = String(summary.province || '').trim().toLowerCase();
+  if (name && province) return `name_geo:${name}:${province}`;
+  return name ? `name:${name}` : `case:${summary.recipient_key || 'unknown'}`;
+}
+
+function entityKeyFromLoop(row) {
+  const firstBn = Array.isArray(row.participant_bns) ? row.participant_bns[0] : null;
+  const bn = String(firstBn || '').replace(/\D/g, '').slice(0, 9);
+  if (bn) return `bn:${bn}`;
+  const firstName = Array.isArray(row.participant_names) ? row.participant_names[0] : null;
+  const name = normalizeEntityName(firstName || row.path_display);
+  return name ? `name:${name}` : `loop:${row.loop_id}`;
+}
+
+function riskBandFromScore(score, thresholds = { elevated: 51, critical: 81 }) {
+  const value = Number(score || 0);
+  if (value >= thresholds.critical) return 'critical';
+  if (value >= thresholds.elevated) return 'elevated';
+  return 'low';
+}
+
+function recommendedActionForBand(band, challengeId) {
+  if (band === 'critical') return 'Immediate human reviewer escalation';
+  if (band === 'elevated') return challengeId === 3 ? 'Request network review' : 'Request documents';
+  return 'Monitor / clarify source data';
+}
+
+function reviewerRoleForChallenge(challengeId) {
+  if (challengeId === 3) return 'CRA/network analyst';
+  if (challengeId === 2) return 'program integrity analyst';
+  return 'registry and grants reviewer';
+}
+
+function sourceQualityTier(sourceLinks, sourceTables) {
+  if (Array.isArray(sourceLinks) && sourceLinks.length > 0) return 'official_links';
+  if (Array.isArray(sourceTables) && sourceTables.length > 0) return 'source_table_coverage';
+  return 'needs_source_verification';
+}
+
+function queueCaseReadiness(caseRow) {
+  return {
+    has_confidence: Boolean(caseRow.confidence_level),
+    has_why_flagged: Array.isArray(caseRow.why_flagged) && caseRow.why_flagged.length > 0,
+    has_caveats: Array.isArray(caseRow.caveats) && caseRow.caveats.length > 0,
+    has_source_coverage:
+      (Array.isArray(caseRow.source_links) && caseRow.source_links.length > 0) ||
+      (Array.isArray(caseRow.source_tables) && caseRow.source_tables.length > 0),
+    has_native_key: Boolean(caseRow.native_case_key),
+  };
+}
+
+function evaluateReadiness(challengeId, rows) {
+  if (challengeId === 1) return { ready: true, coverage: 1, missing: {}, checked_rows: rows.length };
+  if (!rows.length) {
+    return {
+      ready: false,
+      coverage: 0,
+      checked_rows: 0,
+      missing: { rows: 1 },
+      warning: `Challenge ${challengeId} returned no candidate rows for readiness evaluation.`,
+    };
+  }
+
+  const missing = {
+    confidence_level: 0,
+    why_flagged: 0,
+    caveats: 0,
+    source_coverage: 0,
+    native_case_key: 0,
+  };
+  rows.forEach((row) => {
+    const check = queueCaseReadiness(row);
+    if (!check.has_confidence) missing.confidence_level += 1;
+    if (!check.has_why_flagged) missing.why_flagged += 1;
+    if (!check.has_caveats) missing.caveats += 1;
+    if (!check.has_source_coverage) missing.source_coverage += 1;
+    if (!check.has_native_key) missing.native_case_key += 1;
+  });
+  const worstMissing = Math.max(...Object.values(missing));
+  const coverage = 1 - worstMissing / rows.length;
+  return {
+    ready: coverage >= 0.9,
+    coverage,
+    checked_rows: rows.length,
+    missing,
+    warning: coverage >= 0.9
+      ? null
+      : `Challenge ${challengeId} omitted: readiness coverage ${Math.round(coverage * 100)}% is below the 90% gate.`,
+  };
+}
+
+function mapZombieSummaryToQueueCase(summary) {
+  const score = Number(summary.challenge_score || summary.challenge1_score || 0);
+  const riskBand = riskBandFromScore(score);
+  const sourceTables = splitPipeList(summary.source_tables);
+  const sourceLinks = Array.isArray(summary.source_links) ? summary.source_links : splitPipeList(summary.source_links);
+  return {
+    case_id: makeCanonicalCaseId(1, summary.recipient_key),
+    native_case_key: summary.recipient_key,
+    challenge_id: 1,
+    challenge_name: 'Zombie Recipients',
+    entity_key: entityKeyFromRecipient(summary),
+    entity_name: summary.name,
+    score,
+    risk_band: riskBand,
+    confidence_level: summary.confidence_level || 'medium',
+    why_flagged: summary.why_flagged || [],
+    caveats: summary.caveats?.length ? summary.caveats : ['Registry and funding records require human verification before action.'],
+    source_links: sourceLinks,
+    source_tables: sourceTables.length ? sourceTables : ['challenge1_zombie_recipients_v2'],
+    recommended_action: recommendedActionForBand(riskBand, 1),
+    reviewer_role: reviewerRoleForChallenge(1),
+    workflow_status: null,
+    signal_count_for_entity: 1,
+    related_challenges: [1],
+    dominant_signal: summary.signal_type || 'zombie_recipient_review',
+    source_quality_tier: sourceQualityTier(sourceLinks, sourceTables),
+    recency_ts: summary.last_grant || summary.last_funding_date || null,
+    context_flags: {},
+    source_module_path: `/zombies/${encodeURIComponent(summary.recipient_key)}`,
+  };
+}
+
+function mapGhostSummaryToQueueCase(summary) {
+  const score = Number(summary.challenge_score || 0);
+  const riskBand = riskBandFromScore(score, { elevated: 10, critical: 15 });
+  const confidence = !summary.bn
+    ? 'low'
+    : summary.cross_dataset_context?.resolved_entity_id
+      ? 'high'
+      : 'medium';
+  const caveats = [
+    'Challenge 2 is a review signal based on identity/capacity patterns; it does not prove non-delivery.',
+  ];
+  const sourceTables = ['fed.grants_contributions', 'general.vw_entity_funding', 'ab.ab_non_profit'];
+  return {
+    case_id: makeCanonicalCaseId(2, summary.recipient_key),
+    native_case_key: summary.recipient_key,
+    challenge_id: 2,
+    challenge_name: 'Ghost Capacity',
+    entity_key: entityKeyFromRecipient(summary),
+    entity_name: summary.name,
+    score,
+    risk_band: riskBand,
+    confidence_level: confidence,
+    why_flagged: summary.why_flagged || [],
+    caveats,
+    source_links: [],
+    source_tables: sourceTables,
+    recommended_action: recommendedActionForBand(riskBand, 2),
+    reviewer_role: reviewerRoleForChallenge(2),
+    workflow_status: null,
+    signal_count_for_entity: 1,
+    related_challenges: [2],
+    dominant_signal: summary.signal_type || 'ghost_capacity_review',
+    source_quality_tier: sourceQualityTier([], sourceTables),
+    recency_ts: summary.last_grant || null,
+    context_flags: {},
+    source_module_path: `/ghost-capacity/${encodeURIComponent(summary.recipient_key)}`,
+  };
+}
+
+function mapLoopRowToQueueCase(row) {
+  const score = Number(row.challenge3_sort_score || 0);
+  const riskBand = riskBandFromScore(score, { elevated: 12, critical: 18 });
+  const isReview = row.loop_interpretation === 'review';
+  const sourceTables = ['cra.loops', 'cra.loop_edges', 'cra.loop_participants', 'cra.loop_universe'];
+  const pathDisplay = row.path_display || `Loop ${row.loop_id}`;
+  return {
+    case_id: makeCanonicalCaseId(3, row.loop_id),
+    native_case_key: String(row.loop_id),
+    challenge_id: 3,
+    challenge_name: 'Funding Loops',
+    entity_key: entityKeyFromLoop(row),
+    entity_name: pathDisplay,
+    score,
+    risk_band: riskBand,
+    confidence_level: isReview ? 'medium' : 'low',
+    why_flagged: [
+      `${row.hops}-hop circular giving loop with ${row.participant_count} participant(s) and ${formatCad(row.total_flow_window || 0)} in window flow.`,
+    ],
+    caveats: [
+      'Funding loops can reflect normal umbrella, federation, foundation, or denominational structures and require human interpretation.',
+    ],
+    source_links: [],
+    source_tables: sourceTables,
+    recommended_action: recommendedActionForBand(riskBand, 3),
+    reviewer_role: reviewerRoleForChallenge(3),
+    workflow_status: null,
+    signal_count_for_entity: 1,
+    related_challenges: [3],
+    dominant_signal: row.loop_interpretation || 'funding_loop_review',
+    source_quality_tier: sourceQualityTier([], sourceTables),
+    recency_ts: row.max_year ? `${row.max_year}-12-31` : null,
+    context_flags: {
+      loop_interpretation: row.loop_interpretation,
+      same_year: Boolean(row.same_year),
+    },
+    source_module_path: `/loops/${encodeURIComponent(String(row.loop_id))}`,
+  };
+}
+
+function applyQueueMetadata(rows) {
+  const challengeByEntity = new Map();
+  rows.forEach((row) => {
+    if (!challengeByEntity.has(row.entity_key)) challengeByEntity.set(row.entity_key, new Set());
+    challengeByEntity.get(row.entity_key).add(row.challenge_id);
+  });
+  return rows.map((row) => {
+    const related = [...(challengeByEntity.get(row.entity_key) || new Set([row.challenge_id]))].sort((a, b) => a - b);
+    return {
+      ...row,
+      context_flags: {
+        adverse_media_context: false,
+        ...(row.context_flags || {}),
+      },
+      signal_count_for_entity: related.length,
+      related_challenges: related,
+    };
+  });
+}
+
+async function getLatestWorkflowStatuses(caseIds) {
+  if (!decisionPool || caseIds.length === 0) {
+    return { statuses: new Map(), warning: decisionPool ? null : 'Decision DB not configured; workflow status omitted.' };
+  }
+  try {
+    const result = await decisionPool.query(
+      `
+        WITH ranked AS (
+          SELECT case_id, to_status, created_at,
+                 ROW_NUMBER() OVER (PARTITION BY case_id ORDER BY created_at DESC) AS rn
+          FROM general.case_outcome_transitions
+          WHERE case_id = ANY($1::text[])
+        )
+        SELECT case_id, to_status
+        FROM ranked
+        WHERE rn = 1
+      `,
+      [caseIds],
+    );
+    return {
+      statuses: new Map(result.rows.map((row) => [row.case_id, row.to_status])),
+      warning: null,
+    };
+  } catch (error) {
+    return {
+      statuses: new Map(),
+      warning: `Decision DB workflow status unavailable: ${error.message}`,
+    };
+  }
+}
+
+function parseActionQueueChallenge(value) {
+  const normalized = String(value || '1').trim().toLowerCase();
+  return ACTION_QUEUE_CHALLENGES.has(normalized) ? normalized : '1';
+}
+
+function parseActionQueueLimit(value, defaultValue = 50, maxValue = 200) {
+  return Math.min(Math.max(parseInt(value, 10) || defaultValue, 1), maxValue);
+}
+
+function actionQueueChallengeList(challenge) {
+  return challenge === 'all' ? [1, 2, 3] : [Number(challenge)];
+}
+
+function challengeFetchLimit(challengeCount, requestedLimit) {
+  return Math.max(25, Math.min(200, requestedLimit * Math.max(challengeCount, 1) * 2));
+}
+
+async function fetchActionQueueChallenge1(limit) {
+  const limitSql = parseActionQueueLimit(limit, 100, 200);
+  const sql = `
+    SELECT *
+    FROM \`my-project-45978-resume.accountibilitymax_raw.challenge1_zombie_recipients_v2\`
+    WHERE match_method = 'bn_root_registry_match'
+    ORDER BY challenge1_score DESC, total_funding_value DESC, last_funding_date ASC, recipient_name ASC
+    LIMIT ${limitSql}
+  `;
+  const rows = await runBigQuerySafe(sql);
+  return rows.map((row) => mapZombieSummaryToQueueCase(buildZombieSummaryV2(row)));
+}
+
+async function fetchActionQueueChallenge2(limit) {
+  const limitSql = parseActionQueueLimit(limit, 100, 200);
+  const sql = `
+    WITH ${RECIPIENT_RISK_FOUNDATION_CTE},
+    ghost_screened AS (
+      SELECT
+        re.*,
+        ((re.bn IS NULL OR BTRIM(re.bn) = '') AND re.total_value >= 500000) AS is_no_bn,
+        ((re.bn IS NULL OR BTRIM(re.bn) = '') AND re.recipient_type = 'F' AND re.total_value >= 100000) AS is_for_profit_no_bn,
+        (re.grant_count > 0 AND re.grant_count <= 5 AND re.avg_value >= 10000000) AS is_pass_through,
+        (re.recipient_type = 'F' AND re.dept_count >= 3) AS is_multi_department_for_profit,
+        (
+          CASE WHEN re.bn IS NULL OR BTRIM(re.bn) = '' THEN 4 ELSE 0 END
+          + CASE WHEN re.recipient_type = 'F' AND (re.bn IS NULL OR BTRIM(re.bn) = '') THEN 4 ELSE 0 END
+          + CASE
+              WHEN re.total_value >= 50000000 THEN 5
+              WHEN re.total_value >= 10000000 THEN 4
+              WHEN re.total_value >= 1000000 THEN 3
+              WHEN re.total_value >= 500000 THEN 2
+              ELSE 1
+            END
+          + CASE
+              WHEN re.grant_count <= 1 THEN 3
+              WHEN re.grant_count <= 3 THEN 2
+              WHEN re.grant_count <= 5 THEN 1
+              ELSE 0
+            END
+          + CASE
+              WHEN re.avg_value >= 50000000 THEN 5
+              WHEN re.avg_value >= 10000000 THEN 4
+              WHEN re.avg_value >= 1000000 THEN 2
+              ELSE 0
+            END
+          + CASE
+              WHEN re.dept_count >= 6 THEN 3
+              WHEN re.dept_count >= 3 THEN 2
+              ELSE 0
+            END
+          + CASE
+              WHEN re.grant_count > 0 AND re.grant_count <= 5 AND re.avg_value >= 10000000 THEN 3
+              ELSE 0
+            END
+        )::int AS challenge2_score,
+        CASE
+          WHEN ((re.bn IS NULL OR BTRIM(re.bn) = '') AND re.recipient_type = 'F' AND re.total_value >= 100000)
+            THEN 'for_profit_no_bn'
+          WHEN ((re.bn IS NULL OR BTRIM(re.bn) = '') AND re.total_value >= 500000)
+            THEN 'no_bn'
+          WHEN (re.grant_count > 0 AND re.grant_count <= 5 AND re.avg_value >= 10000000)
+            THEN 'pass_through'
+          ELSE 'multi_department_for_profit'
+        END AS signal_type
+      FROM recipient_enriched re
+      WHERE re.total_value >= 500000
+        AND re.grant_count <= 5
+    )
+    SELECT *
+    FROM ghost_screened
+    WHERE (is_no_bn OR is_for_profit_no_bn OR is_pass_through OR is_multi_department_for_profit)
+    ORDER BY
+      challenge2_score DESC,
+      total_value DESC,
+      avg_value DESC,
+      name ASC
+    LIMIT ${limitSql};
+  `;
+  const result = await pool.query(sql);
+  return result.rows.map(buildGhostSummary).filter(Boolean).map(mapGhostSummaryToQueueCase);
+}
+
+async function fetchActionQueueChallenge3(limit) {
+  const limitSql = parseActionQueueLimit(limit, 100, 200);
+  const sql = `
+    WITH ${LOOP_WATCHLIST_CTE}
+    SELECT
+      loop_id,
+      hops,
+      path_display,
+      participant_count,
+      participant_bns,
+      participant_names,
+      min_year,
+      max_year,
+      same_year,
+      bottleneck_window,
+      total_flow_window,
+      bottleneck_allyears,
+      total_flow_allyears,
+      max_participant_cra_score,
+      avg_participant_cra_score,
+      top_flagged_participants,
+      challenge3_sort_score,
+      loop_interpretation
+    FROM loop_watchlist
+    WHERE hops >= 2
+    ORDER BY
+      challenge3_sort_score DESC,
+      bottleneck_window DESC,
+      total_flow_window DESC,
+      hops DESC
+    LIMIT ${limitSql};
+  `;
+  const result = await pool.query(sql);
+  return result.rows.map(mapLoopRowToQueueCase);
+}
+
+async function fetchActionQueueChallenge(challengeId, limit) {
+  if (challengeId === 1) return fetchActionQueueChallenge1(limit);
+  if (challengeId === 2) return fetchActionQueueChallenge2(limit);
+  if (challengeId === 3) return fetchActionQueueChallenge3(limit);
+  return [];
+}
+
+function sortActionQueueRows(rows) {
+  const riskRank = { critical: 3, elevated: 2, low: 1 };
+  const confidenceRank = { high: 3, medium: 2, low: 1 };
+  return [...rows].sort((a, b) => (
+    (riskRank[b.risk_band] || 0) - (riskRank[a.risk_band] || 0) ||
+    (confidenceRank[b.confidence_level] || 0) - (confidenceRank[a.confidence_level] || 0) ||
+    Number(b.signal_count_for_entity || 0) - Number(a.signal_count_for_entity || 0) ||
+    Number(b.score || 0) - Number(a.score || 0) ||
+    String(a.entity_name || '').localeCompare(String(b.entity_name || ''))
+  ));
+}
+
+function filterActionQueueRows(rows, filters) {
+  return rows.filter((row) => {
+    if (filters.confidence && row.confidence_level !== filters.confidence) return false;
+    if (filters.risk_band && row.risk_band !== filters.risk_band) return false;
+    if (filters.multi_signal === 'single' && Number(row.signal_count_for_entity || 0) !== 1) return false;
+    if (
+      ['2+', '2_plus', 'multiple', 'multi'].includes(filters.multi_signal) &&
+      Number(row.signal_count_for_entity || 0) < 2
+    ) {
+      return false;
+    }
+    return true;
+  });
+}
+
+function summarizeActionQueue(rows) {
+  const byChallenge = {};
+  const byRiskBand = {};
+  const byConfidence = {};
+  rows.forEach((row) => {
+    byChallenge[row.challenge_id] = (byChallenge[row.challenge_id] || 0) + 1;
+    byRiskBand[row.risk_band] = (byRiskBand[row.risk_band] || 0) + 1;
+    byConfidence[row.confidence_level] = (byConfidence[row.confidence_level] || 0) + 1;
+  });
+  return {
+    total: rows.length,
+    by_challenge: byChallenge,
+    by_risk_band: byRiskBand,
+    by_confidence: byConfidence,
+    multi_signal_count: rows.filter((row) => Number(row.signal_count_for_entity || 0) >= 2).length,
+  };
+}
+
+async function collectActionQueueRows(filters = {}) {
+  const challenge = parseActionQueueChallenge(filters.challenge);
+  const limit = parseActionQueueLimit(filters.limit, 50, 200);
+  const offset = Math.max(parseInt(filters.offset, 10) || 0, 0);
+  const selectedChallenges = actionQueueChallengeList(challenge);
+  const perChallengeLimit = challengeFetchLimit(selectedChallenges.length, limit + offset);
+  const warnings = [];
+  const readiness = {};
+
+  const fetches = await Promise.allSettled(
+    selectedChallenges.map(async (challengeId) => ({
+      challengeId,
+      rows: await fetchActionQueueChallenge(challengeId, perChallengeLimit),
+    })),
+  );
+
+  let rows = [];
+  fetches.forEach((result, index) => {
+    const challengeId = selectedChallenges[index];
+    if (result.status === 'rejected') {
+      readiness[challengeId] = {
+        ready: false,
+        coverage: 0,
+        checked_rows: 0,
+        error: result.reason?.message || String(result.reason),
+      };
+      warnings.push(`Challenge ${challengeId} unavailable: ${readiness[challengeId].error}`);
+      return;
+    }
+    const gate = evaluateReadiness(challengeId, result.value.rows);
+    readiness[challengeId] = gate;
+    if (!gate.ready) {
+      if (gate.warning) warnings.push(gate.warning);
+      return;
+    }
+    rows = rows.concat(result.value.rows);
+  });
+
+  rows = applyQueueMetadata(rows);
+
+  const workflow = await getLatestWorkflowStatuses(rows.map((row) => row.case_id));
+  if (workflow.warning) warnings.push(workflow.warning);
+  rows = rows.map((row) => ({
+    ...row,
+    workflow_status: workflow.statuses.get(row.case_id) || null,
+  }));
+
+  const candidateRows = sortActionQueueRows(rows);
+  const filteredRows = filterActionQueueRows(candidateRows, filters);
+  return {
+    generated_at: new Date().toISOString(),
+    filters: {
+      challenge,
+      limit,
+      offset,
+      confidence: filters.confidence || null,
+      risk_band: filters.risk_band || null,
+      multi_signal: filters.multi_signal || null,
+    },
+    candidate_total: candidateRows.length,
+    total: filteredRows.length,
+    results: filteredRows.slice(offset, offset + limit),
+    summary: summarizeActionQueue(filteredRows),
+    readiness,
+    warnings,
+  };
+}
+
 const RECIPIENT_KEY_SQL = `
   CASE
     WHEN NULLIF(BTRIM(gc.recipient_business_number), '') IS NOT NULL
@@ -3496,6 +4029,61 @@ app.get('/api/loops', async (req, res) => {
   }
 });
 
+// Phase 6A cross-challenge action queue (read-only aggregation).
+app.get('/api/action-queue', async (req, res) => {
+  try {
+    const challenge = parseActionQueueChallenge(req.query.challenge);
+    const confidence = String(req.query.confidence || '').trim().toLowerCase() || null;
+    const riskBand = String(req.query.risk_band || '').trim().toLowerCase() || null;
+    const multiSignal = String(req.query.multi_signal || '').trim().toLowerCase() || null;
+
+    const filters = {
+      challenge,
+      limit: req.query.limit,
+      offset: req.query.offset,
+      confidence: ACTION_QUEUE_CONFIDENCE_LEVELS.has(confidence) ? confidence : null,
+      risk_band: ACTION_QUEUE_RISK_BANDS.has(riskBand) ? riskBand : null,
+      multi_signal: multiSignal,
+    };
+    const payload = await collectActionQueueRows(filters);
+    if (payload.candidate_total === 0 && payload.warnings.length) {
+      return res.status(502).json({
+        ...payload,
+        error: 'Action queue data unavailable for the requested challenge filter.',
+      });
+    }
+    res.json(payload);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/action-queue/summary', async (req, res) => {
+  try {
+    const challenge = parseActionQueueChallenge(req.query.challenge);
+    const confidence = String(req.query.confidence || '').trim().toLowerCase() || null;
+    const riskBand = String(req.query.risk_band || '').trim().toLowerCase() || null;
+    const multiSignal = String(req.query.multi_signal || '').trim().toLowerCase() || null;
+    const payload = await collectActionQueueRows({
+      challenge,
+      limit: 200,
+      offset: 0,
+      confidence: ACTION_QUEUE_CONFIDENCE_LEVELS.has(confidence) ? confidence : null,
+      risk_band: ACTION_QUEUE_RISK_BANDS.has(riskBand) ? riskBand : null,
+      multi_signal: multiSignal,
+    });
+    res.json({
+      generated_at: payload.generated_at,
+      filters: payload.filters,
+      summary: payload.summary,
+      readiness: payload.readiness,
+      warnings: payload.warnings,
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.get('/api/loops/:loopId', async (req, res) => {
   try {
     const loopId = parseInt(req.params.loopId, 10);
@@ -6027,6 +6615,8 @@ app.get('/', (req, res) => {
       'GET /api/entity/:id/related',
       'GET /api/loops',
       'GET /api/loops/:loopId',
+      'GET /api/action-queue',
+      'GET /api/action-queue/summary',
       'GET /api/zombies',
       'GET /api/zombies/:recipientKey',
       'GET /api/cases/:caseId/briefs',
