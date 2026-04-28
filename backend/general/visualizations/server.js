@@ -925,6 +925,7 @@ const ACTION_QUEUE_CHALLENGES = new Set([
   'all',
   ...ACTION_QUEUE_INCLUDED_CHALLENGES.map(String),
   ...ACTION_QUEUE_READINESS_ONLY_CHALLENGES.map(String),
+  ...ACTION_QUEUE_CONTEXTUAL_ONLY_CHALLENGES.map(String),
 ]);
 const ACTION_QUEUE_RISK_BANDS = new Set(['low', 'elevated', 'critical']);
 const ACTION_QUEUE_CONFIDENCE_LEVELS = new Set(['low', 'medium', 'high']);
@@ -1888,6 +1889,33 @@ async function collectActionQueueRows(filters = {}) {
         warning: 'Challenge 10 adverse media is contextual review input only and cannot create queue cases.',
       };
     });
+  } else if (ACTION_QUEUE_CONTEXTUAL_ONLY_CHALLENGES.includes(requestedChallengeId)) {
+    const warning = 'Challenge 10 adverse media is contextual review input only and cannot create queue cases.';
+    return {
+      generated_at: new Date().toISOString(),
+      filters: {
+        challenge,
+        limit,
+        offset,
+        confidence: filters.confidence || null,
+        risk_band: filters.risk_band || null,
+        multi_signal: filters.multi_signal || null,
+      },
+      candidate_total: 0,
+      total: 0,
+      results: [],
+      summary: summarizeActionQueue([]),
+      readiness: {
+        [requestedChallengeId]: {
+          ready: false,
+          contextual_only: true,
+          queue_inclusion_enabled: false,
+          warning,
+        },
+      },
+      warnings: [warning],
+      contextual_only: true,
+    };
   } else if (ACTION_QUEUE_READINESS_ONLY_CHALLENGES.includes(requestedChallengeId)) {
     const warning = readinessOnlyQueueWarning(requestedChallengeId);
     return {
@@ -2200,6 +2228,96 @@ async function buildChallengeReadinessReport(challengeId, sampleLimit = 10) {
     warnings,
     sampleLimit,
   });
+}
+
+function summarizeReadinessSample(sampleRows) {
+  const rows = Array.isArray(sampleRows) ? sampleRows : [];
+  const byConfidence = rows.reduce((acc, row) => {
+    const key = row.confidence_level || 'unknown';
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {});
+  const byRiskBand = rows.reduce((acc, row) => {
+    const key = row.risk_band || 'unknown';
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {});
+  return { by_confidence: byConfidence, by_risk_band: byRiskBand };
+}
+
+function readinessMapperContract(challengeId) {
+  if (challengeId === 4) {
+    return {
+      case_id_format: 'c4:<native amendment case id>',
+      native_case_key: 'amendment-creep case_id, for example fed:<id> or ab:<hash>',
+      entity_key_strategy: 'normalized vendor name',
+      risk_band_strategy: 'shared 0-50 low, 51-80 elevated, 81-100 critical thresholds',
+      confidence_strategy: 'federal amendment-chain integrity and Alberta competitive/sole-source name-match completeness',
+    };
+  }
+  if (challengeId === 5) {
+    return {
+      case_id_format: 'c5:<source:department:category>',
+      native_case_key: 'normalized source + department + category cell',
+      entity_key_strategy: 'department/category scoped normalized key',
+      risk_band_strategy: 'HHI/top-share derived concentration score mapped to shared thresholds',
+      confidence_strategy: 'coverage/invariant quality and concentration denominator completeness',
+    };
+  }
+  if (challengeId === 7) {
+    return {
+      case_id_format: 'c7:<policy alignment native key>',
+      native_case_key: 'source_domain + policy_domain + organization/program',
+      entity_key_strategy: 'normalized organization/policy-domain key',
+      risk_band_strategy: 'normalized alignment gap score mapped to shared thresholds',
+      confidence_strategy: 'source support and policy-domain evidence completeness',
+    };
+  }
+  if (challengeId === 8) {
+    return {
+      case_id_format: 'c8:<overlap_or_gap_native_key>',
+      native_case_key: 'overlap/gap deterministic key from source rows',
+      entity_key_strategy: 'bn/entity_id fallback + normalized entity naming',
+      risk_band_strategy: 'overlap/gap challenge score mapped to shared thresholds',
+      confidence_strategy: 'dedup/linkage confidence and source completeness',
+    };
+  }
+  if (challengeId === 9) {
+    return {
+      case_id_format: 'c9:<source:department:category>',
+      native_case_key: 'normalized source + department + category label',
+      entity_key_strategy: 'department/category scoped normalized key',
+      risk_band_strategy: 'growth/concentration/amendment mix mapped to shared thresholds',
+      confidence_strategy: 'source grade and category comparability confidence',
+    };
+  }
+  return null;
+}
+
+function readinessDetailEndpoint(challengeId) {
+  return {
+    4: '/api/amendment-creep/readiness',
+    5: '/api/vendor-concentration/readiness',
+    7: '/api/policy-alignment/readiness',
+    8: '/api/duplicative-funding/readiness',
+    9: '/api/contract-intelligence/readiness',
+  }[challengeId] || null;
+}
+
+function enrichReadinessReport(challengeId, payload) {
+  return {
+    ...payload,
+    phase: '6B',
+    eligible_for_queue_after_review: payload.readiness_gate.ready,
+    invariant_pass: Object.values(payload.invariants).every(Boolean),
+    detail_endpoint: readinessDetailEndpoint(challengeId),
+    summary: {
+      ...summarizeReadinessSample(payload.sample),
+      source_module_route: payload.sample?.[0]?.source_module_path || null,
+      caveat_policy: 'Readiness output is advisory and human-review only. Queue inclusion remains controlled by sprint policy gates.',
+    },
+    mapper_contract: readinessMapperContract(challengeId),
+  };
 }
 
 const RECIPIENT_KEY_SQL = `
@@ -4786,33 +4904,36 @@ app.get('/api/action-queue/readiness', async (req, res) => {
     const cacheKey = `action-queue-readiness:6b-light:${sampleLimit}`;
     const cached = getCachedJson(cacheKey);
     if (cached) return res.json(cached);
-
-    const reports = [
-      {
-        challenge_id: 4,
-        challenge_name: readinessChallengeName(4),
-        queue_inclusion_enabled: true,
-        readiness_gate: { ready: true, threshold: READINESS_GATE_THRESHOLD, failed_checks: [] },
-        detail_endpoint: '/api/amendment-creep/readiness',
-      },
-      ...ACTION_QUEUE_READINESS_ONLY_CHALLENGES.map((challengeId) => ({
-        challenge_id: challengeId,
-        challenge_name: readinessChallengeName(challengeId),
-        queue_inclusion_enabled: false,
-        readiness_gate: { ready: false, threshold: READINESS_GATE_THRESHOLD, failed_checks: ['readiness_only_not_queue_enabled'] },
-        detail_endpoint: {
-          5: '/api/vendor-concentration/readiness',
-          7: '/api/policy-alignment/readiness',
-          8: '/api/duplicative-funding/readiness',
-          9: '/api/contract-intelligence/readiness',
-        }[challengeId],
-        warnings: [readinessOnlyQueueWarning(challengeId)],
-      })),
+    const readinessChallengeIds = [4, ...ACTION_QUEUE_READINESS_ONLY_CHALLENGES];
+    const readinessResults = await Promise.allSettled(
+      readinessChallengeIds.map((challengeId) => buildChallengeReadinessReport(challengeId, sampleLimit)),
+    );
+    const reports = [];
+    const warnings = [
+      'This combined endpoint is a lightweight index for production health checks. Use each detail endpoint for full readiness coverage metrics.',
+      'Queue inclusion remains a sprint policy decision even when readiness_gate.ready is true.',
+      'Challenge 10 adverse media is contextual review input and never queue-creating.',
     ];
-    let sample = [];
-    if (sampleLimit > 0) {
-      sample = (await fetchActionQueueChallenge4(sampleLimit)).slice(0, sampleLimit);
-    }
+    readinessResults.forEach((result, index) => {
+      const challengeId = readinessChallengeIds[index];
+      if (result.status === 'rejected') {
+        reports.push({
+          challenge_id: challengeId,
+          challenge_name: readinessChallengeName(challengeId),
+          queue_inclusion_enabled: ACTION_QUEUE_INCLUDED_CHALLENGES.includes(challengeId),
+          readiness_gate: {
+            ready: false,
+            threshold: READINESS_GATE_THRESHOLD,
+            failed_checks: ['readiness_report_unavailable'],
+          },
+          detail_endpoint: readinessDetailEndpoint(challengeId),
+          warnings: [`Readiness report unavailable: ${result.reason?.message || String(result.reason)}`],
+        });
+        warnings.push(`Challenge ${challengeId} readiness unavailable: ${result.reason?.message || String(result.reason)}`);
+        return;
+      }
+      reports.push(enrichReadinessReport(challengeId, result.value));
+    });
     const payload = {
       generated_at: new Date().toISOString(),
       report_scope: 'lightweight_index',
@@ -4820,12 +4941,7 @@ app.get('/api/action-queue/readiness', async (req, res) => {
       readiness_only_challenges: ACTION_QUEUE_READINESS_ONLY_CHALLENGES,
       contextual_only_challenges: ACTION_QUEUE_CONTEXTUAL_ONLY_CHALLENGES,
       reports,
-      sample,
-      warnings: [
-        'This combined endpoint is a lightweight index for production health checks. Use each detail endpoint for full readiness coverage metrics.',
-        'Challenges 5, 7, 8, and 9 are readiness-only in this sprint and are excluded from queue results.',
-        'Challenge 10 adverse media is contextual review input and never queue-creating.',
-      ],
+      warnings,
     };
     setCachedJson(cacheKey, payload, 10 * 60 * 1000);
     res.json(payload);
@@ -4837,7 +4953,8 @@ app.get('/api/action-queue/readiness', async (req, res) => {
 app.get('/api/vendor-concentration/readiness', async (req, res) => {
   try {
     const sampleLimit = parseIntegerQuery(req.query.sample_limit, 10, 0, 50);
-    res.json(await buildChallengeReadinessReport(5, sampleLimit));
+    const payload = await buildChallengeReadinessReport(5, sampleLimit);
+    res.json(enrichReadinessReport(5, payload));
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -4846,7 +4963,8 @@ app.get('/api/vendor-concentration/readiness', async (req, res) => {
 app.get('/api/policy-alignment/readiness', async (req, res) => {
   try {
     const sampleLimit = parseIntegerQuery(req.query.sample_limit, 10, 0, 50);
-    res.json(await buildChallengeReadinessReport(7, sampleLimit));
+    const payload = await buildChallengeReadinessReport(7, sampleLimit);
+    res.json(enrichReadinessReport(7, payload));
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -4855,7 +4973,8 @@ app.get('/api/policy-alignment/readiness', async (req, res) => {
 app.get('/api/duplicative-funding/readiness', async (req, res) => {
   try {
     const sampleLimit = parseIntegerQuery(req.query.sample_limit, 10, 0, 50);
-    res.json(await buildChallengeReadinessReport(8, sampleLimit));
+    const payload = await buildChallengeReadinessReport(8, sampleLimit);
+    res.json(enrichReadinessReport(8, payload));
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -4864,7 +4983,8 @@ app.get('/api/duplicative-funding/readiness', async (req, res) => {
 app.get('/api/contract-intelligence/readiness', async (req, res) => {
   try {
     const sampleLimit = parseIntegerQuery(req.query.sample_limit, 10, 0, 50);
-    res.json(await buildChallengeReadinessReport(9, sampleLimit));
+    const payload = await buildChallengeReadinessReport(9, sampleLimit);
+    res.json(enrichReadinessReport(9, payload));
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -5949,23 +6069,13 @@ app.get('/api/amendment-creep/readiness', async (req, res) => {
     }, {});
 
     const response = {
-      ...payload,
-      phase: '6B',
-      eligible_for_queue_after_review: payload.readiness_gate.ready,
-      invariant_pass: Object.values(payload.invariants).every(Boolean),
+      ...enrichReadinessReport(4, payload),
       summary: {
         by_source: bySource,
         by_confidence: byConfidence,
         by_risk_band: byRiskBand,
         source_module_route: '/amendment-creep/:caseId',
         caveat_policy: 'Challenge 4 is queue-enabled in Phase 6B but remains advisory and human-review only.',
-      },
-      mapper_contract: {
-        case_id_format: 'c4:<native amendment case id>',
-        native_case_key: 'amendment-creep case_id, for example fed:<id> or ab:<hash>',
-        entity_key_strategy: 'normalized vendor name',
-        risk_band_strategy: 'shared 0-50 low, 51-80 elevated, 81-100 critical thresholds',
-        confidence_strategy: 'federal amendment-chain integrity and Alberta competitive/sole-source name-match completeness',
       },
     };
     setCachedJson(cacheKey, response);
