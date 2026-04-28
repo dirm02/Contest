@@ -51,6 +51,7 @@
  *   PORT=3801 node scripts/tools/dashboard.js  # dashboard on separate port
  */
 const express = require('express');
+const { randomUUID } = require('crypto');
 const { execFile } = require('child_process');
 const os = require('os');
 const path = require('path');
@@ -112,6 +113,16 @@ const ADVERSE_MEDIA_NOISE_TERMS = ['opinion', 'op-ed', 'editorial', 'sponsored']
 const NEWS_API_ENDPOINT = 'https://newsapi.org/v2/everything';
 const GOOGLE_NEWS_RSS_ENDPOINT = 'https://news.google.com/rss/search';
 const PROCUREMENT_THRESHOLDS = [25000, 75000, 100000];
+const CASE_OUTCOME_STATUSES = new Set([
+  'open_review',
+  'monitoring',
+  'documents_requested',
+  'source_verification_needed',
+  'escalated_for_review',
+  'brief_prepared',
+  'cleared_after_review',
+]);
+let decisionTablesReadyPromise = null;
 
 function getCachedJson(key) {
   const hit = apiCache.get(key);
@@ -128,6 +139,49 @@ function setCachedJson(key, value, ttlMs = API_CACHE_TTL_MS) {
     value,
     expiresAt: Date.now() + ttlMs,
   });
+}
+
+function ensureDecisionTables() {
+  if (!decisionTablesReadyPromise) {
+    decisionTablesReadyPromise = pool.query(`
+      CREATE TABLE IF NOT EXISTS general.case_action_briefs (
+        id text PRIMARY KEY,
+        case_id text NOT NULL,
+        challenge_id integer NOT NULL DEFAULT 1,
+        title text,
+        payload jsonb NOT NULL,
+        created_by_role text,
+        created_by_label text,
+        source text NOT NULL DEFAULT 'case_workspace',
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_case_action_briefs_case_created
+        ON general.case_action_briefs (case_id, created_at DESC);
+
+      CREATE TABLE IF NOT EXISTS general.case_outcome_transitions (
+        id text PRIMARY KEY,
+        case_id text NOT NULL,
+        challenge_id integer NOT NULL DEFAULT 1,
+        from_status text,
+        to_status text NOT NULL,
+        actor_role text NOT NULL,
+        actor_label text,
+        note text NOT NULL,
+        related_advisory_entry_id text,
+        app_version text,
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_case_outcome_transitions_case_created
+        ON general.case_outcome_transitions (case_id, created_at DESC);
+    `).then(() => true);
+  }
+  return decisionTablesReadyPromise;
+}
+
+function normalizeCaseId(value) {
+  return String(value || '').trim();
 }
 
 function formatCad(value) {
@@ -5725,6 +5779,171 @@ app.get('/api/challenge-review', async (_req, res) => {
   }
 });
 
+// Phase 4B / 5B pilot persistence for Challenge 1 case workspaces.
+// These endpoints store reviewer-created artifacts but do not make enforcement
+// decisions. They are intentionally append-oriented and keep human review copy
+// in the client.
+app.get('/api/cases/:caseId/briefs', async (req, res) => {
+  try {
+    await ensureDecisionTables();
+    const caseId = normalizeCaseId(req.params.caseId);
+    if (!caseId) return res.status(400).json({ error: 'case id is required' });
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit || '20', 10) || 20));
+    const result = await pool.query(`
+      SELECT id, case_id, challenge_id, title, payload,
+             created_by_role, created_by_label, source, created_at
+      FROM general.case_action_briefs
+      WHERE case_id = $1
+      ORDER BY created_at DESC
+      LIMIT $2
+    `, [caseId, limit]);
+    res.json({ case_id: caseId, briefs: result.rows });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/cases/:caseId/briefs/:briefId', async (req, res) => {
+  try {
+    await ensureDecisionTables();
+    const caseId = normalizeCaseId(req.params.caseId);
+    const briefId = normalizeCaseId(req.params.briefId);
+    const result = await pool.query(`
+      SELECT id, case_id, challenge_id, title, payload,
+             created_by_role, created_by_label, source, created_at
+      FROM general.case_action_briefs
+      WHERE case_id = $1 AND id = $2
+      LIMIT 1
+    `, [caseId, briefId]);
+    if (!result.rows[0]) return res.status(404).json({ error: 'brief not found' });
+    res.json(result.rows[0]);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/cases/:caseId/briefs', async (req, res) => {
+  try {
+    await ensureDecisionTables();
+    const caseId = normalizeCaseId(req.params.caseId);
+    const snapshot = req.body?.snapshot;
+    if (!caseId) return res.status(400).json({ error: 'case id is required' });
+    if (!snapshot || typeof snapshot !== 'object') {
+      return res.status(400).json({ error: 'snapshot object is required' });
+    }
+
+    const id = randomUUID();
+    const result = await pool.query(`
+      INSERT INTO general.case_action_briefs (
+        id, case_id, challenge_id, title, payload,
+        created_by_role, created_by_label, source
+      )
+      VALUES ($1, $2, 1, $3, $4::jsonb, $5, $6, $7)
+      RETURNING id, case_id, challenge_id, title, payload,
+                created_by_role, created_by_label, source, created_at
+    `, [
+      id,
+      caseId,
+      String(req.body?.title || `Action brief - ${caseId}`).slice(0, 240),
+      JSON.stringify(snapshot),
+      req.body?.created_by_role ? String(req.body.created_by_role).slice(0, 120) : null,
+      req.body?.created_by_label ? String(req.body.created_by_label).slice(0, 120) : null,
+      req.body?.source ? String(req.body.source).slice(0, 80) : 'case_workspace',
+    ]);
+
+    res.status(201).json(result.rows[0]);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/cases/:caseId/outcomes', async (req, res) => {
+  try {
+    await ensureDecisionTables();
+    const caseId = normalizeCaseId(req.params.caseId);
+    if (!caseId) return res.status(400).json({ error: 'case id is required' });
+    const result = await pool.query(`
+      SELECT id, case_id, challenge_id, from_status, to_status, actor_role,
+             actor_label, note, related_advisory_entry_id, app_version, created_at
+      FROM general.case_outcome_transitions
+      WHERE case_id = $1
+      ORDER BY created_at DESC
+      LIMIT 100
+    `, [caseId]);
+    res.json({
+      case_id: caseId,
+      current_status: result.rows[0]?.to_status ?? null,
+      outcomes: result.rows,
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/cases/:caseId/outcomes', async (req, res) => {
+  try {
+    await ensureDecisionTables();
+    const caseId = normalizeCaseId(req.params.caseId);
+    const toStatus = normalizeCaseId(req.body?.to_status);
+    const actorRole = normalizeCaseId(req.body?.actor_role);
+    const note = normalizeCaseId(req.body?.note);
+    if (!caseId) return res.status(400).json({ error: 'case id is required' });
+    if (!CASE_OUTCOME_STATUSES.has(toStatus)) return res.status(400).json({ error: 'invalid outcome status' });
+    if (!actorRole) return res.status(400).json({ error: 'actor role is required' });
+    if (note.length < 15) return res.status(400).json({ error: 'note must be at least 15 characters' });
+
+    const latest = await pool.query(`
+      SELECT to_status
+      FROM general.case_outcome_transitions
+      WHERE case_id = $1
+      ORDER BY created_at DESC
+      LIMIT 1
+    `, [caseId]);
+    const fromStatus = latest.rows[0]?.to_status ?? null;
+    if (fromStatus === toStatus) {
+      return res.status(409).json({ error: 'selected outcome already matches current status' });
+    }
+
+    const id = randomUUID();
+    const result = await pool.query(`
+      INSERT INTO general.case_outcome_transitions (
+        id, case_id, challenge_id, from_status, to_status, actor_role,
+        actor_label, note, related_advisory_entry_id, app_version
+      )
+      VALUES ($1, $2, 1, $3, $4, $5, $6, $7, $8, $9)
+      RETURNING id, case_id, challenge_id, from_status, to_status, actor_role,
+                actor_label, note, related_advisory_entry_id, app_version, created_at
+    `, [
+      id,
+      caseId,
+      fromStatus,
+      toStatus,
+      actorRole.slice(0, 120),
+      req.body?.actor_label ? String(req.body.actor_label).slice(0, 120) : null,
+      note.slice(0, 5000),
+      req.body?.related_advisory_entry_id ? String(req.body.related_advisory_entry_id).slice(0, 120) : null,
+      req.body?.app_version ? String(req.body.app_version).slice(0, 80) : 'phase5b-c1-server',
+    ]);
+
+    const all = await pool.query(`
+      SELECT id, case_id, challenge_id, from_status, to_status, actor_role,
+             actor_label, note, related_advisory_entry_id, app_version, created_at
+      FROM general.case_outcome_transitions
+      WHERE case_id = $1
+      ORDER BY created_at DESC
+      LIMIT 100
+    `, [caseId]);
+    res.status(201).json({
+      entry: result.rows[0],
+      case_id: caseId,
+      current_status: result.rows[0].to_status,
+      outcomes: all.rows,
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.get('/', (req, res) => {
   res.json({
     service: 'dossier-api',
@@ -5738,6 +5957,10 @@ app.get('/', (req, res) => {
       'GET /api/loops/:loopId',
       'GET /api/zombies',
       'GET /api/zombies/:recipientKey',
+      'GET /api/cases/:caseId/briefs',
+      'POST /api/cases/:caseId/briefs',
+      'GET /api/cases/:caseId/outcomes',
+      'POST /api/cases/:caseId/outcomes',
       'GET /api/ghost-capacity',
       'GET /api/ghost-capacity/:recipientKey',
       'GET /api/amendment-creep',

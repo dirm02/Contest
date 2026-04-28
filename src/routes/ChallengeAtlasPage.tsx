@@ -1,4 +1,19 @@
 import { Link } from 'react-router-dom';
+import {
+  AlertTriangle,
+  ArrowRight,
+  CheckCircle2,
+  CircleDot,
+  ClipboardCheck,
+  Database,
+  ExternalLink,
+  FileSearch,
+  Network,
+  ScrollText,
+  Search,
+  ShieldCheck,
+  SlidersHorizontal,
+} from 'lucide-react';
 
 type ChallengeStatus = 'live' | 'validation' | 'planned';
 type ChallengeTheme = 'Entity risk' | 'Money movement' | 'Procurement' | 'Market structure' | 'Policy fit' | 'External signals';
@@ -237,6 +252,21 @@ function statusLabel(status: ChallengeStatus) {
   return 'Planned';
 }
 
+function statusIcon(status: ChallengeStatus) {
+  if (status === 'live') return CheckCircle2;
+  if (status === 'validation') return AlertTriangle;
+  return CircleDot;
+}
+
+function themeIcon(theme: ChallengeTheme) {
+  if (theme === 'Entity risk') return ShieldCheck;
+  if (theme === 'Money movement') return Network;
+  if (theme === 'Procurement') return ClipboardCheck;
+  if (theme === 'Market structure') return Database;
+  if (theme === 'Policy fit') return FileSearch;
+  return AlertTriangle;
+}
+
 export default function ChallengeAtlasPage() {
   const liveCount = CHALLENGES.filter((challenge) => challenge.status === 'live').length;
   const validationCount = CHALLENGES.filter((challenge) => challenge.status === 'validation').length;
@@ -258,15 +288,15 @@ export default function ChallengeAtlasPage() {
 
         <div className="grid grid-cols-3 gap-2">
           <div className="app-card rounded-lg p-3">
-            <p className="section-title">Live</p>
+            <p className="section-title flex items-center gap-2"><CheckCircle2 className="icon-sm text-[var(--color-success)]" aria-hidden="true" />Live</p>
             <p className="metric-value mt-2">{liveCount}</p>
           </div>
           <div className="app-card rounded-lg p-3">
-            <p className="section-title">Review</p>
+            <p className="section-title flex items-center gap-2"><AlertTriangle className="icon-sm text-[var(--color-warning)]" aria-hidden="true" />Review</p>
             <p className="metric-value mt-2">{validationCount}</p>
           </div>
           <div className="app-card rounded-lg p-3">
-            <p className="section-title">Next</p>
+            <p className="section-title flex items-center gap-2"><CircleDot className="icon-sm" aria-hidden="true" />Next</p>
             <p className="metric-value mt-2">{plannedCount}</p>
           </div>
         </div>
@@ -275,21 +305,34 @@ export default function ChallengeAtlasPage() {
       <section className="grid gap-3 lg:grid-cols-3">
         {WORKFLOWS.map((workflow) => (
           <article key={workflow.title} className="app-card rounded-lg p-4">
-            <h2 className="text-base font-semibold text-[var(--color-ink)]">{workflow.title}</h2>
+            <div className="flex items-center gap-3">
+              <span className="icon-tile">
+                {workflow.route === '/' ? (
+                  <Search className="icon-md" aria-hidden="true" />
+                ) : workflow.route === '/challenge-review' ? (
+                  <ClipboardCheck className="icon-md" aria-hidden="true" />
+                ) : (
+                  <SlidersHorizontal className="icon-md" aria-hidden="true" />
+                )}
+              </span>
+              <h2 className="text-base font-semibold text-[var(--color-ink)]">{workflow.title}</h2>
+            </div>
             <p className="mt-2 min-h-16 text-sm leading-6 text-[var(--color-muted)]">{workflow.body}</p>
             {workflow.route.startsWith('#') ? (
               <a
                 href={workflow.route}
-                className="mt-4 inline-flex min-h-10 items-center justify-center rounded-md border border-[var(--color-border)] bg-[var(--color-surface-subtle)] px-3 text-sm font-semibold text-[var(--color-ink)] transition hover:bg-[var(--color-accent-soft)]"
+                className="interactive-surface mt-4 inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-subtle)] px-3 text-sm font-semibold text-[var(--color-ink)] hover:bg-[var(--color-accent-soft)]"
               >
                 {workflow.action}
+                <ArrowRight className="icon-sm" aria-hidden="true" />
               </a>
             ) : (
               <Link
                 to={workflow.route}
-                className="mt-4 inline-flex min-h-10 items-center justify-center rounded-md border border-[var(--color-border)] bg-[var(--color-surface-subtle)] px-3 text-sm font-semibold text-[var(--color-ink)] transition hover:bg-[var(--color-accent-soft)]"
+                className="interactive-surface mt-4 inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-subtle)] px-3 text-sm font-semibold text-[var(--color-ink)] hover:bg-[var(--color-accent-soft)]"
               >
                 {workflow.action}
+                <ArrowRight className="icon-sm" aria-hidden="true" />
               </Link>
             )}
           </article>
@@ -326,7 +369,7 @@ export default function ChallengeAtlasPage() {
         <div className="app-card rounded-lg p-5">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="section-title">External source register</p>
+              <p className="section-title flex items-center gap-2"><ScrollText className="icon-sm" aria-hidden="true" />External source register</p>
               <h2 className="mt-2 text-xl font-semibold text-[var(--color-ink)]">
                 Official data behind the live challenges
               </h2>
@@ -353,10 +396,11 @@ export default function ChallengeAtlasPage() {
                       href={source.url}
                       target="_blank"
                       rel="noreferrer"
-                      className="rounded-md border border-[var(--color-border)] bg-white/70 p-3 transition hover:bg-white"
+                      className="interactive-surface rounded-md border border-[var(--color-border)] bg-white/70 p-3 hover:bg-white"
                     >
-                      <span className="text-sm font-semibold text-[var(--color-accent)]">
+                      <span className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--color-accent)]">
                         {source.label}
+                        <ExternalLink className="icon-sm" aria-hidden="true" />
                       </span>
                       <span className="mt-1 block text-xs leading-5 text-[var(--color-muted)]">
                         {source.note}
@@ -382,16 +426,24 @@ export default function ChallengeAtlasPage() {
                   challenge.status,
                 )}`}
               >
+                {(() => {
+                  const StatusIcon = statusIcon(challenge.status);
+                  return <StatusIcon className="mr-1 inline size-3.5 align-[-2px]" aria-hidden="true" />;
+                })()}
                 {statusLabel(challenge.status)}
               </span>
             </div>
-            <p className="mt-4 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-muted)]">
-              {challenge.theme}
-            </p>
+            <div className="mt-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-muted)]">
+              {(() => {
+                const ThemeIcon = themeIcon(challenge.theme);
+                return <ThemeIcon className="icon-sm" aria-hidden="true" />;
+              })()}
+              <span>{challenge.theme}</span>
+            </div>
             <h2 className="mt-2 text-lg font-semibold text-[var(--color-ink)]">{challenge.title}</h2>
             <p className="mt-2 text-sm leading-6 text-[var(--color-muted)]">{challenge.question}</p>
             <div className="mt-4 border-t border-[var(--color-border)] pt-3">
-              <p className="section-title">Evidence</p>
+              <p className="section-title flex items-center gap-2"><Database className="icon-sm" aria-hidden="true" />Evidence</p>
               <p className="mt-1 text-sm leading-5 text-[var(--color-muted)]">{challenge.evidence}</p>
             </div>
             <div className="mt-auto pt-4">
@@ -399,16 +451,18 @@ export default function ChallengeAtlasPage() {
                 <div className="flex flex-wrap gap-2">
                   <Link
                     to={challenge.route}
-                    className="inline-flex min-h-10 items-center justify-center rounded-md border border-[var(--color-border)] bg-[var(--color-surface-subtle)] px-3 text-sm font-semibold text-[var(--color-ink)] transition hover:bg-[var(--color-accent-soft)]"
+                    className="interactive-surface inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-subtle)] px-3 text-sm font-semibold text-[var(--color-ink)] hover:bg-[var(--color-accent-soft)]"
                   >
                     Open module
+                    <ArrowRight className="icon-sm" aria-hidden="true" />
                   </Link>
                   {challenge.id === 1 && (
                     <Link
                       to="/action-queue"
-                      className="inline-flex min-h-10 items-center justify-center rounded-md border border-[var(--color-border)] bg-white px-3 text-sm font-semibold text-[var(--color-accent)] transition hover:bg-[var(--color-accent-soft)]"
+                      className="interactive-surface inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-[var(--color-border)] bg-white px-3 text-sm font-semibold text-[var(--color-accent)] hover:bg-[var(--color-accent-soft)]"
                     >
                       Action queue
+                      <ClipboardCheck className="icon-sm" aria-hidden="true" />
                     </Link>
                   )}
                 </div>

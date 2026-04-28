@@ -1,7 +1,25 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { fetchZombieDetail, queryKeys } from '../api/client';
+import {
+  ArrowRight,
+  Clipboard,
+  ClipboardCheck,
+  Copy,
+  FileText,
+  Printer,
+  RefreshCw,
+  Trash2,
+} from 'lucide-react';
+import {
+  fetchCaseBriefs,
+  fetchCaseOutcomes,
+  fetchZombieDetail,
+  queryKeys,
+  saveCaseBrief,
+  saveCaseOutcome,
+} from '../api/client';
+import type { ServerOutcomeEntry } from '../api/types';
 import {
   formatCurrencyAmount,
   mapZombieDetail,
@@ -33,8 +51,15 @@ import {
   readReviewLog,
 } from '../components/risk/caseDecision';
 import CrossDatasetContextCard from '../components/risk/CrossDatasetContextCard';
+import OutcomeTrackingPanel from '../components/risk/OutcomeTrackingPanel';
 import RecipientRiskGraph from '../components/risk/RecipientRiskGraph';
 import RiskTimelineChart from '../components/risk/RiskTimelineChart';
+import ScoringMethodologyPanel from '../components/risk/scoringMethodology';
+import {
+  type LocalOutcomeEntry,
+  type PilotOutcomeStatusKey,
+  readOutcomeLog,
+} from '../components/risk/outcomeTracking';
 
 function sourceLabel(url: string) {
   try {
@@ -71,6 +96,21 @@ function LoadingSection({ label }: { label: string }) {
   );
 }
 
+function mapServerOutcomeEntry(entry: ServerOutcomeEntry): LocalOutcomeEntry {
+  return {
+    id: entry.id,
+    case_id: entry.case_id,
+    from_status: entry.from_status as PilotOutcomeStatusKey | null,
+    to_status: entry.to_status as PilotOutcomeStatusKey,
+    actor_role: entry.actor_role,
+    actor_label: entry.actor_label ?? undefined,
+    note: entry.note,
+    created_at: entry.created_at,
+    related_advisory_entry_id: entry.related_advisory_entry_id,
+    app_version: entry.app_version ?? undefined,
+  };
+}
+
 export default function CaseDecisionPage() {
   const params = useParams<{ caseId: string }>();
   const caseId = params.caseId ?? '';
@@ -93,6 +133,20 @@ export default function CaseDecisionPage() {
     staleTime: 60_000,
   });
 
+  const briefsQuery = useQuery({
+    queryKey: queryKeys.caseBriefs(caseId),
+    queryFn: () => fetchCaseBriefs(caseId),
+    enabled: caseId.length > 0,
+    staleTime: 30_000,
+  });
+
+  const outcomesQuery = useQuery({
+    queryKey: queryKeys.caseOutcomes(caseId),
+    queryFn: () => fetchCaseOutcomes(caseId),
+    enabled: caseId.length > 0,
+    staleTime: 30_000,
+  });
+
   const detail = useMemo(
     () => (detailQuery.data ? mapZombieDetail(detailQuery.data) : null),
     [detailQuery.data],
@@ -102,6 +156,11 @@ export default function CaseDecisionPage() {
     () => (detail ? mapZombieDetailToCaseEnvelope(detail, caseId) : null),
     [caseId, detail],
   );
+
+  const outcomeEntries = useMemo(() => {
+    if (outcomesQuery.data) return outcomesQuery.data.outcomes.map(mapServerOutcomeEntry);
+    return caseId ? readOutcomeLog(caseId) : [];
+  }, [caseId, outcomesQuery.data]);
 
   useEffect(() => {
     if (envelope?.reviewerRole && !reviewerRole) setReviewerRole(envelope.reviewerRole);
@@ -138,9 +197,10 @@ export default function CaseDecisionPage() {
         </p>
         <Link
           to="/action-queue"
-          className="mt-4 inline-flex min-h-10 items-center rounded-md border border-[var(--color-border)] bg-white px-3 text-sm font-semibold text-[var(--color-ink)]"
+          className="interactive-surface mt-4 inline-flex min-h-10 items-center gap-2 rounded-md border border-[var(--color-border)] bg-white px-3 text-sm font-semibold text-[var(--color-ink)] hover:bg-[var(--color-accent-soft)]"
         >
           Back to action queue
+          <ArrowRight className="icon-sm" aria-hidden="true" />
         </Link>
       </div>
     );
@@ -212,6 +272,29 @@ export default function CaseDecisionPage() {
     }
   }
 
+  async function saveBriefSnapshotToServer() {
+    if (!envelope) {
+      setBriefMessage('Case envelope is not loaded yet.');
+      return;
+    }
+    if (!briefSnapshot) {
+      setBriefMessage('Refresh brief before saving a server version.');
+      return;
+    }
+    try {
+      const saved = await saveCaseBrief(caseId, {
+        title: `Action brief - ${envelope.entityName}`,
+        snapshot: briefSnapshot,
+        created_by_role: (briefSnapshot.latestReviewEntry?.reviewer_role ?? reviewerRole) || envelope.reviewerRole,
+        source: 'case_workspace',
+      });
+      setBriefMessage(`Server brief version saved (${saved.id}).`);
+      await briefsQuery.refetch();
+    } catch (error) {
+      setBriefMessage(`Server brief save failed: ${error instanceof Error ? error.message : 'unknown error'}`);
+    }
+  }
+
   function printBrief() {
     if (!briefSnapshot) return;
     const printWindow = window.open('', '_blank', 'width=960,height=720');
@@ -240,11 +323,13 @@ export default function CaseDecisionPage() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <Link to="/action-queue" className="text-sm font-semibold text-[var(--color-accent)] hover:underline">
+              <Link to="/action-queue" className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--color-accent)] hover:underline">
+                <ClipboardCheck className="icon-sm" aria-hidden="true" />
                 Action queue
               </Link>
               <span className="text-sm text-[var(--color-muted)]">/</span>
-              <Link to={`/zombies/${encodeURIComponent(caseId)}`} className="text-sm font-semibold text-[var(--color-accent)] hover:underline">
+              <Link to={`/zombies/${encodeURIComponent(caseId)}`} className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--color-accent)] hover:underline">
+                <FileText className="icon-sm" aria-hidden="true" />
                 Module view
               </Link>
             </div>
@@ -337,6 +422,8 @@ export default function CaseDecisionPage() {
           )}
         </article>
       </section>
+
+      <ScoringMethodologyPanel envelope={envelope} />
 
       <section className="app-card rounded-lg p-5">
         <p className="section-title">Sources and caveats</p>
@@ -468,19 +555,21 @@ export default function CaseDecisionPage() {
             <div className="flex flex-wrap justify-end gap-2">
               <button
                 type="button"
-                className="rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-semibold text-[var(--color-ink)] disabled:opacity-50"
+                className="interactive-surface inline-flex items-center gap-2 rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-semibold text-[var(--color-ink)] disabled:opacity-50 hover:bg-[var(--color-accent-soft)]"
                 disabled={!previewReady}
                 onClick={() => setShowPreview(true)}
               >
+                <Clipboard className="icon-sm" aria-hidden="true" />
                 Preview
               </button>
               <button
                 type="button"
-                className="rounded-md bg-[var(--color-accent)] px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                className="interactive-surface inline-flex items-center gap-2 rounded-md bg-[var(--color-accent)] px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
                 disabled={!confirmReady}
                 onClick={handleConfirm}
               >
                 Confirm advisory action
+                <ArrowRight className="icon-sm" aria-hidden="true" />
               </button>
             </div>
             {!confirmReady && (
@@ -511,7 +600,7 @@ export default function CaseDecisionPage() {
           {reviewLog.length > 0 && (
             <button
               type="button"
-              className="rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-semibold text-[var(--color-muted)]"
+              className="interactive-surface inline-flex items-center gap-2 rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-semibold text-[var(--color-muted)] hover:bg-[var(--color-surface-subtle)]"
               onClick={() => {
                 if (window.confirm('Clear local review log for this case on this browser?')) {
                   clearReviewLog(caseId);
@@ -519,6 +608,7 @@ export default function CaseDecisionPage() {
                 }
               }}
             >
+              <Trash2 className="icon-sm" aria-hidden="true" />
               Clear local log
             </button>
           )}
@@ -557,7 +647,7 @@ export default function CaseDecisionPage() {
           </div>
           <button
             type="button"
-            className="inline-flex min-h-10 items-center justify-center rounded-md border border-[var(--color-border)] bg-white px-3 text-sm font-semibold text-[var(--color-ink)] transition hover:bg-[var(--color-accent-soft)]"
+            className="interactive-surface inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-[var(--color-border)] bg-white px-3 text-sm font-semibold text-[var(--color-ink)] hover:bg-[var(--color-accent-soft)]"
             onClick={() => {
               const nextOpen = !briefOpen;
               setBriefOpen(nextOpen);
@@ -567,6 +657,7 @@ export default function CaseDecisionPage() {
             }}
           >
             {briefOpen ? 'Collapse brief' : 'Open brief'}
+            <FileText className="icon-sm" aria-hidden="true" />
           </button>
         </div>
 
@@ -575,35 +666,60 @@ export default function CaseDecisionPage() {
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                className="rounded-md bg-[var(--color-accent)] px-3 py-2 text-sm font-semibold text-white"
+                className="interactive-surface inline-flex items-center gap-2 rounded-md bg-[var(--color-accent)] px-3 py-2 text-sm font-semibold text-white"
                 onClick={handleRefreshBrief}
               >
+                <RefreshCw className="icon-sm" aria-hidden="true" />
                 Refresh brief
               </button>
               <button
                 type="button"
-                className="rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-semibold text-[var(--color-ink)] disabled:opacity-50"
+                className="interactive-surface inline-flex items-center gap-2 rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-semibold text-[var(--color-ink)] disabled:opacity-50 hover:bg-[var(--color-accent-soft)]"
                 disabled={!briefSnapshot}
                 onClick={printBrief}
               >
+                <Printer className="icon-sm" aria-hidden="true" />
                 Print brief
               </button>
               <button
                 type="button"
-                className="rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-semibold text-[var(--color-ink)] disabled:opacity-50"
+                className="interactive-surface inline-flex items-center gap-2 rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-semibold text-[var(--color-ink)] disabled:opacity-50 hover:bg-[var(--color-accent-soft)]"
                 disabled={!briefSnapshot}
                 onClick={copyMarkdown}
               >
+                <Copy className="icon-sm" aria-hidden="true" />
                 Copy Markdown
               </button>
               <button
                 type="button"
-                className="rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-semibold text-[var(--color-ink)] disabled:opacity-50"
+                className="interactive-surface inline-flex items-center gap-2 rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-semibold text-[var(--color-ink)] disabled:opacity-50 hover:bg-[var(--color-accent-soft)]"
                 disabled={!briefSnapshot}
                 onClick={copyHtml}
               >
+                <Copy className="icon-sm" aria-hidden="true" />
                 Copy HTML
               </button>
+              <button
+                type="button"
+                className="interactive-surface inline-flex items-center gap-2 rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-semibold text-[var(--color-accent)] disabled:opacity-50 hover:bg-[var(--color-accent-soft)]"
+                disabled={!briefSnapshot}
+                onClick={saveBriefSnapshotToServer}
+              >
+                <ClipboardCheck className="icon-sm" aria-hidden="true" />
+                Save server version
+              </button>
+            </div>
+
+            <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-subtle)] px-3 py-2 text-sm text-[var(--color-muted)]">
+              Server brief versions:{' '}
+              <span className="font-semibold text-[var(--color-ink)]">
+                {briefsQuery.data?.briefs.length ?? 0}
+              </span>
+              {briefsQuery.isError && (
+                <span className="ml-2 text-[var(--color-warning)]">
+                  Server history unavailable; print/copy still works.
+                </span>
+              )}
             </div>
 
             {briefMessage && (
@@ -822,6 +938,22 @@ export default function CaseDecisionPage() {
           </div>
         )}
       </section>
+
+      <OutcomeTrackingPanel
+        key={caseId}
+        caseId={caseId}
+        defaultReviewerRole={envelope.reviewerRole}
+        latestReviewEntry={latestEntry}
+        initialEntries={outcomeEntries}
+        serverEnabled={Boolean(outcomesQuery.data && !outcomesQuery.isError)}
+        isServerLoading={outcomesQuery.isLoading || outcomesQuery.isFetching}
+        serverErrorMessage={outcomesQuery.error instanceof Error ? outcomesQuery.error.message : undefined}
+        onRecordServer={async (input) => {
+          const response = await saveCaseOutcome(caseId, input);
+          await outcomesQuery.refetch();
+          return response.outcomes.map(mapServerOutcomeEntry);
+        }}
+      />
 
       <section className="app-card rounded-lg p-5">
         <div className="mb-4">
