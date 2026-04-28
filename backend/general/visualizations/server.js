@@ -1629,6 +1629,30 @@ function parseActionQueueChallenge(value) {
   return ACTION_QUEUE_CHALLENGES.has(normalized) ? normalized : '1';
 }
 
+function parseActionQueueChallengeSelection(value) {
+  const normalized = String(value || '1').trim().toLowerCase();
+  if (!normalized || normalized === 'all') {
+    return { mode: 'all', included: [...ACTION_QUEUE_INCLUDED_CHALLENGES], requested: ['all'] };
+  }
+  const requested = normalized
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .filter((part, index, list) => list.indexOf(part) === index)
+    .filter((part) => ACTION_QUEUE_CHALLENGES.has(part));
+  if (!requested.length) {
+    return { mode: 'single', included: [1], requested: ['1'] };
+  }
+  const included = requested
+    .map((part) => Number(part))
+    .filter((challengeId) => ACTION_QUEUE_INCLUDED_CHALLENGES.includes(challengeId));
+  return {
+    mode: requested.length > 1 ? 'multi' : 'single',
+    included: included.length ? included : [1],
+    requested,
+  };
+}
+
 function parseActionQueueLimit(value, defaultValue = 50, maxValue = 200) {
   return Math.min(Math.max(parseInt(value, 10) || defaultValue, 1), maxValue);
 }
@@ -1864,16 +1888,23 @@ function balanceActionQueueRowsByChallenge(rows) {
 }
 
 async function collectActionQueueRows(filters = {}) {
-  const challenge = parseActionQueueChallenge(filters.challenge);
+  const challengeSelection = parseActionQueueChallengeSelection(filters.challenge);
+  const challenge = challengeSelection.requested[0] === 'all'
+    ? 'all'
+    : challengeSelection.requested.join(',');
   const limit = parseActionQueueLimit(filters.limit, 50, 200);
   const offset = Math.max(parseInt(filters.offset, 10) || 0, 0);
-  const requestedChallengeId = challenge === 'all' ? null : Number(challenge);
-  const selectedChallenges = actionQueueChallengeList(challenge);
+  const requestedChallengeIds = challengeSelection.requested
+    .filter((part) => part !== 'all')
+    .map((part) => Number(part));
+  const selectedChallenges = challengeSelection.mode === 'all'
+    ? actionQueueChallengeList('all')
+    : challengeSelection.included;
   const perChallengeLimit = challengeFetchLimit(selectedChallenges.length, limit + offset);
   const warnings = [];
   const readiness = {};
 
-  if (challenge === 'all') {
+  if (challengeSelection.mode === 'all') {
     ACTION_QUEUE_READINESS_ONLY_CHALLENGES.forEach((challengeId) => {
       warnings.push(readinessOnlyQueueWarning(challengeId));
       readiness[challengeId] = {
@@ -1891,60 +1922,50 @@ async function collectActionQueueRows(filters = {}) {
         warning: 'Challenge 10 adverse media is contextual review input only and cannot create queue cases.',
       };
     });
-  } else if (ACTION_QUEUE_CONTEXTUAL_ONLY_CHALLENGES.includes(requestedChallengeId)) {
-    const warning = 'Challenge 10 adverse media is contextual review input only and cannot create queue cases.';
-    return {
-      generated_at: new Date().toISOString(),
-      filters: {
-        challenge,
-        limit,
-        offset,
-        confidence: filters.confidence || null,
-        risk_band: filters.risk_band || null,
-        multi_signal: filters.multi_signal || null,
-      },
-      candidate_total: 0,
-      total: 0,
-      results: [],
-      summary: summarizeActionQueue([]),
-      readiness: {
-        [requestedChallengeId]: {
-          ready: false,
-          contextual_only: true,
-          queue_inclusion_enabled: false,
-          warning,
-        },
-      },
-      warnings: [warning],
-      contextual_only: true,
-    };
-  } else if (ACTION_QUEUE_READINESS_ONLY_CHALLENGES.includes(requestedChallengeId)) {
-    const warning = readinessOnlyQueueWarning(requestedChallengeId);
-    return {
-      generated_at: new Date().toISOString(),
-      filters: {
-        challenge,
-        limit,
-        offset,
-        confidence: filters.confidence || null,
-        risk_band: filters.risk_band || null,
-        multi_signal: filters.multi_signal || null,
-      },
-      candidate_total: 0,
-      total: 0,
-      results: [],
-      summary: summarizeActionQueue([]),
-      readiness: {
-        [requestedChallengeId]: {
+  } else {
+    requestedChallengeIds.forEach((challengeId) => {
+      if (ACTION_QUEUE_READINESS_ONLY_CHALLENGES.includes(challengeId)) {
+        const warning = readinessOnlyQueueWarning(challengeId);
+        warnings.push(warning);
+        readiness[challengeId] = {
           ready: false,
           readiness_only: true,
           queue_inclusion_enabled: false,
           warning,
+        };
+      }
+      if (ACTION_QUEUE_CONTEXTUAL_ONLY_CHALLENGES.includes(challengeId)) {
+        const warning = 'Challenge 10 adverse media is contextual review input only and cannot create queue cases.';
+        warnings.push(warning);
+        readiness[challengeId] = {
+          ready: false,
+          contextual_only: true,
+          queue_inclusion_enabled: false,
+          warning,
+        };
+      }
+    });
+    if (!selectedChallenges.length) {
+      return {
+        generated_at: new Date().toISOString(),
+        filters: {
+          challenge,
+          limit,
+          offset,
+          confidence: filters.confidence || null,
+          risk_band: filters.risk_band || null,
+          multi_signal: filters.multi_signal || null,
         },
-      },
-      warnings: [warning],
-      readiness_only: true,
-    };
+        candidate_total: 0,
+        total: 0,
+        results: [],
+        summary: summarizeActionQueue([]),
+        readiness,
+        warnings,
+        readiness_only: Object.keys(readiness).some((challengeId) => ACTION_QUEUE_READINESS_ONLY_CHALLENGES.includes(Number(challengeId))),
+        contextual_only: Object.keys(readiness).some((challengeId) => ACTION_QUEUE_CONTEXTUAL_ONLY_CHALLENGES.includes(Number(challengeId))),
+      };
+    }
   }
 
   const fetches = await Promise.allSettled(
