@@ -1423,12 +1423,14 @@ async function collectActionQueueRows(filters = {}) {
 
   rows = applyQueueMetadata(rows);
 
-  const workflow = await getLatestWorkflowStatuses(rows.map((row) => row.case_id));
-  if (workflow.warning) warnings.push(workflow.warning);
-  rows = rows.map((row) => ({
-    ...row,
-    workflow_status: workflow.statuses.get(row.case_id) || null,
-  }));
+  if (filters.include_workflow_status !== false) {
+    const workflow = await getLatestWorkflowStatuses(rows.map((row) => row.case_id));
+    if (workflow.warning) warnings.push(workflow.warning);
+    rows = rows.map((row) => ({
+      ...row,
+      workflow_status: workflow.statuses.get(row.case_id) || null,
+    }));
+  }
 
   const candidateRows = sortActionQueueRows(rows);
   const filteredRows = filterActionQueueRows(candidateRows, filters);
@@ -1446,6 +1448,117 @@ async function collectActionQueueRows(filters = {}) {
     total: filteredRows.length,
     results: filteredRows.slice(offset, offset + limit),
     summary: summarizeActionQueue(filteredRows),
+    readiness,
+    warnings,
+  };
+}
+
+function parseCanonicalQueueCaseId(value) {
+  const raw = String(value || '').trim();
+  const match = raw.match(/^c([1-3]):(.+)$/i);
+  if (!match) return null;
+  const challengeId = Number(match[1]);
+  const nativeCaseKey = match[2].trim();
+  if (!nativeCaseKey) return null;
+  return {
+    case_id: makeCanonicalCaseId(challengeId, nativeCaseKey),
+    challenge_id: challengeId,
+    native_case_key: nativeCaseKey,
+  };
+}
+
+function uniqueQueueRows(rows) {
+  const seen = new Map();
+  rows.forEach((row) => {
+    if (row?.case_id && !seen.has(row.case_id)) {
+      seen.set(row.case_id, row);
+    }
+  });
+  return [...seen.values()];
+}
+
+function shortList(value, limit = 2) {
+  if (!Array.isArray(value)) return [];
+  return value.filter(Boolean).slice(0, limit);
+}
+
+function relatedSignalPayload(row) {
+  return {
+    case_id: row.case_id,
+    challenge_id: row.challenge_id,
+    challenge_name: row.challenge_name,
+    native_case_key: row.native_case_key,
+    entity_key: row.entity_key,
+    entity_name: row.entity_name,
+    score: row.score,
+    risk_band: row.risk_band,
+    confidence_level: row.confidence_level,
+    dominant_signal: row.dominant_signal,
+    why_flagged_short: shortList(row.why_flagged, 1),
+    caveats_short: shortList(row.caveats, 2),
+    source_module_path: row.source_module_path,
+    source_quality_tier: row.source_quality_tier,
+    contextual_flags: {
+      adverse_media_context: false,
+      ...(row.context_flags || {}),
+    },
+  };
+}
+
+async function resolveQueueCase(parsedCaseId) {
+  const rows = await fetchActionQueueChallenge(parsedCaseId.challenge_id, 200);
+  const gate = evaluateReadiness(parsedCaseId.challenge_id, rows);
+  if (!gate.ready) {
+    const error = new Error(gate.warning || `Challenge ${parsedCaseId.challenge_id} is not ready for related signal lookup.`);
+    error.statusCode = 503;
+    error.readiness = gate;
+    throw error;
+  }
+  const candidates = applyQueueMetadata(rows);
+  return candidates.find((row) => row.case_id === parsedCaseId.case_id) || null;
+}
+
+async function collectRelatedSignals(primaryCase) {
+  const selectedChallenges = [1, 2, 3];
+  const warnings = [];
+  const readiness = {};
+  const fetches = await Promise.allSettled(
+    selectedChallenges.map(async (challengeId) => ({
+      challengeId,
+      rows: await fetchActionQueueChallenge(challengeId, 200),
+    })),
+  );
+
+  let rows = [primaryCase];
+  fetches.forEach((result, index) => {
+    const challengeId = selectedChallenges[index];
+    if (result.status === 'rejected') {
+      readiness[challengeId] = {
+        ready: false,
+        coverage: 0,
+        checked_rows: 0,
+        error: result.reason?.message || String(result.reason),
+      };
+      warnings.push(`Challenge ${challengeId} unavailable: ${readiness[challengeId].error}`);
+      return;
+    }
+    const gate = evaluateReadiness(challengeId, result.value.rows);
+    readiness[challengeId] = gate;
+    if (!gate.ready) {
+      if (gate.warning) warnings.push(gate.warning);
+      return;
+    }
+    rows = rows.concat(result.value.rows);
+  });
+
+  rows = applyQueueMetadata(uniqueQueueRows(rows));
+  const primary = rows.find((row) => row.case_id === primaryCase.case_id) || primaryCase;
+  const related = rows.filter(
+    (row) => row.case_id !== primary.case_id && row.entity_key && row.entity_key === primary.entity_key,
+  );
+  return {
+    primary,
+    related: sortActionQueueRows(related).slice(0, 25),
     readiness,
     warnings,
   };
@@ -4084,6 +4197,63 @@ app.get('/api/action-queue/summary', async (req, res) => {
   }
 });
 
+app.get('/api/cases/:caseId/related-signals', async (req, res) => {
+  try {
+    const parsedCaseId = parseCanonicalQueueCaseId(req.params.caseId);
+    if (!parsedCaseId) {
+      return res.status(400).json({
+        error: 'invalid canonical case id',
+        expected_format: 'c{challenge_id}:{native_key}',
+        supported_challenges: [1, 2, 3],
+      });
+    }
+
+    const primaryCase = await resolveQueueCase(parsedCaseId);
+    if (!primaryCase) {
+      return res.status(404).json({
+        error: 'case not found in validated Challenge 1-3 queue sources',
+        case_id: parsedCaseId.case_id,
+      });
+    }
+
+    const relatedPayload = await collectRelatedSignals(primaryCase);
+    const relatedSignals = relatedPayload.related.map(relatedSignalPayload);
+    const challengeIdsPresent = [...new Set([
+      primaryCase.challenge_id,
+      ...relatedPayload.related.map((row) => row.challenge_id),
+    ])].sort((a, b) => a - b);
+
+    res.json({
+      case_id: parsedCaseId.case_id,
+      parsed_challenge_id: parsedCaseId.challenge_id,
+      native_case_key: parsedCaseId.native_case_key,
+      primary_entity_key: relatedPayload.primary.entity_key,
+      primary_entity_name: relatedPayload.primary.entity_name,
+      primary_signal: relatedSignalPayload(relatedPayload.primary),
+      related_signals: relatedSignals,
+      related_signal_count: relatedSignals.length,
+      challenge_ids_present: challengeIdsPresent,
+      source_links_count: relatedPayload.related.reduce(
+        (count, row) => count + (Array.isArray(row.source_links) ? row.source_links.length : 0),
+        Array.isArray(relatedPayload.primary.source_links) ? relatedPayload.primary.source_links.length : 0,
+      ),
+      caveat_count: relatedPayload.related.reduce(
+        (count, row) => count + (Array.isArray(row.caveats) ? row.caveats.length : 0),
+        Array.isArray(relatedPayload.primary.caveats) ? relatedPayload.primary.caveats.length : 0,
+      ),
+      warnings: relatedPayload.warnings,
+      disclaimer: 'Related signals are review context. They do not prove wrongdoing, waste, or delivery failure.',
+      readiness: relatedPayload.readiness,
+      generated_at: new Date().toISOString(),
+    });
+  } catch (e) {
+    res.status(e.statusCode || 500).json({
+      error: e.message,
+      readiness: e.readiness || undefined,
+    });
+  }
+});
+
 app.get('/api/loops/:loopId', async (req, res) => {
   try {
     const loopId = parseInt(req.params.loopId, 10);
@@ -6621,6 +6791,7 @@ app.get('/', (req, res) => {
       'GET /api/zombies/:recipientKey',
       'GET /api/cases/:caseId/briefs',
       'POST /api/cases/:caseId/briefs',
+      'GET /api/cases/:caseId/related-signals',
       'GET /api/cases/:caseId/outcomes',
       'POST /api/cases/:caseId/outcomes',
       'GET /api/ghost-capacity',
