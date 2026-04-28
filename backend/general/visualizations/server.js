@@ -7551,10 +7551,64 @@ app.post('/api/cases/:caseId/outcomes', async (req, res) => {
   }
 });
 
+app.get('/api/health', async (_req, res) => {
+  const generatedAt = new Date().toISOString();
+  const checks = {
+    api: {
+      status: 'ok',
+      port: PORT,
+    },
+    postgres: {
+      status: 'unknown',
+      mode: 'read_only_source',
+    },
+    bigquery: {
+      status: bigQueryClient || BQ_CLI_PATH ? 'configured' : 'not_configured',
+      project_id: BIGQUERY_PROJECT_ID,
+      dataset: BIGQUERY_DATASET,
+      location: BIGQUERY_LOCATION,
+      client: bigQueryClient ? 'node_client' : 'cli_or_env',
+    },
+    decision_db: {
+      status: decisionPool ? 'configured' : 'not_configured',
+      write_scope: 'case briefs and reviewer outcome labels only',
+    },
+  };
+
+  try {
+    await Promise.race([
+      pool.query('SELECT 1 AS ok'),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('postgres health check timed out')), 1500)),
+    ]);
+    checks.postgres.status = 'ok';
+  } catch (error) {
+    checks.postgres.status = 'warning';
+    checks.postgres.warning = error.message;
+  }
+
+  const status = checks.api.status === 'ok' && checks.postgres.status === 'ok'
+    ? 'ok'
+    : 'degraded';
+
+  res.status(status === 'ok' ? 200 : 503).json({
+    service: 'maple-doge-api',
+    status,
+    generated_at: generatedAt,
+    environment: process.env.NODE_ENV || 'development',
+    checks,
+    notes: [
+      'This endpoint is a lightweight monitoring route for the Data online badge.',
+      'BigQuery is reported as configured/not configured; no expensive BigQuery query is run here.',
+      'No Render writes are performed by this health check.',
+    ],
+  });
+});
+
 app.get('/', (req, res) => {
   res.json({
     service: 'dossier-api',
     endpoints: [
+      'GET /api/health',
       'GET /api/search?q=â€¦',
       'GET /api/entity/:id',
       'GET /api/entity/:id/funding-by-year',

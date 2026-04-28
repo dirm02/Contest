@@ -276,7 +276,7 @@ export default function ChallengeAtlasPage() {
     <section className="space-y-6">
       <header className="grid gap-5 lg:grid-cols-[1.35fr_0.65fr] lg:items-end">
         <div className="space-y-2">
-          <p className="section-title">Admin Panel</p>
+          <p className="section-title">Investigation Panel</p>
           <h1 className="max-w-4xl text-3xl font-semibold text-[var(--color-ink)] sm:text-4xl">
             Challenge watchlists, dossiers, and evidence trails
           </h1>

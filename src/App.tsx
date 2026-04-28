@@ -32,7 +32,7 @@ import PolicyAlignmentPage from './routes/PolicyAlignmentPage';
 
 const NAV_ITEMS: Array<{ to: string; label: string; end?: boolean; Icon: typeof Search }> = [
   { to: '/', label: 'Search', end: true, Icon: Search },
-  { to: '/investigations', label: 'Admin Panel', Icon: SlidersHorizontal },
+  { to: '/investigations', label: 'Investigation Panel', Icon: SlidersHorizontal },
   { to: '/people', label: 'People', Icon: Users },
 ];
 
@@ -56,10 +56,15 @@ export default function App() {
                 Maple DOGE
               </span>
             </Link>
-            <span className="inline-flex shrink-0 items-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-surface-subtle)] px-3 py-1.5 text-xs font-medium text-[var(--color-muted)] lg:hidden">
+            <a
+              href="/api/health"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex shrink-0 items-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-surface-subtle)] px-3 py-1.5 text-xs font-medium text-[var(--color-muted)] hover:bg-white lg:hidden"
+            >
               <ShieldCheck className="icon-sm text-[var(--color-success)]" aria-hidden="true" />
               Data online
-            </span>
+            </a>
           </div>
           <div className="flex items-center justify-between gap-3">
             <nav className="flex flex-wrap items-center gap-1 text-sm">
@@ -81,10 +86,15 @@ export default function App() {
                 </NavLink>
               ))}
             </nav>
-            <span className="hidden shrink-0 items-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-surface-subtle)] px-3 py-1.5 text-xs font-medium text-[var(--color-muted)] lg:inline-flex">
+            <a
+              href="/api/health"
+              target="_blank"
+              rel="noreferrer"
+              className="hidden shrink-0 items-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-surface-subtle)] px-3 py-1.5 text-xs font-medium text-[var(--color-muted)] hover:bg-white lg:inline-flex"
+            >
               <DatabaseZap className="icon-sm text-[var(--color-success)]" aria-hidden="true" />
               Data online
-            </span>
+            </a>
           </div>
         </div>
       </header>

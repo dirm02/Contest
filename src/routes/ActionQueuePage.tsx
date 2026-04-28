@@ -205,7 +205,7 @@ export default function ActionQueuePage() {
             to="/investigations"
             className="interactive-surface inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-subtle)] px-3 text-sm font-semibold text-[var(--color-ink)] hover:bg-[var(--color-accent-soft)]"
           >
-            Admin Panel
+            Investigation Panel
             <ArrowRight className="icon-sm" aria-hidden="true" />
           </Link>
         </div>
