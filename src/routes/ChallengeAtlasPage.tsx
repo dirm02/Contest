@@ -121,6 +121,8 @@ const CHALLENGES: ChallengeAtlasItem[] = [
   },
 ];
 
+const QUEUE_READY_CHALLENGES = new Set([1, 2, 3, 4]);
+
 const WORKFLOWS = [
   {
     title: 'Start with an entity',
@@ -456,9 +458,9 @@ export default function ChallengeAtlasPage() {
                     Open module
                     <ArrowRight className="icon-sm" aria-hidden="true" />
                   </Link>
-                  {challenge.id === 1 && (
+                  {QUEUE_READY_CHALLENGES.has(challenge.id) && (
                     <Link
-                      to="/action-queue"
+                      to={`/action-queue?challenge=${challenge.id}`}
                       className="interactive-surface inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-[var(--color-border)] bg-white px-3 text-sm font-semibold text-[var(--color-accent)] hover:bg-[var(--color-accent-soft)]"
                     >
                       Action queue
