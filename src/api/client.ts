@@ -1,5 +1,8 @@
 import type {
   AccountabilityResponseApi,
+  ActionQueueApiResponse,
+  ActionQueueFilters,
+  ActionQueueSummaryResponse,
   AdverseMediaResponse,
   AmendmentCreepDetailResponse,
   AmendmentCreepFilters,
@@ -33,6 +36,7 @@ import type {
   PriorityGapReviewFilters,
   PriorityGapReviewResponse,
   RelatedResponseApi,
+  RelatedSignalsResponse,
   SearchResponseApi,
   VendorConcentrationFilters,
   VendorConcentrationResponse,
@@ -116,6 +120,9 @@ export const queryKeys = {
   caseOutcomes: (caseId: string) => ['cases', caseId, 'outcomes'] as const,
   challengeReview: () => ['challenge-review'] as const,
   challengeComparison: (challengeId: string) => ['challenge-review', 'compare', challengeId] as const,
+  actionQueue: (filters: ActionQueueFilters) => ['action-queue', filters] as const,
+  actionQueueSummary: (filters: ActionQueueFilters) => ['action-queue', 'summary', filters] as const,
+  relatedSignals: (caseId: string) => ['cases', caseId, 'related-signals'] as const,
 };
 
 export function searchEntities(query: string) {
@@ -205,6 +212,34 @@ export function saveCaseBrief(caseId: string, body: {
 
 export function fetchCaseOutcomes(caseId: string) {
   return getJson<CaseOutcomesResponse>(`/api/cases/${encodeURIComponent(caseId)}/outcomes`);
+}
+
+function buildActionQueueQuery(filters: ActionQueueFilters = {}, { summary = false } = {}): string {
+  const params = new URLSearchParams();
+  if (filters.challenge) params.set('challenge', filters.challenge);
+  if (!summary && filters.limit != null) params.set('limit', String(filters.limit));
+  if (!summary && filters.offset != null) params.set('offset', String(filters.offset));
+  if (filters.confidence) params.set('confidence', filters.confidence);
+  if (filters.riskBand) params.set('risk_band', filters.riskBand);
+  if (filters.multiSignal && filters.multiSignal !== 'all') params.set('multi_signal', filters.multiSignal);
+  const qs = params.toString();
+  return qs ? `?${qs}` : '';
+}
+
+export function fetchActionQueue(filters: ActionQueueFilters = {}) {
+  return getJson<ActionQueueApiResponse>(`/api/action-queue${buildActionQueueQuery(filters)}`);
+}
+
+export function fetchActionQueueSummary(filters: ActionQueueFilters = {}) {
+  return getJson<ActionQueueSummaryResponse>(
+    `/api/action-queue/summary${buildActionQueueQuery(filters, { summary: true })}`,
+  );
+}
+
+export function fetchRelatedSignals(caseId: string) {
+  return getJson<RelatedSignalsResponse>(
+    `/api/cases/${encodeURIComponent(caseId)}/related-signals`,
+  );
 }
 
 export function saveCaseOutcome(caseId: string, body: {
