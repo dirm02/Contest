@@ -965,11 +965,13 @@ function riskBandFromScore(score, thresholds = { elevated: 51, critical: 81 }) {
 
 function recommendedActionForBand(band, challengeId) {
   if (band === 'critical') return 'Immediate human reviewer escalation';
+  if (challengeId === 4 && band === 'elevated') return 'Verify amendment lineage and procurement rationale';
   if (band === 'elevated') return challengeId === 3 ? 'Request network review' : 'Request documents';
   return 'Monitor / clarify source data';
 }
 
 function reviewerRoleForChallenge(challengeId) {
+  if (challengeId === 4) return 'procurement integrity analyst';
   if (challengeId === 3) return 'CRA/network analyst';
   if (challengeId === 2) return 'program integrity analyst';
   return 'registry and grants reviewer';
@@ -1141,6 +1143,80 @@ function mapLoopRowToQueueCase(row) {
       same_year: Boolean(row.same_year),
     },
     source_module_path: `/loops/${encodeURIComponent(String(row.loop_id))}`,
+  };
+}
+
+function amendmentCreepConfidence(row) {
+  if (row.source === 'fed') {
+    if (row.latest_is_amendment === true && Number(row.amendment_count || 0) > 0) return 'high';
+    return 'medium';
+  }
+  if (row.source === 'ab') {
+    if (Number(row.sole_source_count || 0) > 0 && Number(row.competitive_count || 0) > 0) return 'medium';
+    return 'low';
+  }
+  return 'low';
+}
+
+function amendmentCreepCaveats(row) {
+  const caveats = [
+    'Challenge 4 is a procurement review signal; it does not prove waste, wrongdoing, or delivery failure.',
+  ];
+  if (row.source === 'fed') {
+    caveats.push('Federal agreement_value is treated as cumulative current agreement value; amendment rows are not summed as incremental dollars.');
+    if (row.latest_is_amendment === false) {
+      caveats.push('The latest high-value row is not marked as an amendment, so source semantics require verification before queue inclusion.');
+    }
+  }
+  if (row.source === 'ab') {
+    caveats.push('Alberta competitive and sole-source records are linked by normalized vendor names; aliases and name collisions remain review caveats.');
+    if (row.has_nonstandard_justification) {
+      caveats.push('Permitted situation code z is treated as a review trigger, not a conclusion about procurement validity.');
+    }
+  }
+  return caveats;
+}
+
+function mapAmendmentCreepToQueueCandidate(row) {
+  const score = Number(row.risk_score || 0);
+  const riskBand = riskBandFromScore(score);
+  const sourceTables = row.source === 'fed'
+    ? ['fed.grants_contributions']
+    : ['ab.ab_contracts', 'ab.ab_sole_source'];
+  const whyFlagged = Array.isArray(row.why_flagged)
+    ? row.why_flagged.filter(Boolean)
+    : splitPipeList(row.why_flagged);
+  return {
+    case_id: makeCanonicalCaseId(4, row.case_id),
+    native_case_key: row.case_id,
+    challenge_id: 4,
+    challenge_name: 'Sole Source and Amendment Creep',
+    entity_key: row.vendor ? `vendor:${normalizeEntityName(row.vendor)}` : `case:${row.case_id}`,
+    entity_name: row.vendor || row.reference_number || row.case_id,
+    score,
+    risk_band: riskBand,
+    confidence_level: amendmentCreepConfidence(row),
+    why_flagged: whyFlagged.length ? whyFlagged : ['Procurement relationship matched Challenge 4 amendment/follow-on review logic.'],
+    caveats: amendmentCreepCaveats(row),
+    source_links: [],
+    source_tables: sourceTables,
+    recommended_action: recommendedActionForBand(riskBand, 4),
+    reviewer_role: reviewerRoleForChallenge(4),
+    workflow_status: null,
+    signal_count_for_entity: 1,
+    related_challenges: [4],
+    dominant_signal: row.case_type || 'amendment_creep_review',
+    source_quality_tier: sourceQualityTier([], sourceTables),
+    recency_ts: row.last_date || null,
+    context_flags: {
+      challenge4_readiness_only: true,
+      source: row.source,
+      creep_ratio: Number(row.creep_ratio || 0),
+      follow_on_value: Number(row.follow_on_value || 0),
+      near_threshold: Boolean(row.near_threshold),
+      has_nonstandard_justification: Boolean(row.has_nonstandard_justification),
+    },
+    source_module_path: `/amendment-creep/${encodeURIComponent(row.case_id)}`,
   };
 }
 
@@ -5198,6 +5274,86 @@ app.get('/api/amendment-creep', async (req, res) => {
   }
 });
 
+app.get('/api/amendment-creep/readiness', async (req, res) => {
+  try {
+    const sampleLimit = parseIntegerQuery(req.query.sample_limit, 25, 1, 100);
+    const cacheKey = `amendment-creep-readiness:${sampleLimit}`;
+    const cached = getCachedJson(cacheKey);
+    if (cached) return res.json(cached);
+
+    const result = await pool.query(`
+      ${AMENDMENT_CREEP_CASES_SQL}
+      SELECT *
+      FROM combined_cases
+      ORDER BY risk_score DESC, follow_on_value DESC, creep_ratio DESC
+    `);
+
+    const candidates = result.rows.map(mapAmendmentCreepToQueueCandidate);
+    const gate = evaluateReadiness(4, candidates);
+    const bySource = candidates.reduce((acc, row) => {
+      const source = row.context_flags.source || 'unknown';
+      acc[source] = (acc[source] || 0) + 1;
+      return acc;
+    }, {});
+    const byConfidence = candidates.reduce((acc, row) => {
+      acc[row.confidence_level] = (acc[row.confidence_level] || 0) + 1;
+      return acc;
+    }, {});
+    const byRiskBand = candidates.reduce((acc, row) => {
+      acc[row.risk_band] = (acc[row.risk_band] || 0) + 1;
+      return acc;
+    }, {});
+    const invariantFailures = {
+      missing_source_module_path: candidates.filter((row) => !row.source_module_path).length,
+      missing_recommended_action: candidates.filter((row) => !row.recommended_action).length,
+      missing_reviewer_role: candidates.filter((row) => !row.reviewer_role).length,
+      invalid_score_range: candidates.filter((row) => row.score < 0 || row.score > 100).length,
+      accusatory_copy_hits: candidates.filter((row) => {
+        const text = [...row.why_flagged, ...row.caveats].join(' ').toLowerCase();
+        return /\b(fraud|illegal|guilty|wrongdoing proven|waste proven)\b/.test(text);
+      }).length,
+    };
+    const invariantPass = Object.values(invariantFailures).every((count) => count === 0);
+    const sample = sortActionQueueRows(candidates).slice(0, sampleLimit);
+
+    const payload = {
+      challenge_id: 4,
+      challenge_name: 'Sole Source and Amendment Creep',
+      phase: '6B-PR1',
+      queue_inclusion_enabled: false,
+      eligible_for_queue_after_review: gate.ready && invariantPass,
+      generated_at: new Date().toISOString(),
+      total_candidates: candidates.length,
+      readiness_gate: gate,
+      invariant_pass: invariantPass,
+      invariant_failures: invariantFailures,
+      summary: {
+        by_source: bySource,
+        by_confidence: byConfidence,
+        by_risk_band: byRiskBand,
+        source_module_route: '/amendment-creep/:caseId',
+        caveat_policy: 'Challenge 4 remains evidence-only until this readiness report is reviewed and approved.',
+      },
+      mapper_contract: {
+        case_id_format: 'c4:<native amendment case id>',
+        native_case_key: 'amendment-creep case_id, for example fed:<id> or ab:<hash>',
+        entity_key_strategy: 'normalized vendor name',
+        risk_band_strategy: 'shared 0-50 low, 51-80 elevated, 81-100 critical thresholds',
+        confidence_strategy: 'federal amendment-chain integrity and Alberta competitive/sole-source name-match completeness',
+      },
+      sample,
+      warnings: [
+        'Challenge 4 is not included in /api/action-queue in this PR.',
+        'This report validates mapper readiness only; it does not change reviewer workflow behavior.',
+      ],
+    };
+    setCachedJson(cacheKey, payload);
+    res.json(payload);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.get('/api/amendment-creep/:caseId', async (req, res) => {
   try {
     const caseId = String(req.params.caseId || '');
@@ -6797,6 +6953,7 @@ app.get('/', (req, res) => {
       'GET /api/ghost-capacity',
       'GET /api/ghost-capacity/:recipientKey',
       'GET /api/amendment-creep',
+      'GET /api/amendment-creep/readiness',
       'GET /api/amendment-creep/:caseId',
       'GET /api/adverse-media?q=...',
       'GET /api/challenge-review',
