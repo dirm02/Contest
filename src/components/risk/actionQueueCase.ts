@@ -1,5 +1,9 @@
 import type { RecipientRiskRow } from '../../api/types';
 import {
+  type CaseEnvelopeV2,
+  makeCaseId,
+} from './caseEnvelope';
+import {
   type Challenge1Decision,
   type RiskBand,
   challenge1Decision,
@@ -11,10 +15,12 @@ export type ActionQueueStatus =
   | 'Needs source verification'
   | 'Fallback / data clarification';
 
-export interface ActionQueueCase {
+export interface ActionQueueCase extends CaseEnvelopeV2 {
   caseId: string;
+  nativeCaseKey: string;
   challengeId: 1;
   challengeName: 'Zombie Recipients';
+  entityKey: string | null;
   entityName: string;
   score: number;
   riskBand: RiskBand;
@@ -29,6 +35,7 @@ export interface ActionQueueCase {
   recommendedAction: string;
   reviewerRole: string;
   status: ActionQueueStatus;
+  workflowStatus: ActionQueueStatus;
   decision: Challenge1Decision;
   row: RecipientRiskRow;
 }
@@ -52,11 +59,14 @@ export function deriveActionQueueStatus(row: RecipientRiskRow): ActionQueueStatu
 export function mapZombieToActionQueueCase(row: RecipientRiskRow): ActionQueueCase {
   const band = challenge1RiskBand(row.challengeScore);
   const decision = challenge1Decision(row);
+  const status = deriveActionQueueStatus(row);
 
   return {
-    caseId: row.recipientKey,
+    caseId: makeCaseId(1, row.recipientKey),
+    nativeCaseKey: row.recipientKey,
     challengeId: 1,
     challengeName: 'Zombie Recipients',
+    entityKey: row.bn ? `bn:${row.bn}` : `name:${row.name.toLowerCase().trim()}`,
     entityName: row.name,
     score: row.challengeScore,
     riskBand: band.band,
@@ -70,7 +80,8 @@ export function mapZombieToActionQueueCase(row: RecipientRiskRow): ActionQueueCa
     sourceLinks: row.sourceLinks,
     recommendedAction: decision.recommendedAction,
     reviewerRole: decision.reviewerRole,
-    status: deriveActionQueueStatus(row),
+    status,
+    workflowStatus: status,
     decision,
     row,
   };

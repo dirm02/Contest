@@ -4,6 +4,10 @@ import {
   deriveActionQueueStatus,
 } from './actionQueueCase';
 import {
+  type CaseEnvelopeV2,
+  makeCaseId,
+} from './caseEnvelope';
+import {
   type Challenge1Decision,
   type RiskBand,
   challenge1Decision,
@@ -36,10 +40,12 @@ export interface LocalReviewEntry {
   created_at: string;
 }
 
-export interface CaseEnvelope {
+export interface CaseEnvelope extends CaseEnvelopeV2 {
   caseId: string;
+  nativeCaseKey: string;
   challengeId: 1;
   challengeName: 'Zombie Recipients';
+  entityKey: string | null;
   entityName: string;
   score: number;
   riskBand: RiskBand;
@@ -55,6 +61,7 @@ export interface CaseEnvelope {
   recommendedAction: string;
   reviewerRole: string;
   status: ActionQueueStatus;
+  workflowStatus: ActionQueueStatus;
   decision: Challenge1Decision;
 }
 
@@ -105,15 +112,22 @@ export function actionLabel(actionKey: Phase3ActionKey) {
   return PHASE3_ACTIONS.find((action) => action.key === actionKey)?.label ?? actionKey;
 }
 
-export function mapZombieDetailToCaseEnvelope(detail: ZombieDetailModel, caseId: string): CaseEnvelope {
+export function mapZombieDetailToCaseEnvelope(
+  detail: ZombieDetailModel,
+  nativeCaseKey: string,
+  caseId = makeCaseId(1, nativeCaseKey),
+): CaseEnvelope {
   const summary = detail.summary;
   const band = challenge1RiskBand(summary.challengeScore);
   const decision = challenge1Decision(summary);
+  const status = deriveActionQueueStatus(summary);
 
   return {
     caseId,
+    nativeCaseKey,
     challengeId: 1,
     challengeName: 'Zombie Recipients',
+    entityKey: summary.bn ? `bn:${summary.bn}` : `name:${summary.name.toLowerCase().trim()}`,
     entityName: summary.name,
     score: summary.challengeScore,
     riskBand: band.band,
@@ -128,7 +142,8 @@ export function mapZombieDetailToCaseEnvelope(detail: ZombieDetailModel, caseId:
     sourceLinks: summary.sourceLinks,
     recommendedAction: decision.recommendedAction,
     reviewerRole: decision.reviewerRole,
-    status: deriveActionQueueStatus(summary),
+    status,
+    workflowStatus: status,
     decision,
   };
 }
