@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import {
   ArrowRight,
   Clipboard,
@@ -14,12 +14,13 @@ import {
 import {
   fetchCaseBriefs,
   fetchCaseOutcomes,
+  fetchRelatedSignals,
   fetchZombieDetail,
   queryKeys,
   saveCaseBrief,
   saveCaseOutcome,
 } from '../api/client';
-import type { ServerOutcomeEntry } from '../api/types';
+import type { RelatedSignalsResponse, ServerOutcomeEntry } from '../api/types';
 import {
   formatCurrencyAmount,
   mapZombieDetail,
@@ -54,6 +55,7 @@ import { parseCaseId, sourceModulePath } from '../components/risk/caseEnvelope';
 import CrossDatasetContextCard from '../components/risk/CrossDatasetContextCard';
 import OutcomeTrackingPanel from '../components/risk/OutcomeTrackingPanel';
 import RecipientRiskGraph from '../components/risk/RecipientRiskGraph';
+import RelatedSignalsPanel from '../components/risk/RelatedSignalsPanel';
 import RiskTimelineChart from '../components/risk/RiskTimelineChart';
 import ScoringMethodologyPanel from '../components/risk/scoringMethodology';
 import {
@@ -112,6 +114,89 @@ function mapServerOutcomeEntry(entry: ServerOutcomeEntry): LocalOutcomeEntry {
   };
 }
 
+function GenericCaseWorkspace({
+  caseId,
+  sourcePath,
+  relatedQuery,
+}: {
+  caseId: string;
+  sourcePath: string | null;
+  relatedQuery: UseQueryResult<RelatedSignalsResponse, Error>;
+}) {
+  const data = relatedQuery.data;
+  const primary = data?.primary_signal;
+
+  return (
+    <section className="space-y-6">
+      <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-accent-soft)] px-4 py-3 text-sm leading-6 text-[var(--color-muted)]">
+        <span className="font-semibold text-[var(--color-ink)]">Human review only:</span>{' '}
+        This workspace supports cross-challenge context. It does not prove wrongdoing, waste, or delivery failure.
+      </div>
+
+      <header className="app-card rounded-lg p-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Link to="/action-queue" className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--color-accent)] hover:underline">
+                <ClipboardCheck className="icon-sm" aria-hidden="true" />
+                Action queue
+              </Link>
+              {sourcePath && (
+                <>
+                  <span className="text-sm text-[var(--color-muted)]">/</span>
+                  <Link to={sourcePath} className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--color-accent)] hover:underline">
+                    <FileText className="icon-sm" aria-hidden="true" />
+                    Source module
+                  </Link>
+                </>
+              )}
+            </div>
+            <p className="section-title mt-4">Case review workspace</p>
+            <h1 className="mt-2 max-w-5xl text-3xl font-semibold tracking-tight text-[var(--color-ink)]">
+              {primary?.entity_name ?? 'Cross-challenge case'}
+            </h1>
+            <p className="mt-2 font-mono text-xs text-[var(--color-muted)]">{caseId}</p>
+            {primary && (
+              <div className="mt-4 flex flex-wrap gap-2">
+                <span className="rounded-full px-2.5 py-1 text-xs font-semibold signal-badge-info">
+                  C{primary.challenge_id} {primary.challenge_name}
+                </span>
+                <span className="rounded-full px-2.5 py-1 text-xs font-semibold signal-badge-medium">
+                  {primary.risk_band}
+                </span>
+                <span className="rounded-full px-2.5 py-1 text-xs font-semibold signal-badge-info">
+                  {primary.confidence_level ?? 'unknown'} confidence
+                </span>
+              </div>
+            )}
+          </div>
+          {sourcePath && (
+            <Link
+              to={sourcePath}
+              className="interactive-surface inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-[var(--color-border)] bg-white px-3 text-sm font-semibold text-[var(--color-ink)] hover:bg-[var(--color-accent-soft)]"
+            >
+              Open source module
+              <ArrowRight className="icon-sm" aria-hidden="true" />
+            </Link>
+          )}
+        </div>
+      </header>
+
+      <RelatedSignalsPanel
+        data={data}
+        isLoading={relatedQuery.isLoading}
+        isError={relatedQuery.isError}
+        errorMessage={relatedQuery.error instanceof Error ? relatedQuery.error.message : undefined}
+      />
+
+      <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-subtle)] px-4 py-3 text-sm text-[var(--color-muted)]">
+        Full advisory workflow, action briefs, and outcome tracking are currently optimized for Challenge 1.
+        Use the source module for complete Challenge {primary?.challenge_id ?? ''} evidence while this Phase 6A workspace matures.
+      </div>
+    </section>
+  );
+}
+
 export default function CaseDecisionPage() {
   const params = useParams<{ caseId: string }>();
   const routeCaseId = params.caseId ?? '';
@@ -152,6 +237,13 @@ export default function CaseDecisionPage() {
     staleTime: 30_000,
   });
 
+  const relatedSignalsQuery = useQuery({
+    queryKey: queryKeys.relatedSignals(caseId),
+    queryFn: () => fetchRelatedSignals(caseId),
+    enabled: caseId.length > 0 && parsedCase.isCanonical && [1, 2, 3].includes(parsedCase.challengeId),
+    staleTime: 45_000,
+  });
+
   const detail = useMemo(
     () => (detailQuery.data ? mapZombieDetail(detailQuery.data) : null),
     [detailQuery.data],
@@ -181,6 +273,16 @@ export default function CaseDecisionPage() {
         <p className="section-title">Invalid case</p>
         <p className="mt-2 text-sm text-[var(--color-muted)]">A case ID is required.</p>
       </div>
+    );
+  }
+
+  if (parsedCase.challengeId !== 1) {
+    return (
+      <GenericCaseWorkspace
+        caseId={caseId}
+        sourcePath={sourcePath}
+        relatedQuery={relatedSignalsQuery}
+      />
     );
   }
 
@@ -436,6 +538,13 @@ export default function CaseDecisionPage() {
       </section>
 
       <ScoringMethodologyPanel envelope={envelope} />
+
+      <RelatedSignalsPanel
+        data={relatedSignalsQuery.data}
+        isLoading={relatedSignalsQuery.isLoading}
+        isError={relatedSignalsQuery.isError}
+        errorMessage={relatedSignalsQuery.error instanceof Error ? relatedSignalsQuery.error.message : undefined}
+      />
 
       <section className="app-card rounded-lg p-5">
         <p className="section-title">Sources and caveats</p>

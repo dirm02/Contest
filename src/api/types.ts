@@ -1457,6 +1457,116 @@ export interface ChallengeComparisonReport {
   };
 }
 
+// Phase 6A cross-challenge action queue
+export type ActionQueueChallengeFilter = 'all' | '1' | '2' | '3';
+export type ActionQueueRiskBand = 'critical' | 'elevated' | 'low';
+export type ActionQueueConfidence = 'high' | 'medium' | 'low';
+export type ActionQueueMultiSignal = 'all' | 'single' | '2+';
+
+export interface ActionQueueFilters {
+  challenge?: ActionQueueChallengeFilter;
+  riskBand?: ActionQueueRiskBand | null;
+  confidence?: ActionQueueConfidence | null;
+  multiSignal?: ActionQueueMultiSignal | null;
+  limit?: number;
+  offset?: number;
+}
+
+export interface ActionQueueContextFlags {
+  adverse_media_context?: boolean;
+  [key: string]: unknown;
+}
+
+export interface ActionQueueRowApi {
+  case_id: string;
+  native_case_key: string;
+  challenge_id: 1 | 2 | 3;
+  challenge_name: string;
+  entity_key: string | null;
+  entity_name: string;
+  score: number;
+  risk_band: ActionQueueRiskBand;
+  confidence_level: ActionQueueConfidence | string | null;
+  why_flagged: string[];
+  caveats: string[];
+  source_links: string[];
+  source_tables: string[];
+  recommended_action: string;
+  reviewer_role: string;
+  workflow_status: string | null;
+  signal_count_for_entity: number;
+  related_challenges: number[];
+  dominant_signal: string;
+  source_quality_tier: string;
+  recency_ts: string | null;
+  context_flags: ActionQueueContextFlags;
+  source_module_path: string;
+}
+
+export interface ActionQueueSummaryApi {
+  total: number;
+  by_challenge: Record<string, number>;
+  by_risk_band: Record<string, number>;
+  by_confidence: Record<string, number>;
+  multi_signal_count: number;
+}
+
+export interface ActionQueueApiResponse {
+  generated_at: string;
+  filters: Record<string, unknown>;
+  candidate_total: number;
+  total: number;
+  results: ActionQueueRowApi[];
+  summary: ActionQueueSummaryApi;
+  readiness: Record<string, unknown>;
+  warnings: string[];
+  error?: string;
+}
+
+export interface ActionQueueSummaryResponse {
+  generated_at: string;
+  filters: Record<string, unknown>;
+  summary: ActionQueueSummaryApi;
+  readiness: Record<string, unknown>;
+  warnings: string[];
+}
+
+export interface RelatedSignalItemApi {
+  case_id: string;
+  challenge_id: 1 | 2 | 3;
+  challenge_name: string;
+  native_case_key: string;
+  entity_key: string | null;
+  entity_name: string;
+  score: number;
+  risk_band: ActionQueueRiskBand;
+  confidence_level: ActionQueueConfidence | string | null;
+  dominant_signal: string;
+  why_flagged_short: string[];
+  caveats_short: string[];
+  source_module_path: string;
+  source_quality_tier: string;
+  contextual_flags: ActionQueueContextFlags;
+}
+
+export interface RelatedSignalsResponse {
+  case_id: string;
+  parsed_challenge_id: 1 | 2 | 3;
+  native_case_key: string;
+  primary_entity_key: string | null;
+  primary_entity_name: string;
+  primary_signal: RelatedSignalItemApi;
+  related_signals: RelatedSignalItemApi[];
+  related_signal_count: number;
+  challenge_ids_present: number[];
+  source_links_count: number;
+  caveat_count: number;
+  warnings: string[];
+  disclaimer: string;
+  readiness: Record<string, unknown>;
+  generated_at: string;
+}
+
 export interface CaseActionBriefRecord {
   id: string;
   case_id: string;
