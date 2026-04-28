@@ -1648,7 +1648,7 @@ function parseActionQueueChallengeSelection(value) {
     .filter((challengeId) => ACTION_QUEUE_INCLUDED_CHALLENGES.includes(challengeId));
   return {
     mode: requested.length > 1 ? 'multi' : 'single',
-    included: included.length ? included : [1],
+    included,
     requested,
   };
 }
@@ -5016,7 +5016,7 @@ app.get('/api/contract-intelligence/readiness', async (req, res) => {
 // Phase 6A/6B cross-challenge action queue (read-only aggregation).
 app.get('/api/action-queue', async (req, res) => {
   try {
-    const challenge = parseActionQueueChallenge(req.query.challenge);
+    const challenge = String(req.query.challenge || '1').trim().toLowerCase();
     const confidence = String(req.query.confidence || '').trim().toLowerCase() || null;
     const riskBand = String(req.query.risk_band || '').trim().toLowerCase() || null;
     const multiSignal = String(req.query.multi_signal || '').trim().toLowerCase() || null;
@@ -5044,7 +5044,7 @@ app.get('/api/action-queue', async (req, res) => {
 
 app.get('/api/action-queue/summary', async (req, res) => {
   try {
-    const challenge = parseActionQueueChallenge(req.query.challenge);
+    const challenge = String(req.query.challenge || '1').trim().toLowerCase();
     const confidence = String(req.query.confidence || '').trim().toLowerCase() || null;
     const riskBand = String(req.query.risk_band || '').trim().toLowerCase() || null;
     const multiSignal = String(req.query.multi_signal || '').trim().toLowerCase() || null;
