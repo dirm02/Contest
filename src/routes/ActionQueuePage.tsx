@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   AlertTriangle,
@@ -41,6 +41,18 @@ const DEFAULT_FILTERS: QueueFilterState = {
   confidence: 'all',
   multiSignal: 'all',
 };
+
+const CHALLENGE_FILTER_VALUES = new Set<ActionQueueChallengeFilter>([
+  'all',
+  '1',
+  '2',
+  '3',
+  '4',
+  '5',
+  '7',
+  '8',
+  '9',
+]);
 
 const CHALLENGE_LABELS: Record<number | string, string> = {
   1: 'Zombie Recipients',
@@ -161,7 +173,14 @@ function RowActions({ row }: { row: ActionQueueRowApi }) {
 }
 
 export default function ActionQueuePage() {
-  const [filters, setFilters] = useState(DEFAULT_FILTERS);
+  const [searchParams] = useSearchParams();
+  const [filters, setFilters] = useState<QueueFilterState>(() => {
+    const challenge = searchParams.get('challenge') as ActionQueueChallengeFilter | null;
+    return {
+      ...DEFAULT_FILTERS,
+      challenge: challenge && CHALLENGE_FILTER_VALUES.has(challenge) ? challenge : DEFAULT_FILTERS.challenge,
+    };
+  });
   const apiFilters = useMemo(() => buildApiFilters(filters), [filters]);
   const summaryFilters = useMemo<ActionQueueFilters>(
     () => ({ ...apiFilters, limit: undefined, offset: undefined }),
