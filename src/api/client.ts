@@ -4,10 +4,14 @@ import type {
   AmendmentCreepDetailResponse,
   AmendmentCreepFilters,
   AmendmentCreepResponse,
+  CaseActionBriefRecord,
+  CaseActionBriefsResponse,
+  CaseOutcomesResponse,
   ChallengeComparisonReport,
   ChallengeReviewResponse,
   ContractIntelligenceFilters,
   ContractIntelligenceResponse,
+  CreateCaseOutcomeResponse,
   DuplicativeFundingOverlapFilters,
   DuplicativeFundingOverlapResponse,
   EntityGovernanceResponseApi,
@@ -58,6 +62,30 @@ async function getJson<T>(path: string): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+async function sendJson<T>(path: string, method: 'POST' | 'PATCH' | 'DELETE', body?: unknown): Promise<T> {
+  const response = await fetch(path, {
+    method,
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: body == null ? undefined : JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    let message = `Request failed with status ${response.status}`;
+    try {
+      const parsed = (await response.json()) as { error?: string };
+      if (parsed.error) message = parsed.error;
+    } catch {
+      // ignore JSON parse failure
+    }
+    throw new Error(message);
+  }
+
+  return response.json() as Promise<T>;
+}
+
 export const queryKeys = {
   search: (query: string) => ['search', query] as const,
   entity: (id: number) => ['entity', id] as const,
@@ -84,6 +112,8 @@ export const queryKeys = {
   policyAlignment: (filters: PolicyAlignmentFilters) => ['policy-alignment', filters] as const,
   duplicativeFundingOverlap: (filters: DuplicativeFundingOverlapFilters) => ['duplicative-funding', 'overlap', filters] as const,
   priorityGapReview: (filters: PriorityGapReviewFilters) => ['duplicative-funding', 'gaps', filters] as const,
+  caseBriefs: (caseId: string) => ['cases', caseId, 'briefs'] as const,
+  caseOutcomes: (caseId: string) => ['cases', caseId, 'outcomes'] as const,
   challengeReview: () => ['challenge-review'] as const,
   challengeComparison: (challengeId: string) => ['challenge-review', 'compare', challengeId] as const,
 };
@@ -153,6 +183,43 @@ export function fetchZombies(filters: ZombieFilters = {}) {
 
 export function fetchZombieDetail(recipientKey: string) {
   return getJson<ZombieDetailResponseApi>(`/api/zombies/${encodeURIComponent(recipientKey)}`);
+}
+
+export function fetchCaseBriefs(caseId: string) {
+  return getJson<CaseActionBriefsResponse>(`/api/cases/${encodeURIComponent(caseId)}/briefs`);
+}
+
+export function saveCaseBrief(caseId: string, body: {
+  title?: string;
+  snapshot: unknown;
+  created_by_role?: string | null;
+  created_by_label?: string | null;
+  source?: string;
+}) {
+  return sendJson<CaseActionBriefRecord>(
+    `/api/cases/${encodeURIComponent(caseId)}/briefs`,
+    'POST',
+    body,
+  );
+}
+
+export function fetchCaseOutcomes(caseId: string) {
+  return getJson<CaseOutcomesResponse>(`/api/cases/${encodeURIComponent(caseId)}/outcomes`);
+}
+
+export function saveCaseOutcome(caseId: string, body: {
+  to_status: string;
+  actor_role: string;
+  actor_label?: string | null;
+  note: string;
+  related_advisory_entry_id?: string | null;
+  app_version?: string;
+}) {
+  return sendJson<CreateCaseOutcomeResponse>(
+    `/api/cases/${encodeURIComponent(caseId)}/outcomes`,
+    'POST',
+    body,
+  );
 }
 
 export function fetchGhostCapacity(filters: GhostCapacityFilters = {}) {

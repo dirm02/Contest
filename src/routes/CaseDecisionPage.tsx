@@ -11,7 +11,15 @@ import {
   RefreshCw,
   Trash2,
 } from 'lucide-react';
-import { fetchZombieDetail, queryKeys } from '../api/client';
+import {
+  fetchCaseBriefs,
+  fetchCaseOutcomes,
+  fetchZombieDetail,
+  queryKeys,
+  saveCaseBrief,
+  saveCaseOutcome,
+} from '../api/client';
+import type { ServerOutcomeEntry } from '../api/types';
 import {
   formatCurrencyAmount,
   mapZombieDetail,
@@ -47,7 +55,11 @@ import OutcomeTrackingPanel from '../components/risk/OutcomeTrackingPanel';
 import RecipientRiskGraph from '../components/risk/RecipientRiskGraph';
 import RiskTimelineChart from '../components/risk/RiskTimelineChart';
 import ScoringMethodologyPanel from '../components/risk/scoringMethodology';
-import { readOutcomeLog } from '../components/risk/outcomeTracking';
+import {
+  type LocalOutcomeEntry,
+  type PilotOutcomeStatusKey,
+  readOutcomeLog,
+} from '../components/risk/outcomeTracking';
 
 function sourceLabel(url: string) {
   try {
@@ -84,6 +96,21 @@ function LoadingSection({ label }: { label: string }) {
   );
 }
 
+function mapServerOutcomeEntry(entry: ServerOutcomeEntry): LocalOutcomeEntry {
+  return {
+    id: entry.id,
+    case_id: entry.case_id,
+    from_status: entry.from_status as PilotOutcomeStatusKey | null,
+    to_status: entry.to_status as PilotOutcomeStatusKey,
+    actor_role: entry.actor_role,
+    actor_label: entry.actor_label ?? undefined,
+    note: entry.note,
+    created_at: entry.created_at,
+    related_advisory_entry_id: entry.related_advisory_entry_id,
+    app_version: entry.app_version ?? undefined,
+  };
+}
+
 export default function CaseDecisionPage() {
   const params = useParams<{ caseId: string }>();
   const caseId = params.caseId ?? '';
@@ -106,6 +133,20 @@ export default function CaseDecisionPage() {
     staleTime: 60_000,
   });
 
+  const briefsQuery = useQuery({
+    queryKey: queryKeys.caseBriefs(caseId),
+    queryFn: () => fetchCaseBriefs(caseId),
+    enabled: caseId.length > 0,
+    staleTime: 30_000,
+  });
+
+  const outcomesQuery = useQuery({
+    queryKey: queryKeys.caseOutcomes(caseId),
+    queryFn: () => fetchCaseOutcomes(caseId),
+    enabled: caseId.length > 0,
+    staleTime: 30_000,
+  });
+
   const detail = useMemo(
     () => (detailQuery.data ? mapZombieDetail(detailQuery.data) : null),
     [detailQuery.data],
@@ -115,6 +156,11 @@ export default function CaseDecisionPage() {
     () => (detail ? mapZombieDetailToCaseEnvelope(detail, caseId) : null),
     [caseId, detail],
   );
+
+  const outcomeEntries = useMemo(() => {
+    if (outcomesQuery.data) return outcomesQuery.data.outcomes.map(mapServerOutcomeEntry);
+    return caseId ? readOutcomeLog(caseId) : [];
+  }, [caseId, outcomesQuery.data]);
 
   useEffect(() => {
     if (envelope?.reviewerRole && !reviewerRole) setReviewerRole(envelope.reviewerRole);
@@ -223,6 +269,29 @@ export default function CaseDecisionPage() {
       setBriefMessage('HTML copied to clipboard.');
     } catch {
       setBriefMessage('HTML copy failed. Try Markdown copy or Print.');
+    }
+  }
+
+  async function saveBriefSnapshotToServer() {
+    if (!envelope) {
+      setBriefMessage('Case envelope is not loaded yet.');
+      return;
+    }
+    if (!briefSnapshot) {
+      setBriefMessage('Refresh brief before saving a server version.');
+      return;
+    }
+    try {
+      const saved = await saveCaseBrief(caseId, {
+        title: `Action brief - ${envelope.entityName}`,
+        snapshot: briefSnapshot,
+        created_by_role: (briefSnapshot.latestReviewEntry?.reviewer_role ?? reviewerRole) || envelope.reviewerRole,
+        source: 'case_workspace',
+      });
+      setBriefMessage(`Server brief version saved (${saved.id}).`);
+      await briefsQuery.refetch();
+    } catch (error) {
+      setBriefMessage(`Server brief save failed: ${error instanceof Error ? error.message : 'unknown error'}`);
     }
   }
 
@@ -630,6 +699,27 @@ export default function CaseDecisionPage() {
                 <Copy className="icon-sm" aria-hidden="true" />
                 Copy HTML
               </button>
+              <button
+                type="button"
+                className="interactive-surface inline-flex items-center gap-2 rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-semibold text-[var(--color-accent)] disabled:opacity-50 hover:bg-[var(--color-accent-soft)]"
+                disabled={!briefSnapshot}
+                onClick={saveBriefSnapshotToServer}
+              >
+                <ClipboardCheck className="icon-sm" aria-hidden="true" />
+                Save server version
+              </button>
+            </div>
+
+            <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-subtle)] px-3 py-2 text-sm text-[var(--color-muted)]">
+              Server brief versions:{' '}
+              <span className="font-semibold text-[var(--color-ink)]">
+                {briefsQuery.data?.briefs.length ?? 0}
+              </span>
+              {briefsQuery.isError && (
+                <span className="ml-2 text-[var(--color-warning)]">
+                  Server history unavailable; print/copy still works.
+                </span>
+              )}
             </div>
 
             {briefMessage && (
@@ -854,7 +944,15 @@ export default function CaseDecisionPage() {
         caseId={caseId}
         defaultReviewerRole={envelope.reviewerRole}
         latestReviewEntry={latestEntry}
-        initialEntries={readOutcomeLog(caseId)}
+        initialEntries={outcomeEntries}
+        serverEnabled={Boolean(outcomesQuery.data && !outcomesQuery.isError)}
+        isServerLoading={outcomesQuery.isLoading || outcomesQuery.isFetching}
+        serverErrorMessage={outcomesQuery.error instanceof Error ? outcomesQuery.error.message : undefined}
+        onRecordServer={async (input) => {
+          const response = await saveCaseOutcome(caseId, input);
+          await outcomesQuery.refetch();
+          return response.outcomes.map(mapServerOutcomeEntry);
+        }}
       />
 
       <section className="app-card rounded-lg p-5">

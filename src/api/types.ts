@@ -1456,3 +1456,44 @@ export interface ChallengeComparisonReport {
     bigquery: Record<string, number>;
   };
 }
+
+export interface CaseActionBriefRecord {
+  id: string;
+  case_id: string;
+  challenge_id: number;
+  title: string | null;
+  payload: unknown;
+  created_by_role: string | null;
+  created_by_label: string | null;
+  source: string;
+  created_at: string;
+}
+
+export interface CaseActionBriefsResponse {
+  case_id: string;
+  briefs: CaseActionBriefRecord[];
+}
+
+export interface ServerOutcomeEntry {
+  id: string;
+  case_id: string;
+  challenge_id: number;
+  from_status: string | null;
+  to_status: string;
+  actor_role: string;
+  actor_label: string | null;
+  note: string;
+  related_advisory_entry_id: string | null;
+  app_version: string | null;
+  created_at: string;
+}
+
+export interface CaseOutcomesResponse {
+  case_id: string;
+  current_status: string | null;
+  outcomes: ServerOutcomeEntry[];
+}
+
+export interface CreateCaseOutcomeResponse extends CaseOutcomesResponse {
+  entry: ServerOutcomeEntry;
+}

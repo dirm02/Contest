@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ArrowRight,
   ChevronDown,
@@ -41,11 +41,25 @@ export default function OutcomeTrackingPanel({
   defaultReviewerRole,
   latestReviewEntry,
   initialEntries,
+  serverEnabled = false,
+  isServerLoading = false,
+  serverErrorMessage,
+  onRecordServer,
 }: {
   caseId: string;
   defaultReviewerRole: string;
   latestReviewEntry?: LocalReviewEntry;
   initialEntries: LocalOutcomeEntry[];
+  serverEnabled?: boolean;
+  isServerLoading?: boolean;
+  serverErrorMessage?: string;
+  onRecordServer?: (input: {
+    to_status: PilotOutcomeStatusKey;
+    actor_role: string;
+    actor_label?: string;
+    note: string;
+    related_advisory_entry_id?: string | null;
+  }) => Promise<LocalOutcomeEntry[]>;
 }) {
   const [open, setOpen] = useState(initialEntries.length > 0);
   const [entries, setEntries] = useState<LocalOutcomeEntry[]>(initialEntries);
@@ -57,6 +71,12 @@ export default function OutcomeTrackingPanel({
   const [ack, setAck] = useState(false);
   const [linkLatestAdvisory, setLinkLatestAdvisory] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const entriesKey = useMemo(() => JSON.stringify(initialEntries.map((entry) => entry.id)), [initialEntries]);
+
+  useEffect(() => {
+    setEntries(initialEntries);
+    if (initialEntries.length > 0) setOpen(true);
+  }, [entriesKey]);
 
   const currentOutcome = entries[0]?.to_status ?? null;
   const currentOutcomeLabel = outcomeStatusLabel(currentOutcome);
@@ -100,7 +120,7 @@ export default function OutcomeTrackingPanel({
       return;
     }
 
-    const entry = createLocalOutcomeEntry({
+    const input = {
       case_id: caseId,
       from_status: currentOutcome,
       to_status: selectedStatus,
@@ -108,7 +128,31 @@ export default function OutcomeTrackingPanel({
       actor_label: actorLabelValue,
       note,
       related_advisory_entry_id: linkLatestAdvisory ? latestReviewEntry?.id ?? null : null,
-    });
+    };
+
+    if (onRecordServer) {
+      onRecordServer({
+        to_status: input.to_status,
+        actor_role: input.actor_role,
+        actor_label: input.actor_label,
+        note: input.note,
+        related_advisory_entry_id: input.related_advisory_entry_id,
+      })
+        .then((serverEntries) => {
+          setEntries(serverEntries);
+          setMessage('Server outcome transition recorded.');
+          resetForm();
+        })
+        .catch((error) => {
+          const entry = createLocalOutcomeEntry(input);
+          setEntries(appendOutcomeEntry(entry));
+          setMessage(`Server outcome save failed; saved locally in this browser instead. ${error instanceof Error ? error.message : ''}`.trim());
+          resetForm();
+        });
+      return;
+    }
+
+    const entry = createLocalOutcomeEntry(input);
     setEntries(appendOutcomeEntry(entry));
     setMessage('Local outcome transition recorded on this browser.');
     resetForm();
@@ -148,6 +192,9 @@ export default function OutcomeTrackingPanel({
         <span className="text-sm text-[var(--color-muted)]">
           {entries.length} local transition{entries.length === 1 ? '' : 's'}
         </span>
+        <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${serverEnabled ? 'signal-badge-low' : 'signal-badge-medium'}`}>
+          {serverEnabled ? 'Server persistence on' : 'Browser fallback'}
+        </span>
       </div>
 
       {!open ? (
@@ -157,7 +204,11 @@ export default function OutcomeTrackingPanel({
       ) : (
         <div className="mt-5 grid gap-5">
           <div className="rounded-lg border border-[var(--color-warning)] bg-[var(--color-risk-medium-soft)] px-3 py-2 text-sm leading-6 text-[var(--color-muted)]">
-            {OUTCOME_LOCAL_MEMORY_COPY}
+            {serverEnabled
+              ? 'Outcome history is saved to the server for this pilot and mirrored in this page view. Continue treating labels as advisory human-review pipeline notes.'
+              : OUTCOME_LOCAL_MEMORY_COPY}
+            {isServerLoading && <span className="ml-2">Checking server history...</span>}
+            {serverErrorMessage && <span className="ml-2">Server history unavailable: {serverErrorMessage}</span>}
           </div>
 
           <div className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
