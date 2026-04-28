@@ -1,6 +1,20 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import {
+  AlertTriangle,
+  ArrowRight,
+  CheckCircle2,
+  ClipboardList,
+  Database,
+  ExternalLink,
+  FileText,
+  Filter,
+  Loader2,
+  RotateCcw,
+  SearchX,
+  ShieldAlert,
+} from 'lucide-react';
 import { fetchZombies, queryKeys } from '../api/client';
 import { formatCurrencyAmount, mapZombies, recipientRiskSignalLabel } from '../api/mappers';
 import type { ZombieFilters } from '../api/types';
@@ -98,10 +112,23 @@ function applyClientFilters(cases: ActionQueueCase[], filters: QueueFilterState)
   });
 }
 
-function SummaryCard({ label, value, note }: { label: string; value: string | number; note?: string }) {
+function SummaryCard({
+  label,
+  value,
+  note,
+  Icon = ClipboardList,
+}: {
+  label: string;
+  value: string | number;
+  note?: string;
+  Icon?: typeof ClipboardList;
+}) {
   return (
     <div className="app-card rounded-lg p-3">
-      <p className="section-title">{label}</p>
+      <p className="section-title flex items-center gap-2">
+        <Icon className="icon-sm" aria-hidden="true" />
+        {label}
+      </p>
       <p className="metric-value mt-2 text-2xl">{value}</p>
       {note && <p className="mt-1 text-xs text-[var(--color-muted)]">{note}</p>}
     </div>
@@ -153,9 +180,10 @@ export default function ActionQueuePage() {
           </div>
           <Link
             to="/zombies"
-            className="inline-flex min-h-10 items-center justify-center rounded-md border border-[var(--color-border)] bg-[var(--color-surface-subtle)] px-3 text-sm font-semibold text-[var(--color-ink)] transition hover:bg-[var(--color-accent-soft)]"
+            className="interactive-surface inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-subtle)] px-3 text-sm font-semibold text-[var(--color-ink)] hover:bg-[var(--color-accent-soft)]"
           >
             Open Challenge 1 module
+            <ArrowRight className="icon-sm" aria-hidden="true" />
           </Link>
         </div>
       </header>
@@ -166,14 +194,18 @@ export default function ActionQueuePage() {
       </div>
 
       <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-        <SummaryCard label="In view" value={compactNumber(visibleCases.length)} note={`${compactNumber(queueQuery.data?.total ?? 0)} server matches`} />
-        <SummaryCard label="Critical" value={summary.critical} note="81-100" />
-        <SummaryCard label="Elevated" value={summary.elevated} note="51-80" />
-        <SummaryCard label="Registry-backed" value={summary.registry} note="BN-root match" />
-        <SummaryCard label="Fallback" value={summary.fallback} note="Clarification first" />
+        <SummaryCard label="In view" value={compactNumber(visibleCases.length)} note={`${compactNumber(queueQuery.data?.total ?? 0)} server matches`} Icon={ClipboardList} />
+        <SummaryCard label="Critical" value={summary.critical} note="81-100" Icon={ShieldAlert} />
+        <SummaryCard label="Elevated" value={summary.elevated} note="51-80" Icon={AlertTriangle} />
+        <SummaryCard label="Registry-backed" value={summary.registry} note="BN-root match" Icon={CheckCircle2} />
+        <SummaryCard label="Fallback" value={summary.fallback} note="Clarification first" Icon={Database} />
       </section>
 
       <form className="app-card rounded-lg p-4" onSubmit={(event) => event.preventDefault()}>
+        <p className="section-title mb-3 flex items-center gap-2">
+          <Filter className="icon-sm" aria-hidden="true" />
+          Queue filters
+        </p>
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           <label className="flex flex-col gap-1 text-sm">
             <span className="section-title">Registry scope</span>
@@ -303,9 +335,10 @@ export default function ActionQueuePage() {
         <div className="mt-4 flex justify-end">
           <button
             type="button"
-            className="rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-semibold text-[var(--color-muted)] transition hover:bg-[var(--color-surface-subtle)]"
+            className="interactive-surface inline-flex items-center gap-2 rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-semibold text-[var(--color-muted)] hover:bg-[var(--color-surface-subtle)]"
             onClick={() => setFilters(DEFAULT_FILTERS)}
           >
+            <RotateCcw className="icon-sm" aria-hidden="true" />
             Reset filters
           </button>
         </div>
@@ -314,20 +347,28 @@ export default function ActionQueuePage() {
       <section className="app-card overflow-hidden rounded-lg">
         {queueQuery.isLoading || queueQuery.isFetching ? (
           <div className="space-y-3 p-5">
+            <p className="flex items-center gap-2 text-sm font-semibold text-[var(--color-muted)]">
+              <Loader2 className="icon-sm animate-spin" aria-hidden="true" />
+              Loading review queue...
+            </p>
             {Array.from({ length: 6 }).map((_, index) => (
               <div key={index} className="h-12 animate-pulse rounded bg-stone-100" />
             ))}
           </div>
         ) : queueQuery.isError ? (
           <div className="border-l-4 border-[var(--color-danger)] p-5">
-            <p className="section-title text-[var(--color-danger)]">Could not load queue</p>
+            <p className="section-title flex items-center gap-2 text-[var(--color-danger)]">
+              <AlertTriangle className="icon-sm" aria-hidden="true" />
+              Could not load queue
+            </p>
             <p className="mt-2 text-sm text-[var(--color-muted)]">
               The queue endpoint failed. This is a data-loading issue, not an empty result.
             </p>
           </div>
         ) : visibleCases.length === 0 ? (
           <div className="p-8 text-center">
-            <p className="section-title">No cases match filters</p>
+            <SearchX className="mx-auto h-8 w-8 text-[var(--color-muted)]" aria-hidden="true" />
+            <p className="section-title mt-3">No cases match filters</p>
             <p className="mt-2 text-sm text-[var(--color-muted)]">
               Broaden the filters or include fallback cases to review lower-confidence records.
             </p>
@@ -352,7 +393,7 @@ export default function ActionQueuePage() {
               </thead>
               <tbody>
                 {visibleCases.map((item) => (
-                  <tr key={item.caseId} className="border-t border-[var(--color-border)] align-top hover:bg-[var(--color-surface-subtle)]">
+                  <tr key={item.caseId} className="border-t border-[var(--color-border)] align-top transition-colors hover:bg-[var(--color-surface-subtle)]">
                     <td className="max-w-xs px-4 py-3">
                       <p className="font-semibold text-[var(--color-ink)]">{item.entityName}</p>
                       <p className="mt-1 text-xs text-[var(--color-muted)]">
@@ -394,8 +435,9 @@ export default function ActionQueuePage() {
                         </summary>
                         <div className="mt-2 grid gap-1">
                           {item.sourceLinks.length > 0 ? item.sourceLinks.map((url) => (
-                            <a key={url} href={url} target="_blank" rel="noreferrer" className="text-[var(--color-accent)] hover:underline">
+                            <a key={url} href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[var(--color-accent)] hover:underline">
                               {sourceLabel(url)}
+                              <ExternalLink className="icon-sm" aria-hidden="true" />
                             </a>
                           )) : (
                             <span>Needs source verification.</span>
@@ -414,15 +456,17 @@ export default function ActionQueuePage() {
                     <td className="px-4 py-3">
                       <Link
                         to={`/cases/${encodeURIComponent(item.caseId)}`}
-                        className="inline-flex min-h-8 items-center rounded-md border border-[var(--color-border)] bg-white px-3 text-xs font-semibold text-[var(--color-ink)] transition hover:bg-[var(--color-accent-soft)]"
+                        className="interactive-surface inline-flex min-h-8 items-center gap-2 rounded-md border border-[var(--color-border)] bg-white px-3 text-xs font-semibold text-[var(--color-ink)] hover:bg-[var(--color-accent-soft)]"
                       >
                         Open review
+                        <ArrowRight className="icon-sm" aria-hidden="true" />
                       </Link>
                       <Link
                         to={`/zombies/${encodeURIComponent(item.caseId)}`}
-                        className="mt-2 inline-flex min-h-8 items-center rounded-md border border-[var(--color-border)] bg-[var(--color-surface-subtle)] px-3 text-xs font-semibold text-[var(--color-muted)] transition hover:bg-white"
+                        className="interactive-surface mt-2 inline-flex min-h-8 items-center gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-subtle)] px-3 text-xs font-semibold text-[var(--color-muted)] hover:bg-white"
                       >
                         Module
+                        <FileText className="icon-sm" aria-hidden="true" />
                       </Link>
                     </td>
                   </tr>

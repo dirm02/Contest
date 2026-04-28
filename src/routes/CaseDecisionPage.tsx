@@ -1,6 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import {
+  ArrowRight,
+  Clipboard,
+  ClipboardCheck,
+  Copy,
+  FileText,
+  Printer,
+  RefreshCw,
+  Trash2,
+} from 'lucide-react';
 import { fetchZombieDetail, queryKeys } from '../api/client';
 import {
   formatCurrencyAmount,
@@ -141,9 +151,10 @@ export default function CaseDecisionPage() {
         </p>
         <Link
           to="/action-queue"
-          className="mt-4 inline-flex min-h-10 items-center rounded-md border border-[var(--color-border)] bg-white px-3 text-sm font-semibold text-[var(--color-ink)]"
+          className="interactive-surface mt-4 inline-flex min-h-10 items-center gap-2 rounded-md border border-[var(--color-border)] bg-white px-3 text-sm font-semibold text-[var(--color-ink)] hover:bg-[var(--color-accent-soft)]"
         >
           Back to action queue
+          <ArrowRight className="icon-sm" aria-hidden="true" />
         </Link>
       </div>
     );
@@ -243,11 +254,13 @@ export default function CaseDecisionPage() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <Link to="/action-queue" className="text-sm font-semibold text-[var(--color-accent)] hover:underline">
+              <Link to="/action-queue" className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--color-accent)] hover:underline">
+                <ClipboardCheck className="icon-sm" aria-hidden="true" />
                 Action queue
               </Link>
               <span className="text-sm text-[var(--color-muted)]">/</span>
-              <Link to={`/zombies/${encodeURIComponent(caseId)}`} className="text-sm font-semibold text-[var(--color-accent)] hover:underline">
+              <Link to={`/zombies/${encodeURIComponent(caseId)}`} className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--color-accent)] hover:underline">
+                <FileText className="icon-sm" aria-hidden="true" />
                 Module view
               </Link>
             </div>
@@ -473,19 +486,21 @@ export default function CaseDecisionPage() {
             <div className="flex flex-wrap justify-end gap-2">
               <button
                 type="button"
-                className="rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-semibold text-[var(--color-ink)] disabled:opacity-50"
+                className="interactive-surface inline-flex items-center gap-2 rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-semibold text-[var(--color-ink)] disabled:opacity-50 hover:bg-[var(--color-accent-soft)]"
                 disabled={!previewReady}
                 onClick={() => setShowPreview(true)}
               >
+                <Clipboard className="icon-sm" aria-hidden="true" />
                 Preview
               </button>
               <button
                 type="button"
-                className="rounded-md bg-[var(--color-accent)] px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                className="interactive-surface inline-flex items-center gap-2 rounded-md bg-[var(--color-accent)] px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
                 disabled={!confirmReady}
                 onClick={handleConfirm}
               >
                 Confirm advisory action
+                <ArrowRight className="icon-sm" aria-hidden="true" />
               </button>
             </div>
             {!confirmReady && (
@@ -516,7 +531,7 @@ export default function CaseDecisionPage() {
           {reviewLog.length > 0 && (
             <button
               type="button"
-              className="rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-semibold text-[var(--color-muted)]"
+              className="interactive-surface inline-flex items-center gap-2 rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-semibold text-[var(--color-muted)] hover:bg-[var(--color-surface-subtle)]"
               onClick={() => {
                 if (window.confirm('Clear local review log for this case on this browser?')) {
                   clearReviewLog(caseId);
@@ -524,6 +539,7 @@ export default function CaseDecisionPage() {
                 }
               }}
             >
+              <Trash2 className="icon-sm" aria-hidden="true" />
               Clear local log
             </button>
           )}
@@ -562,7 +578,7 @@ export default function CaseDecisionPage() {
           </div>
           <button
             type="button"
-            className="inline-flex min-h-10 items-center justify-center rounded-md border border-[var(--color-border)] bg-white px-3 text-sm font-semibold text-[var(--color-ink)] transition hover:bg-[var(--color-accent-soft)]"
+            className="interactive-surface inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-[var(--color-border)] bg-white px-3 text-sm font-semibold text-[var(--color-ink)] hover:bg-[var(--color-accent-soft)]"
             onClick={() => {
               const nextOpen = !briefOpen;
               setBriefOpen(nextOpen);
@@ -572,6 +588,7 @@ export default function CaseDecisionPage() {
             }}
           >
             {briefOpen ? 'Collapse brief' : 'Open brief'}
+            <FileText className="icon-sm" aria-hidden="true" />
           </button>
         </div>
 
@@ -580,33 +597,37 @@ export default function CaseDecisionPage() {
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                className="rounded-md bg-[var(--color-accent)] px-3 py-2 text-sm font-semibold text-white"
+                className="interactive-surface inline-flex items-center gap-2 rounded-md bg-[var(--color-accent)] px-3 py-2 text-sm font-semibold text-white"
                 onClick={handleRefreshBrief}
               >
+                <RefreshCw className="icon-sm" aria-hidden="true" />
                 Refresh brief
               </button>
               <button
                 type="button"
-                className="rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-semibold text-[var(--color-ink)] disabled:opacity-50"
+                className="interactive-surface inline-flex items-center gap-2 rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-semibold text-[var(--color-ink)] disabled:opacity-50 hover:bg-[var(--color-accent-soft)]"
                 disabled={!briefSnapshot}
                 onClick={printBrief}
               >
+                <Printer className="icon-sm" aria-hidden="true" />
                 Print brief
               </button>
               <button
                 type="button"
-                className="rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-semibold text-[var(--color-ink)] disabled:opacity-50"
+                className="interactive-surface inline-flex items-center gap-2 rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-semibold text-[var(--color-ink)] disabled:opacity-50 hover:bg-[var(--color-accent-soft)]"
                 disabled={!briefSnapshot}
                 onClick={copyMarkdown}
               >
+                <Copy className="icon-sm" aria-hidden="true" />
                 Copy Markdown
               </button>
               <button
                 type="button"
-                className="rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-semibold text-[var(--color-ink)] disabled:opacity-50"
+                className="interactive-surface inline-flex items-center gap-2 rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-semibold text-[var(--color-ink)] disabled:opacity-50 hover:bg-[var(--color-accent-soft)]"
                 disabled={!briefSnapshot}
                 onClick={copyHtml}
               >
+                <Copy className="icon-sm" aria-hidden="true" />
                 Copy HTML
               </button>
             </div>

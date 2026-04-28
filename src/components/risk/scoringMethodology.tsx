@@ -1,4 +1,14 @@
 import { useEffect, useState } from 'react';
+import {
+  AlertTriangle,
+  BarChart3,
+  ChevronDown,
+  ChevronUp,
+  ClipboardCheck,
+  FileSearch,
+  Info,
+  ShieldCheck,
+} from 'lucide-react';
 import { recipientRiskSignalLabel } from '../../api/mappers';
 import type { CaseEnvelope } from './caseDecision';
 
@@ -78,7 +88,10 @@ export default function ScoringMethodologyPanel({ envelope }: { envelope: CaseEn
     <section className="app-card rounded-lg p-5">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <p className="section-title">Scoring methodology</p>
+          <p className="section-title flex items-center gap-2">
+            <BarChart3 className="icon-sm" aria-hidden="true" />
+            Scoring methodology
+          </p>
           <h2 className="mt-2 text-xl font-semibold text-[var(--color-ink)]">
             How Challenge 1 prioritization works
           </h2>
@@ -88,11 +101,12 @@ export default function ScoringMethodologyPanel({ envelope }: { envelope: CaseEn
         </div>
         <button
           type="button"
-          className="inline-flex min-h-10 items-center justify-center rounded-md border border-[var(--color-border)] bg-white px-3 text-sm font-semibold text-[var(--color-ink)] transition hover:bg-[var(--color-accent-soft)]"
+          className="interactive-surface inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-[var(--color-border)] bg-white px-3 text-sm font-semibold text-[var(--color-ink)] hover:bg-[var(--color-accent-soft)]"
           onClick={() => setOpen((current) => !current)}
           aria-expanded={open}
         >
           {open ? 'Collapse methodology' : 'Open methodology'}
+          {open ? <ChevronUp className="icon-sm" aria-hidden="true" /> : <ChevronDown className="icon-sm" aria-hidden="true" />}
         </button>
       </div>
 
@@ -103,12 +117,16 @@ export default function ScoringMethodologyPanel({ envelope }: { envelope: CaseEn
       ) : (
         <div className="mt-5 grid gap-5">
           <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-accent-soft)] px-3 py-2 text-sm leading-6 text-[var(--color-muted)]">
+            <Info className="mr-2 inline icon-sm text-[var(--color-accent)]" aria-hidden="true" />
             <span className="font-semibold text-[var(--color-ink)]">Required caveat:</span>{' '}
             {SCORING_METHODOLOGY_CAVEAT}
           </div>
 
           <section>
-            <h3 className="text-base font-semibold text-[var(--color-ink)]">Score bands</h3>
+            <h3 className="flex items-center gap-2 text-base font-semibold text-[var(--color-ink)]">
+              <ShieldCheck className="icon-md text-[var(--color-success)]" aria-hidden="true" />
+              Score bands
+            </h3>
             <div className="mt-3 overflow-x-auto">
               <table className="min-w-[520px] w-full border-collapse text-left text-sm">
                 <thead className="bg-[var(--color-surface-subtle)] text-xs uppercase tracking-[0.12em] text-[var(--color-muted)]">
@@ -138,7 +156,10 @@ export default function ScoringMethodologyPanel({ envelope }: { envelope: CaseEn
           </section>
 
           <section>
-            <h3 className="text-base font-semibold text-[var(--color-ink)]">Main contributors</h3>
+            <h3 className="flex items-center gap-2 text-base font-semibold text-[var(--color-ink)]">
+              <ClipboardCheck className="icon-md text-[var(--color-accent)]" aria-hidden="true" />
+              Main contributors
+            </h3>
             <div className="mt-3 grid gap-2 md:grid-cols-2">
               {CONTRIBUTOR_ROWS.map((item) => (
                 <article key={item.title} className="rounded-lg border border-[var(--color-border)] bg-white/80 p-3">
@@ -150,7 +171,10 @@ export default function ScoringMethodologyPanel({ envelope }: { envelope: CaseEn
           </section>
 
           <section>
-            <h3 className="text-base font-semibold text-[var(--color-ink)]">Confidence tiers</h3>
+            <h3 className="flex items-center gap-2 text-base font-semibold text-[var(--color-ink)]">
+              <AlertTriangle className="icon-md text-[var(--color-warning)]" aria-hidden="true" />
+              Confidence tiers
+            </h3>
             <div className="mt-3 grid gap-2 md:grid-cols-3">
               {CONFIDENCE_ROWS.map((row) => (
                 <article key={row.level} className="rounded-lg border border-[var(--color-border)] bg-white/80 p-3">
@@ -162,7 +186,10 @@ export default function ScoringMethodologyPanel({ envelope }: { envelope: CaseEn
           </section>
 
           <section className="rounded-lg border border-[var(--color-border)] bg-white/80 p-4">
-            <p className="section-title">This case</p>
+            <p className="section-title flex items-center gap-2">
+              <FileSearch className="icon-sm" aria-hidden="true" />
+              This case
+            </p>
             <dl className="mt-3 grid gap-3 text-sm md:grid-cols-2">
               <div className="rounded-md bg-[var(--color-surface-subtle)] px-3 py-2">
                 <dt className="font-semibold text-[var(--color-muted)]">Signal type</dt>

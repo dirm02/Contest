@@ -1,4 +1,11 @@
 import { Link, NavLink, Route, Routes } from 'react-router-dom';
+import {
+  DatabaseZap,
+  Search,
+  ShieldCheck,
+  SlidersHorizontal,
+  Users,
+} from 'lucide-react';
 import SearchPage from './routes/SearchPage';
 import ActionQueuePage from './routes/ActionQueuePage';
 import CaseDecisionPage from './routes/CaseDecisionPage';
@@ -23,10 +30,10 @@ import ContractIntelligencePage from './routes/ContractIntelligencePage';
 import DuplicativeFundingPage from './routes/DuplicativeFundingPage';
 import PolicyAlignmentPage from './routes/PolicyAlignmentPage';
 
-const NAV_ITEMS: Array<{ to: string; label: string; end?: boolean }> = [
-  { to: '/', label: 'Search', end: true },
-  { to: '/investigations', label: 'Admin Panel' },
-  { to: '/people', label: 'People' },
+const NAV_ITEMS: Array<{ to: string; label: string; end?: boolean; Icon: typeof Search }> = [
+  { to: '/', label: 'Search', end: true, Icon: Search },
+  { to: '/investigations', label: 'Admin Panel', Icon: SlidersHorizontal },
+  { to: '/people', label: 'People', Icon: Users },
 ];
 
 const LOGO_SRC = '/Maple%20DOGE.png';
@@ -50,31 +57,32 @@ export default function App() {
               </span>
             </Link>
             <span className="inline-flex shrink-0 items-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-surface-subtle)] px-3 py-1.5 text-xs font-medium text-[var(--color-muted)] lg:hidden">
-              <span className="size-2 rounded-full bg-[var(--color-success)]" />
+              <ShieldCheck className="icon-sm text-[var(--color-success)]" aria-hidden="true" />
               Data online
             </span>
           </div>
           <div className="flex items-center justify-between gap-3">
             <nav className="flex flex-wrap items-center gap-1 text-sm">
-              {NAV_ITEMS.map((item) => (
+              {NAV_ITEMS.map(({ Icon, ...item }) => (
                 <NavLink
                   key={item.to}
                   to={item.to}
                   end={item.end}
                   className={({ isActive }) =>
-                    `rounded-md px-3 py-2 font-medium transition ${
+                    `interactive-surface inline-flex items-center gap-2 rounded-md px-3 py-2 font-medium ${
                       isActive
                         ? 'bg-[var(--color-accent)] text-white'
                         : 'text-[var(--color-muted)] hover:bg-[var(--color-surface-subtle)] hover:text-[var(--color-ink)]'
                     }`
                   }
                 >
+                  <Icon className="icon-sm" aria-hidden="true" />
                   {item.label}
                 </NavLink>
               ))}
             </nav>
             <span className="hidden shrink-0 items-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-surface-subtle)] px-3 py-1.5 text-xs font-medium text-[var(--color-muted)] lg:inline-flex">
-              <span className="size-2 rounded-full bg-[var(--color-success)]" />
+              <DatabaseZap className="icon-sm text-[var(--color-success)]" aria-hidden="true" />
               Data online
             </span>
           </div>

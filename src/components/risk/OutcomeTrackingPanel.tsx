@@ -1,4 +1,15 @@
 import { useMemo, useState } from 'react';
+import {
+  ArrowRight,
+  ChevronDown,
+  ChevronUp,
+  CircleDot,
+  ClipboardCheck,
+  History,
+  Link2,
+  LoaderCircle,
+  RotateCcw,
+} from 'lucide-react';
 import type { LocalReviewEntry } from './caseDecision';
 import {
   MIN_OUTCOME_NOTE_LENGTH,
@@ -107,7 +118,10 @@ export default function OutcomeTrackingPanel({
     <section className="app-card rounded-lg p-5">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <p className="section-title">Outcome tracking</p>
+          <p className="section-title flex items-center gap-2">
+            <History className="icon-sm" aria-hidden="true" />
+            Outcome tracking
+          </p>
           <h2 className="mt-2 text-xl font-semibold text-[var(--color-ink)]">
             Local review pipeline label
           </h2>
@@ -117,16 +131,18 @@ export default function OutcomeTrackingPanel({
         </div>
         <button
           type="button"
-          className="inline-flex min-h-10 items-center justify-center rounded-md border border-[var(--color-border)] bg-white px-3 text-sm font-semibold text-[var(--color-ink)] transition hover:bg-[var(--color-accent-soft)]"
+          className="interactive-surface inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-[var(--color-border)] bg-white px-3 text-sm font-semibold text-[var(--color-ink)] hover:bg-[var(--color-accent-soft)]"
           onClick={() => setOpen((current) => !current)}
           aria-expanded={open}
         >
           {open ? 'Collapse outcomes' : 'Open outcomes'}
+          {open ? <ChevronUp className="icon-sm" aria-hidden="true" /> : <ChevronDown className="icon-sm" aria-hidden="true" />}
         </button>
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <span className="rounded-full px-2.5 py-1 text-xs font-semibold signal-badge-info">
+          <CircleDot className="mr-1 inline size-3.5 align-[-2px]" aria-hidden="true" />
           {currentOutcomeLabel}
         </span>
         <span className="text-sm text-[var(--color-muted)]">
@@ -152,7 +168,10 @@ export default function OutcomeTrackingPanel({
                 handleSave();
               }}
             >
-              <p className="text-sm font-semibold text-[var(--color-ink)]">Record transition</p>
+              <p className="flex items-center gap-2 text-sm font-semibold text-[var(--color-ink)]">
+                <ClipboardCheck className="icon-sm text-[var(--color-accent)]" aria-hidden="true" />
+                Record transition
+              </p>
               <div className="mt-3 grid gap-3">
                 <label className="grid gap-1 text-sm">
                   <span className="font-semibold text-[var(--color-ink)]">Outcome status</span>
@@ -251,15 +270,19 @@ export default function OutcomeTrackingPanel({
                     disabled={!latestReviewEntry}
                     onChange={(event) => setLinkLatestAdvisory(event.target.checked)}
                   />
-                  <span>{latestAdvisoryLinkLabel(latestReviewEntry)}</span>
+                  <span className="inline-flex items-center gap-2">
+                    <Link2 className="icon-sm" aria-hidden="true" />
+                    {latestAdvisoryLinkLabel(latestReviewEntry)}
+                  </span>
                 </label>
 
                 <button
                   type="submit"
-                  className="rounded-md bg-[var(--color-accent)] px-3 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                  className="interactive-surface inline-flex items-center justify-center gap-2 rounded-md bg-[var(--color-accent)] px-3 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
                   disabled={!canSave}
                 >
                   Record transition
+                  <ArrowRight className="icon-sm" aria-hidden="true" />
                 </button>
 
                 {message && (
@@ -279,7 +302,7 @@ export default function OutcomeTrackingPanel({
                 {entries.length > 0 && (
                   <button
                     type="button"
-                    className="rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-semibold text-[var(--color-muted)]"
+                    className="interactive-surface inline-flex items-center gap-2 rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-semibold text-[var(--color-muted)] hover:bg-[var(--color-surface-subtle)]"
                     onClick={() => {
                       if (window.confirm('Clear local outcome history for this case on this browser?')) {
                         clearCaseOutcomeLog(caseId);
@@ -288,13 +311,15 @@ export default function OutcomeTrackingPanel({
                       }
                     }}
                   >
+                    <RotateCcw className="icon-sm" aria-hidden="true" />
                     Clear local outcomes
                   </button>
                 )}
               </div>
 
               {entries.length === 0 ? (
-                <p className="mt-4 rounded-lg border border-dashed border-[var(--color-border)] bg-white px-3 py-4 text-sm text-[var(--color-muted)]">
+                <p className="mt-4 flex items-center gap-2 rounded-lg border border-dashed border-[var(--color-border)] bg-white px-3 py-4 text-sm text-[var(--color-muted)]">
+                  <LoaderCircle className="icon-sm" aria-hidden="true" />
                   No local outcome transition recorded on this browser yet.
                 </p>
               ) : (
