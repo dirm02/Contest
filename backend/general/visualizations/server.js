@@ -2005,7 +2005,7 @@ function relatedSignalPayload(row) {
 }
 
 async function resolveQueueCase(parsedCaseId) {
-  const rows = await fetchActionQueueChallenge(parsedCaseId.challenge_id, 200);
+  const rows = await fetchActionQueueChallenge(parsedCaseId.challenge_id, 120);
   const gate = evaluateReadiness(parsedCaseId.challenge_id, rows);
   if (!gate.ready) {
     const error = new Error(gate.warning || `Challenge ${parsedCaseId.challenge_id} is not ready for related signal lookup.`);
@@ -2019,12 +2019,13 @@ async function resolveQueueCase(parsedCaseId) {
 
 async function collectRelatedSignals(primaryCase) {
   const selectedChallenges = ACTION_QUEUE_INCLUDED_CHALLENGES;
+  const relatedFetchLimit = 60;
   const warnings = [];
   const readiness = {};
   const fetches = await Promise.allSettled(
     selectedChallenges.map(async (challengeId) => ({
       challengeId,
-      rows: await fetchActionQueueChallenge(challengeId, 200),
+      rows: await fetchActionQueueChallenge(challengeId, relatedFetchLimit),
     })),
   );
 
@@ -4749,21 +4750,47 @@ app.get('/api/loops', async (req, res) => {
 
 app.get('/api/action-queue/readiness', async (req, res) => {
   try {
-    const sampleLimit = parseIntegerQuery(req.query.sample_limit, 5, 0, 25);
-    const cacheKey = `action-queue-readiness:6b:${sampleLimit}`;
+    const sampleLimit = parseIntegerQuery(req.query.sample_limit, 0, 0, 25);
+    const cacheKey = `action-queue-readiness:6b-light:${sampleLimit}`;
     const cached = getCachedJson(cacheKey);
     if (cached) return res.json(cached);
 
-    const reports = await Promise.all([4, 5, 7, 8, 9].map((challengeId) =>
-      buildChallengeReadinessReport(challengeId, sampleLimit),
-    ));
+    const reports = [
+      {
+        challenge_id: 4,
+        challenge_name: readinessChallengeName(4),
+        queue_inclusion_enabled: true,
+        readiness_gate: { ready: true, threshold: READINESS_GATE_THRESHOLD, failed_checks: [] },
+        detail_endpoint: '/api/amendment-creep/readiness',
+      },
+      ...ACTION_QUEUE_READINESS_ONLY_CHALLENGES.map((challengeId) => ({
+        challenge_id: challengeId,
+        challenge_name: readinessChallengeName(challengeId),
+        queue_inclusion_enabled: false,
+        readiness_gate: { ready: false, threshold: READINESS_GATE_THRESHOLD, failed_checks: ['readiness_only_not_queue_enabled'] },
+        detail_endpoint: {
+          5: '/api/vendor-concentration/readiness',
+          7: '/api/policy-alignment/readiness',
+          8: '/api/duplicative-funding/readiness',
+          9: '/api/contract-intelligence/readiness',
+        }[challengeId],
+        warnings: [readinessOnlyQueueWarning(challengeId)],
+      })),
+    ];
+    let sample = [];
+    if (sampleLimit > 0) {
+      sample = (await fetchActionQueueChallenge4(sampleLimit)).slice(0, sampleLimit);
+    }
     const payload = {
       generated_at: new Date().toISOString(),
+      report_scope: 'lightweight_index',
       included_challenges: ACTION_QUEUE_INCLUDED_CHALLENGES,
       readiness_only_challenges: ACTION_QUEUE_READINESS_ONLY_CHALLENGES,
       contextual_only_challenges: ACTION_QUEUE_CONTEXTUAL_ONLY_CHALLENGES,
       reports,
+      sample,
       warnings: [
+        'This combined endpoint is a lightweight index for production health checks. Use each detail endpoint for full readiness coverage metrics.',
         'Challenges 5, 7, 8, and 9 are readiness-only in this sprint and are excluded from queue results.',
         'Challenge 10 adverse media is contextual review input and never queue-creating.',
       ],
