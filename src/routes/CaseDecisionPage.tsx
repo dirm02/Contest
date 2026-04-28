@@ -240,7 +240,7 @@ export default function CaseDecisionPage() {
   const relatedSignalsQuery = useQuery({
     queryKey: queryKeys.relatedSignals(caseId),
     queryFn: () => fetchRelatedSignals(caseId),
-    enabled: caseId.length > 0 && parsedCase.isCanonical && [1, 2, 3].includes(parsedCase.challengeId),
+    enabled: caseId.length > 0 && parsedCase.isCanonical && [1, 2, 3, 4].includes(parsedCase.challengeId),
     staleTime: 45_000,
   });
 

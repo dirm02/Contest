@@ -918,9 +918,17 @@ function buildGhostEvidence(summary) {
   return evidence;
 }
 
-const ACTION_QUEUE_CHALLENGES = new Set(['all', '1', '2', '3']);
+const ACTION_QUEUE_INCLUDED_CHALLENGES = [1, 2, 3, 4];
+const ACTION_QUEUE_READINESS_ONLY_CHALLENGES = [5, 7, 8, 9];
+const ACTION_QUEUE_CONTEXTUAL_ONLY_CHALLENGES = [10];
+const ACTION_QUEUE_CHALLENGES = new Set([
+  'all',
+  ...ACTION_QUEUE_INCLUDED_CHALLENGES.map(String),
+  ...ACTION_QUEUE_READINESS_ONLY_CHALLENGES.map(String),
+]);
 const ACTION_QUEUE_RISK_BANDS = new Set(['low', 'elevated', 'critical']);
 const ACTION_QUEUE_CONFIDENCE_LEVELS = new Set(['low', 'medium', 'high']);
+const READINESS_GATE_THRESHOLD = 0.9;
 
 function makeCanonicalCaseId(challengeId, nativeKey) {
   return `c${challengeId}:${String(nativeKey || 'unknown').trim() || 'unknown'}`;
@@ -983,6 +991,24 @@ function sourceQualityTier(sourceLinks, sourceTables) {
   return 'needs_source_verification';
 }
 
+function normalizeNativeKey(value) {
+  return String(value || '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .slice(0, 260) || 'unknown';
+}
+
+function entityKeyFromParts(parts = {}) {
+  const bn = String(parts.bn || parts.bn_root || '').replace(/\D/g, '').slice(0, 9);
+  if (bn) return `bn:${bn}`;
+  if (parts.registry_id) return `registry:${parts.registry_id}`;
+  if (parts.entity_id) return `entity:${parts.entity_id}`;
+  const name = normalizeEntityName(parts.name || parts.entity_name || parts.vendor || parts.department);
+  const geo = normalizeEntityName(parts.geo || parts.province || parts.geography);
+  if (name && geo) return `name_geo:${name}:${geo}`;
+  return name ? `name:${name}` : `case:${normalizeNativeKey(parts.case_id || parts.native_case_key)}`;
+}
+
 function queueCaseReadiness(caseRow) {
   return {
     has_confidence: Boolean(caseRow.confidence_level),
@@ -1025,13 +1051,89 @@ function evaluateReadiness(challengeId, rows) {
   const worstMissing = Math.max(...Object.values(missing));
   const coverage = 1 - worstMissing / rows.length;
   return {
-    ready: coverage >= 0.9,
+    ready: coverage >= READINESS_GATE_THRESHOLD,
     coverage,
     checked_rows: rows.length,
     missing,
-    warning: coverage >= 0.9
+    warning: coverage >= READINESS_GATE_THRESHOLD
       ? null
       : `Challenge ${challengeId} omitted: readiness coverage ${Math.round(coverage * 100)}% is below the 90% gate.`,
+  };
+}
+
+function nonAccusatoryCopyPass(rows) {
+  return rows.every((row) => {
+    const text = [
+      ...(Array.isArray(row.why_flagged) ? row.why_flagged : []),
+      ...(Array.isArray(row.caveats) ? row.caveats : []),
+      row.recommended_action || '',
+    ].join(' ').toLowerCase();
+    return !/\b(fraud|illegal|guilty|criminal|corrupt|waste proven|wrongdoing proven|failure proven)\b/.test(text);
+  });
+}
+
+function readinessCoverage(rows, fieldName, predicate) {
+  if (!rows.length) return 0;
+  return rows.filter(predicate || ((row) => Boolean(row[fieldName]))).length / rows.length;
+}
+
+function readinessReportForCandidates({
+  challengeId,
+  challengeName,
+  candidates,
+  queueInclusionEnabled = false,
+  warnings = [],
+  sampleLimit = 10,
+}) {
+  const rows = Array.isArray(candidates) ? candidates : [];
+  const gate = evaluateReadiness(challengeId, rows);
+  const scoreRangeValid = rows.every((row) => Number(row.score) >= 0 && Number(row.score) <= 100);
+  const riskBandMappingValid = rows.every((row) => ACTION_QUEUE_RISK_BANDS.has(row.risk_band));
+  const recommendedActionPresent = rows.every((row) => Boolean(row.recommended_action));
+  const reviewerRolePresent = rows.every((row) => Boolean(row.reviewer_role));
+  const copyPass = nonAccusatoryCopyPass(rows);
+  const failedChecks = [];
+
+  if (!gate.ready) failedChecks.push('coverage_below_threshold');
+  if (!scoreRangeValid) failedChecks.push('score_range_valid');
+  if (!riskBandMappingValid) failedChecks.push('risk_band_mapping_valid');
+  if (!recommendedActionPresent) failedChecks.push('recommended_action_present');
+  if (!reviewerRolePresent) failedChecks.push('reviewer_role_present');
+  if (!copyPass) failedChecks.push('non_accusatory_copy_guardrail_pass');
+
+  return {
+    challenge_id: challengeId,
+    challenge_name: challengeName,
+    generated_at: new Date().toISOString(),
+    total_candidates: rows.length,
+    coverage: {
+      confidence_level: readinessCoverage(rows, 'confidence_level'),
+      why_flagged: readinessCoverage(rows, 'why_flagged', (row) => Array.isArray(row.why_flagged) && row.why_flagged.length > 0),
+      caveats: readinessCoverage(rows, 'caveats', (row) => Array.isArray(row.caveats) && row.caveats.length > 0),
+      source_coverage: readinessCoverage(rows, 'source_tables', (row) => (
+        (Array.isArray(row.source_links) && row.source_links.length > 0) ||
+        (Array.isArray(row.source_tables) && row.source_tables.length > 0)
+      )),
+      native_key: readinessCoverage(rows, 'native_case_key'),
+      source_module_path: readinessCoverage(rows, 'source_module_path'),
+    },
+    invariants: {
+      score_range_valid: scoreRangeValid,
+      risk_band_mapping_valid: riskBandMappingValid,
+      recommended_action_present: recommendedActionPresent,
+      reviewer_role_present: reviewerRolePresent,
+      non_accusatory_copy_guardrail_pass: copyPass,
+    },
+    readiness_gate: {
+      ready: gate.ready && failedChecks.length === 0,
+      threshold: READINESS_GATE_THRESHOLD,
+      failed_checks: failedChecks,
+      checked_rows: gate.checked_rows,
+      missing: gate.missing || {},
+    },
+    queue_inclusion_enabled: Boolean(queueInclusionEnabled),
+    sample: sortActionQueueRows(rows).slice(0, sampleLimit),
+    warnings,
   };
 }
 
@@ -1209,7 +1311,7 @@ function mapAmendmentCreepToQueueCandidate(row) {
     source_quality_tier: sourceQualityTier([], sourceTables),
     recency_ts: row.last_date || null,
     context_flags: {
-      challenge4_readiness_only: true,
+      challenge4_queue_enabled: true,
       source: row.source,
       creep_ratio: Number(row.creep_ratio || 0),
       follow_on_value: Number(row.follow_on_value || 0),
@@ -1217,6 +1319,254 @@ function mapAmendmentCreepToQueueCandidate(row) {
       has_nonstandard_justification: Boolean(row.has_nonstandard_justification),
     },
     source_module_path: `/amendment-creep/${encodeURIComponent(row.case_id)}`,
+  };
+}
+
+function splitMaybeList(value) {
+  if (Array.isArray(value)) return value.map(String).map((part) => part.trim()).filter(Boolean);
+  return splitTextList(value);
+}
+
+function mapVendorConcentrationToQueueCandidate(row) {
+  const hhi = toNumber(row.hhi);
+  const topShare = toNumber(row.top_share);
+  const score = Math.min(100, Math.round((hhi * 70) + (topShare * 25) + (toNumber(row.entity_count) <= 9 ? 5 : 0)));
+  const riskBand = riskBandFromScore(score);
+  const sourceTables = row.source === 'federal'
+    ? ['fed_grants_contributions', 'challenge5_v2_concentration_fixed']
+    : ['ab_ab_sole_source', 'challenge5_v2_concentration_fixed'];
+  const nativeKey = normalizeNativeKey(`${row.source}:${row.department}:${row.category_key || row.category_program_service}`);
+  const caveats = [
+    'Vendor concentration is a market-structure review signal; it does not prove weak competition or procurement failure.',
+    'Concentration depends on the disclosed category, department, time window, and label normalization denominator.',
+    ...(Array.isArray(row.data_quality_notes) ? row.data_quality_notes : splitMaybeList(row.data_quality_notes)),
+  ];
+  return {
+    case_id: makeCanonicalCaseId(5, nativeKey),
+    native_case_key: nativeKey,
+    challenge_id: 5,
+    challenge_name: 'Vendor Concentration',
+    entity_key: entityKeyFromParts({
+      name: `${row.source || 'source'} ${row.department || ''} ${row.category_key || row.category_program_service || ''}`,
+      case_id: nativeKey,
+    }),
+    entity_name: `${row.department || 'Unknown department'} / ${row.category_program_service || row.category_key || 'Unknown category'}`,
+    score,
+    risk_band: riskBand,
+    confidence_level: toNumber(row.invariant_failed_cell_count) === 0 ? 'medium' : 'low',
+    why_flagged: [
+      `HHI ${hhi.toFixed(2)}, CR4 ${toNumber(row.cr4).toFixed(2)}, and top share ${(topShare * 100).toFixed(1)}% in this disclosed spend cell.`,
+    ],
+    caveats,
+    source_links: [],
+    source_tables: sourceTables,
+    recommended_action: 'Advisory procurement concentration review',
+    reviewer_role: 'procurement policy analyst',
+    workflow_status: null,
+    signal_count_for_entity: 1,
+    related_challenges: [5],
+    dominant_signal: 'vendor_concentration_review',
+    source_quality_tier: sourceQualityTier([], sourceTables),
+    recency_ts: null,
+    context_flags: {
+      readiness_only: true,
+      source: row.source,
+      hhi,
+      top_share: topShare,
+      effective_competitors: toNumber(row.effective_competitors),
+    },
+    source_module_path: '/vendor-concentration',
+  };
+}
+
+function mapPolicyAlignmentToQueueCandidate(row) {
+  const score = Math.min(100, Math.max(0, Math.round(toNumber(row.normalized_alignment_gap_score))));
+  const riskBand = riskBandFromScore(score);
+  const nativeKey = normalizeNativeKey(row.case_id || `${row.source_domain}:${row.policy_domain}:${row.department_or_organization}:${row.program_or_commitment}`);
+  const sourceTables = splitMaybeList(row.source_tables);
+  const sourceLinks = splitMaybeList(row.source_links);
+  return {
+    case_id: makeCanonicalCaseId(7, nativeKey),
+    native_case_key: nativeKey,
+    challenge_id: 7,
+    challenge_name: 'Policy Alignment',
+    entity_key: entityKeyFromParts({
+      name: row.department_or_organization || row.policy_domain,
+      geo: row.geography,
+      case_id: nativeKey,
+    }),
+    entity_name: row.department_or_organization || row.policy_domain || 'Policy alignment case',
+    score,
+    risk_band: riskBand,
+    confidence_level: row.confidence_level || 'low',
+    why_flagged: splitMaybeList(row.why_flagged).length
+      ? splitMaybeList(row.why_flagged)
+      : [`${row.policy_domain || 'Policy'} row selected for alignment review.`],
+    caveats: splitMaybeList(row.caveats).length
+      ? splitMaybeList(row.caveats)
+      : ['Policy-alignment rows are review context and require policy-owner interpretation before action.'],
+    source_links: sourceLinks,
+    source_tables: sourceTables.length ? sourceTables : ['challenge7_policy_alignment_v1'],
+    recommended_action: 'Policy clarification and evidence review',
+    reviewer_role: 'policy analyst',
+    workflow_status: null,
+    signal_count_for_entity: 1,
+    related_challenges: [7],
+    dominant_signal: row.performance_gap_label || row.spending_alignment_label || 'policy_alignment_review',
+    source_quality_tier: sourceQualityTier(sourceLinks, sourceTables),
+    recency_ts: row.fiscal_year_or_period || null,
+    context_flags: {
+      readiness_only: true,
+      policy_domain: row.policy_domain,
+      source_domain: row.source_domain,
+    },
+    source_module_path: '/policy-alignment',
+  };
+}
+
+function mapDuplicativeOverlapToQueueCandidate(row) {
+  const score = Math.min(100, Math.max(0, Math.round(toNumber(row.overlap_score))));
+  const riskBand = riskBandFromScore(score);
+  const nativeKey = normalizeNativeKey(`overlap:${row.entity_id || row.bn_root || row.canonical_name}:${row.purpose_cluster || 'mixed'}`);
+  const sourceTables = ['challenge8a_overlap_v1'];
+  return {
+    case_id: makeCanonicalCaseId(8, nativeKey),
+    native_case_key: nativeKey,
+    challenge_id: 8,
+    challenge_name: 'Duplicative Funding and Priority Gaps',
+    entity_key: entityKeyFromParts({
+      bn_root: row.bn_root,
+      entity_id: row.entity_id,
+      name: row.canonical_name,
+      case_id: nativeKey,
+    }),
+    entity_name: row.canonical_name || 'Overlap funding case',
+    score,
+    risk_band: riskBand,
+    confidence_level: row.public_sector_like ? 'low' : 'medium',
+    why_flagged: splitMaybeList(row.why_flagged).length
+      ? splitMaybeList(row.why_flagged)
+      : [`Published streams overlap: ${row.published_stream_combo || row.dataset_sources || 'multiple sources'}.`],
+    caveats: [
+      ...(splitMaybeList(row.caveats).length ? splitMaybeList(row.caveats) : ['Overlap rows require source verification and do not prove duplication or waste.']),
+      'Entity linkage and purpose clustering can create false merges; verify legal identity and program purpose.',
+    ],
+    source_links: [],
+    source_tables: sourceTables,
+    recommended_action: 'Source verification and overlap validation',
+    reviewer_role: 'funding program analyst',
+    workflow_status: null,
+    signal_count_for_entity: 1,
+    related_challenges: [8],
+    dominant_signal: 'overlapping_funding_review',
+    source_quality_tier: sourceQualityTier([], sourceTables),
+    recency_ts: row.overlap_year_end ? `${row.overlap_year_end}-12-31` : null,
+    context_flags: {
+      readiness_only: true,
+      stream_combo: row.published_stream_combo,
+      public_sector_like: Boolean(row.public_sector_like),
+    },
+    source_module_path: '/duplicative-funding',
+  };
+}
+
+function mapPriorityGapToQueueCandidate(row) {
+  const score = Math.min(100, Math.max(0, Math.round(toNumber(row.gap_score))));
+  const riskBand = riskBandFromScore(score);
+  const nativeKey = normalizeNativeKey(row.case_id || `${row.source_domain}:${row.department_or_organization}:${row.program_or_project}`);
+  const sourceTables = splitMaybeList(row.source_tables);
+  return {
+    case_id: makeCanonicalCaseId(8, nativeKey),
+    native_case_key: nativeKey,
+    challenge_id: 8,
+    challenge_name: 'Duplicative Funding and Priority Gaps',
+    entity_key: entityKeyFromParts({
+      name: row.department_or_organization || row.program_or_project,
+      geo: row.geography,
+      case_id: nativeKey,
+    }),
+    entity_name: row.department_or_organization || row.program_or_project || 'Priority gap case',
+    score,
+    risk_band: riskBand,
+    confidence_level: row.confidence_level || 'low',
+    why_flagged: splitMaybeList(row.why_flagged).length
+      ? splitMaybeList(row.why_flagged)
+      : [row.evidence_summary || 'Priority gap row selected for review.'],
+    caveats: [
+      ...(splitMaybeList(row.caveats).length ? splitMaybeList(row.caveats) : ['Priority gap rows are review triage and do not prove delivery failure.']),
+      'Targeting, coverage, and source completeness limitations require human verification.',
+    ],
+    source_links: [],
+    source_tables: sourceTables.length ? sourceTables : ['challenge8b_gap_review_v1'],
+    recommended_action: 'Follow-up verification with program owner',
+    reviewer_role: 'policy delivery analyst',
+    workflow_status: null,
+    signal_count_for_entity: 1,
+    related_challenges: [8],
+    dominant_signal: row.case_type || 'priority_gap_review',
+    source_quality_tier: sourceQualityTier([], sourceTables),
+    recency_ts: row.fiscal_year_or_period || row.expected_completion_date || null,
+    context_flags: {
+      readiness_only: true,
+      source_domain: row.source_domain,
+      case_type: row.case_type,
+    },
+    source_module_path: '/duplicative-funding',
+  };
+}
+
+function mapContractIntelligenceToQueueCandidate(row) {
+  const growthMagnitude = Math.min(50, Math.abs(toNumber(row.delta_total_value)) / 10000000);
+  const concentration = Math.min(35, toNumber(row.hhi) * 35);
+  const amendment = Math.min(15, Math.max(0, toNumber(row.amendment_share_of_total_end)) * 15);
+  const score = Math.min(100, Math.round(growthMagnitude + concentration + amendment));
+  const riskBand = riskBandFromScore(score);
+  const nativeKey = normalizeNativeKey(`${row.source}:${row.department}:${row.category_label}`);
+  const sourceTables = ['c9_procurement_grade_v1'];
+  const sourceLinks = [
+    'https://open.canada.ca/data/en/dataset/d8f85d91-7dec-4fd1-8055-483b77225d8b',
+    'https://open.canada.ca/data/en/dataset/a1acb126-9ce8-40a9-b889-5da2b1dd20cb',
+    'https://open.canada.ca/data/en/dataset/4fe645a1-ffcd-40c1-9385-2c771be956a4',
+    'https://open.canada.ca/data/en/dataset/f5c8a5a0-354d-455a-99ab-8276aa38032e',
+  ];
+  return {
+    case_id: makeCanonicalCaseId(9, nativeKey),
+    native_case_key: nativeKey,
+    challenge_id: 9,
+    challenge_name: 'Contract Intelligence',
+    entity_key: entityKeyFromParts({
+      name: `${row.department || ''} ${row.category_label || ''}`,
+      case_id: nativeKey,
+    }),
+    entity_name: `${row.department || 'Unknown department'} / ${row.category_label || 'Unknown category'}`,
+    score,
+    risk_band: riskBand,
+    confidence_level: row.source_grade === 'procurement_grade' ? 'medium' : 'low',
+    why_flagged: [
+      `${row.growth_driver_label || 'Growth'} with ${formatCad(toNumber(row.delta_total_value))} disclosed value change and HHI ${toNumber(row.hhi).toFixed(2)}.`,
+    ],
+    caveats: [
+      ...(splitMaybeList(row.caveats).length ? splitMaybeList(row.caveats) : []),
+      'Average contract value, not unit price.',
+      'Nominal CAD, not CPI-adjusted.',
+      'Category labels follow source disclosure fields and may not be comparable across all procurement contexts.',
+    ],
+    source_links: sourceLinks,
+    source_tables: sourceTables,
+    recommended_action: 'Advisory procurement trend review',
+    reviewer_role: 'procurement analytics reviewer',
+    workflow_status: null,
+    signal_count_for_entity: 1,
+    related_challenges: [9],
+    dominant_signal: row.growth_driver_label || 'contract_intelligence_review',
+    source_quality_tier: sourceQualityTier(sourceLinks, sourceTables),
+    recency_ts: row.end_year ? `${row.end_year}-12-31` : null,
+    context_flags: {
+      readiness_only: true,
+      source_grade: row.source_grade,
+      metric: row.spend_decomposition_metric,
+    },
+    source_module_path: '/contract-intelligence',
   };
 }
 
@@ -1281,7 +1631,9 @@ function parseActionQueueLimit(value, defaultValue = 50, maxValue = 200) {
 }
 
 function actionQueueChallengeList(challenge) {
-  return challenge === 'all' ? [1, 2, 3] : [Number(challenge)];
+  if (challenge === 'all') return ACTION_QUEUE_INCLUDED_CHALLENGES;
+  const challengeId = Number(challenge);
+  return ACTION_QUEUE_INCLUDED_CHALLENGES.includes(challengeId) ? [challengeId] : [];
 }
 
 function challengeFetchLimit(challengeCount, requestedLimit) {
@@ -1407,11 +1759,34 @@ async function fetchActionQueueChallenge3(limit) {
   return result.rows.map(mapLoopRowToQueueCase);
 }
 
+async function fetchActionQueueChallenge4(limit) {
+  const limitSql = parseActionQueueLimit(limit, 100, 200);
+  const result = await pool.query(`
+    ${AMENDMENT_CREEP_CASES_SQL}
+    SELECT *
+    FROM combined_cases
+    ORDER BY risk_score DESC, follow_on_value DESC, creep_ratio DESC
+    LIMIT ${limitSql}
+  `);
+  return result.rows.map(mapAmendmentCreepToQueueCandidate);
+}
+
 async function fetchActionQueueChallenge(challengeId, limit) {
   if (challengeId === 1) return fetchActionQueueChallenge1(limit);
   if (challengeId === 2) return fetchActionQueueChallenge2(limit);
   if (challengeId === 3) return fetchActionQueueChallenge3(limit);
+  if (challengeId === 4) return fetchActionQueueChallenge4(limit);
   return [];
+}
+
+function readinessOnlyQueueWarning(challengeId) {
+  const labels = {
+    5: 'Challenge 5 Vendor Concentration',
+    7: 'Challenge 7 Policy Alignment',
+    8: 'Challenge 8 Duplicative Funding and Priority Gaps',
+    9: 'Challenge 9 Contract Intelligence',
+  };
+  return `${labels[challengeId] || `Challenge ${challengeId}`} is readiness-only in this sprint and is not yet queue-creating.`;
 }
 
 function sortActionQueueRows(rows) {
@@ -1463,10 +1838,58 @@ async function collectActionQueueRows(filters = {}) {
   const challenge = parseActionQueueChallenge(filters.challenge);
   const limit = parseActionQueueLimit(filters.limit, 50, 200);
   const offset = Math.max(parseInt(filters.offset, 10) || 0, 0);
+  const requestedChallengeId = challenge === 'all' ? null : Number(challenge);
   const selectedChallenges = actionQueueChallengeList(challenge);
   const perChallengeLimit = challengeFetchLimit(selectedChallenges.length, limit + offset);
   const warnings = [];
   const readiness = {};
+
+  if (challenge === 'all') {
+    ACTION_QUEUE_READINESS_ONLY_CHALLENGES.forEach((challengeId) => {
+      warnings.push(readinessOnlyQueueWarning(challengeId));
+      readiness[challengeId] = {
+        ready: false,
+        readiness_only: true,
+        queue_inclusion_enabled: false,
+        warning: readinessOnlyQueueWarning(challengeId),
+      };
+    });
+    ACTION_QUEUE_CONTEXTUAL_ONLY_CHALLENGES.forEach((challengeId) => {
+      readiness[challengeId] = {
+        ready: false,
+        contextual_only: true,
+        queue_inclusion_enabled: false,
+        warning: 'Challenge 10 adverse media is contextual review input only and cannot create queue cases.',
+      };
+    });
+  } else if (ACTION_QUEUE_READINESS_ONLY_CHALLENGES.includes(requestedChallengeId)) {
+    const warning = readinessOnlyQueueWarning(requestedChallengeId);
+    return {
+      generated_at: new Date().toISOString(),
+      filters: {
+        challenge,
+        limit,
+        offset,
+        confidence: filters.confidence || null,
+        risk_band: filters.risk_band || null,
+        multi_signal: filters.multi_signal || null,
+      },
+      candidate_total: 0,
+      total: 0,
+      results: [],
+      summary: summarizeActionQueue([]),
+      readiness: {
+        [requestedChallengeId]: {
+          ready: false,
+          readiness_only: true,
+          queue_inclusion_enabled: false,
+          warning,
+        },
+      },
+      warnings: [warning],
+      readiness_only: true,
+    };
+  }
 
   const fetches = await Promise.allSettled(
     selectedChallenges.map(async (challengeId) => ({
@@ -1531,7 +1954,7 @@ async function collectActionQueueRows(filters = {}) {
 
 function parseCanonicalQueueCaseId(value) {
   const raw = String(value || '').trim();
-  const match = raw.match(/^c([1-3]):(.+)$/i);
+  const match = raw.match(/^c([1-4]):(.+)$/i);
   if (!match) return null;
   const challengeId = Number(match[1]);
   const nativeCaseKey = match[2].trim();
@@ -1595,7 +2018,7 @@ async function resolveQueueCase(parsedCaseId) {
 }
 
 async function collectRelatedSignals(primaryCase) {
-  const selectedChallenges = [1, 2, 3];
+  const selectedChallenges = ACTION_QUEUE_INCLUDED_CHALLENGES;
   const warnings = [];
   const readiness = {};
   const fetches = await Promise.allSettled(
@@ -1638,6 +2061,112 @@ async function collectRelatedSignals(primaryCase) {
     readiness,
     warnings,
   };
+}
+
+async function challenge4ReadinessCandidates() {
+  const result = await pool.query(`
+    ${AMENDMENT_CREEP_CASES_SQL}
+    SELECT *
+    FROM combined_cases
+    ORDER BY risk_score DESC, follow_on_value DESC, creep_ratio DESC
+  `);
+  return result.rows.map(mapAmendmentCreepToQueueCandidate);
+}
+
+async function challenge5ReadinessCandidates() {
+  const rowsCacheKey = 'vendor-concentration:bigquery:v2-fixed';
+  let allRows = getCachedJson(rowsCacheKey);
+  if (!allRows) {
+    allRows = await runBigQuerySafe(VENDOR_CONCENTRATION_SQL);
+    setCachedJson(rowsCacheKey, allRows, 30 * 60 * 1000);
+  }
+  return allRows.map((row) => mapVendorConcentrationToQueueCandidate({
+    ...row,
+    data_quality_notes: row.data_quality_notes
+      ? String(row.data_quality_notes).split(';').map((note) => note.trim()).filter(Boolean)
+      : [],
+  }));
+}
+
+async function challenge7ReadinessCandidates() {
+  const rowsCacheKey = 'policy-alignment:challenge7-v1';
+  let allRows = getCachedJson(rowsCacheKey);
+  if (!allRows) {
+    allRows = await runBigQuerySafe(POLICY_ALIGNMENT_SQL);
+    setCachedJson(rowsCacheKey, allRows, 30 * 60 * 1000);
+  }
+  return allRows.map(mapPolicyAlignmentToQueueCandidate);
+}
+
+async function challenge8ReadinessCandidates() {
+  const overlapCacheKey = 'duplicative-funding:overlap:challenge8a-v1';
+  const gapsCacheKey = 'duplicative-funding:gaps:challenge8b-v1';
+  let overlapRows = getCachedJson(overlapCacheKey);
+  if (!overlapRows) {
+    overlapRows = await runBigQuerySafe(DUPLICATIVE_FUNDING_OVERLAP_SQL);
+    setCachedJson(overlapCacheKey, overlapRows, 30 * 60 * 1000);
+  }
+  let gapRows = getCachedJson(gapsCacheKey);
+  if (!gapRows) {
+    gapRows = await runBigQuerySafe(PRIORITY_GAP_REVIEW_SQL);
+    setCachedJson(gapsCacheKey, gapRows, 30 * 60 * 1000);
+  }
+  return [
+    ...overlapRows.map(mapDuplicativeOverlapToQueueCandidate),
+    ...gapRows.map(mapPriorityGapToQueueCandidate),
+  ];
+}
+
+async function challenge9ReadinessCandidates() {
+  const rowsCacheKey = 'contract-intelligence:bigquery:procurement-grade-v1';
+  let allRows = getCachedJson(rowsCacheKey);
+  if (!allRows) {
+    allRows = await runBigQuerySafe(CONTRACT_INTELLIGENCE_SQL);
+    setCachedJson(rowsCacheKey, allRows, 30 * 60 * 1000);
+  }
+  return allRows.map(mapContractIntelligenceToQueueCandidate);
+}
+
+function readinessChallengeName(challengeId) {
+  const names = {
+    4: 'Sole Source and Amendment Creep',
+    5: 'Vendor Concentration',
+    7: 'Policy Alignment',
+    8: 'Duplicative Funding and Priority Gaps',
+    9: 'Contract Intelligence',
+  };
+  return names[challengeId] || `Challenge ${challengeId}`;
+}
+
+async function getReadinessCandidatesForChallenge(challengeId) {
+  if (challengeId === 4) return challenge4ReadinessCandidates();
+  if (challengeId === 5) return challenge5ReadinessCandidates();
+  if (challengeId === 7) return challenge7ReadinessCandidates();
+  if (challengeId === 8) return challenge8ReadinessCandidates();
+  if (challengeId === 9) return challenge9ReadinessCandidates();
+  return [];
+}
+
+async function buildChallengeReadinessReport(challengeId, sampleLimit = 10) {
+  const candidates = await getReadinessCandidatesForChallenge(challengeId);
+  const warnings = [];
+  if (ACTION_QUEUE_READINESS_ONLY_CHALLENGES.includes(challengeId)) {
+    warnings.push(readinessOnlyQueueWarning(challengeId));
+  }
+  if (challengeId === 8) {
+    warnings.push('Challenge 8 remains readiness-only because entity deduplication and purpose-linkage confidence can create false merges.');
+  }
+  if (challengeId === 9) {
+    warnings.push('Challenge 9 remains readiness-only because average contract value is not unit price and category comparability needs review.');
+  }
+  return readinessReportForCandidates({
+    challengeId,
+    challengeName: readinessChallengeName(challengeId),
+    candidates,
+    queueInclusionEnabled: ACTION_QUEUE_INCLUDED_CHALLENGES.includes(challengeId),
+    warnings,
+    sampleLimit,
+  });
 }
 
 const RECIPIENT_KEY_SQL = `
@@ -4218,7 +4747,71 @@ app.get('/api/loops', async (req, res) => {
   }
 });
 
-// Phase 6A cross-challenge action queue (read-only aggregation).
+app.get('/api/action-queue/readiness', async (req, res) => {
+  try {
+    const sampleLimit = parseIntegerQuery(req.query.sample_limit, 5, 0, 25);
+    const cacheKey = `action-queue-readiness:6b:${sampleLimit}`;
+    const cached = getCachedJson(cacheKey);
+    if (cached) return res.json(cached);
+
+    const reports = await Promise.all([4, 5, 7, 8, 9].map((challengeId) =>
+      buildChallengeReadinessReport(challengeId, sampleLimit),
+    ));
+    const payload = {
+      generated_at: new Date().toISOString(),
+      included_challenges: ACTION_QUEUE_INCLUDED_CHALLENGES,
+      readiness_only_challenges: ACTION_QUEUE_READINESS_ONLY_CHALLENGES,
+      contextual_only_challenges: ACTION_QUEUE_CONTEXTUAL_ONLY_CHALLENGES,
+      reports,
+      warnings: [
+        'Challenges 5, 7, 8, and 9 are readiness-only in this sprint and are excluded from queue results.',
+        'Challenge 10 adverse media is contextual review input and never queue-creating.',
+      ],
+    };
+    setCachedJson(cacheKey, payload, 10 * 60 * 1000);
+    res.json(payload);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/vendor-concentration/readiness', async (req, res) => {
+  try {
+    const sampleLimit = parseIntegerQuery(req.query.sample_limit, 10, 0, 50);
+    res.json(await buildChallengeReadinessReport(5, sampleLimit));
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/policy-alignment/readiness', async (req, res) => {
+  try {
+    const sampleLimit = parseIntegerQuery(req.query.sample_limit, 10, 0, 50);
+    res.json(await buildChallengeReadinessReport(7, sampleLimit));
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/duplicative-funding/readiness', async (req, res) => {
+  try {
+    const sampleLimit = parseIntegerQuery(req.query.sample_limit, 10, 0, 50);
+    res.json(await buildChallengeReadinessReport(8, sampleLimit));
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/contract-intelligence/readiness', async (req, res) => {
+  try {
+    const sampleLimit = parseIntegerQuery(req.query.sample_limit, 10, 0, 50);
+    res.json(await buildChallengeReadinessReport(9, sampleLimit));
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Phase 6A/6B cross-challenge action queue (read-only aggregation).
 app.get('/api/action-queue', async (req, res) => {
   try {
     const challenge = parseActionQueueChallenge(req.query.challenge);
@@ -4235,7 +4828,7 @@ app.get('/api/action-queue', async (req, res) => {
       multi_signal: multiSignal,
     };
     const payload = await collectActionQueueRows(filters);
-    if (payload.candidate_total === 0 && payload.warnings.length) {
+    if (payload.candidate_total === 0 && payload.warnings.length && !payload.readiness_only) {
       return res.status(502).json({
         ...payload,
         error: 'Action queue data unavailable for the requested challenge filter.',
@@ -4280,14 +4873,14 @@ app.get('/api/cases/:caseId/related-signals', async (req, res) => {
       return res.status(400).json({
         error: 'invalid canonical case id',
         expected_format: 'c{challenge_id}:{native_key}',
-        supported_challenges: [1, 2, 3],
+        supported_challenges: ACTION_QUEUE_INCLUDED_CHALLENGES,
       });
     }
 
     const primaryCase = await resolveQueueCase(parsedCaseId);
     if (!primaryCase) {
       return res.status(404).json({
-        error: 'case not found in validated Challenge 1-3 queue sources',
+        error: 'case not found in validated Challenge 1-4 queue sources',
         case_id: parsedCaseId.case_id,
       });
     }
@@ -5276,63 +5869,37 @@ app.get('/api/amendment-creep', async (req, res) => {
 
 app.get('/api/amendment-creep/readiness', async (req, res) => {
   try {
-    const sampleLimit = parseIntegerQuery(req.query.sample_limit, 25, 1, 100);
-    const cacheKey = `amendment-creep-readiness:${sampleLimit}`;
+    const sampleLimit = parseIntegerQuery(req.query.sample_limit, 25, 0, 100);
+    const cacheKey = `amendment-creep-readiness:6b:${sampleLimit}`;
     const cached = getCachedJson(cacheKey);
     if (cached) return res.json(cached);
 
-    const result = await pool.query(`
-      ${AMENDMENT_CREEP_CASES_SQL}
-      SELECT *
-      FROM combined_cases
-      ORDER BY risk_score DESC, follow_on_value DESC, creep_ratio DESC
-    `);
-
-    const candidates = result.rows.map(mapAmendmentCreepToQueueCandidate);
-    const gate = evaluateReadiness(4, candidates);
-    const bySource = candidates.reduce((acc, row) => {
+    const payload = await buildChallengeReadinessReport(4, sampleLimit);
+    const bySource = payload.sample.reduce((acc, row) => {
       const source = row.context_flags.source || 'unknown';
       acc[source] = (acc[source] || 0) + 1;
       return acc;
     }, {});
-    const byConfidence = candidates.reduce((acc, row) => {
+    const byConfidence = payload.sample.reduce((acc, row) => {
       acc[row.confidence_level] = (acc[row.confidence_level] || 0) + 1;
       return acc;
     }, {});
-    const byRiskBand = candidates.reduce((acc, row) => {
+    const byRiskBand = payload.sample.reduce((acc, row) => {
       acc[row.risk_band] = (acc[row.risk_band] || 0) + 1;
       return acc;
     }, {});
-    const invariantFailures = {
-      missing_source_module_path: candidates.filter((row) => !row.source_module_path).length,
-      missing_recommended_action: candidates.filter((row) => !row.recommended_action).length,
-      missing_reviewer_role: candidates.filter((row) => !row.reviewer_role).length,
-      invalid_score_range: candidates.filter((row) => row.score < 0 || row.score > 100).length,
-      accusatory_copy_hits: candidates.filter((row) => {
-        const text = [...row.why_flagged, ...row.caveats].join(' ').toLowerCase();
-        return /\b(fraud|illegal|guilty|wrongdoing proven|waste proven)\b/.test(text);
-      }).length,
-    };
-    const invariantPass = Object.values(invariantFailures).every((count) => count === 0);
-    const sample = sortActionQueueRows(candidates).slice(0, sampleLimit);
 
-    const payload = {
-      challenge_id: 4,
-      challenge_name: 'Sole Source and Amendment Creep',
-      phase: '6B-PR1',
-      queue_inclusion_enabled: false,
-      eligible_for_queue_after_review: gate.ready && invariantPass,
-      generated_at: new Date().toISOString(),
-      total_candidates: candidates.length,
-      readiness_gate: gate,
-      invariant_pass: invariantPass,
-      invariant_failures: invariantFailures,
+    const response = {
+      ...payload,
+      phase: '6B',
+      eligible_for_queue_after_review: payload.readiness_gate.ready,
+      invariant_pass: Object.values(payload.invariants).every(Boolean),
       summary: {
         by_source: bySource,
         by_confidence: byConfidence,
         by_risk_band: byRiskBand,
         source_module_route: '/amendment-creep/:caseId',
-        caveat_policy: 'Challenge 4 remains evidence-only until this readiness report is reviewed and approved.',
+        caveat_policy: 'Challenge 4 is queue-enabled in Phase 6B but remains advisory and human-review only.',
       },
       mapper_contract: {
         case_id_format: 'c4:<native amendment case id>',
@@ -5341,14 +5908,9 @@ app.get('/api/amendment-creep/readiness', async (req, res) => {
         risk_band_strategy: 'shared 0-50 low, 51-80 elevated, 81-100 critical thresholds',
         confidence_strategy: 'federal amendment-chain integrity and Alberta competitive/sole-source name-match completeness',
       },
-      sample,
-      warnings: [
-        'Challenge 4 is not included in /api/action-queue in this PR.',
-        'This report validates mapper readiness only; it does not change reviewer workflow behavior.',
-      ],
     };
-    setCachedJson(cacheKey, payload);
-    res.json(payload);
+    setCachedJson(cacheKey, response);
+    res.json(response);
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -6943,6 +7505,7 @@ app.get('/', (req, res) => {
       'GET /api/loops/:loopId',
       'GET /api/action-queue',
       'GET /api/action-queue/summary',
+      'GET /api/action-queue/readiness',
       'GET /api/zombies',
       'GET /api/zombies/:recipientKey',
       'GET /api/cases/:caseId/briefs',
@@ -6955,6 +7518,10 @@ app.get('/', (req, res) => {
       'GET /api/amendment-creep',
       'GET /api/amendment-creep/readiness',
       'GET /api/amendment-creep/:caseId',
+      'GET /api/vendor-concentration/readiness',
+      'GET /api/policy-alignment/readiness',
+      'GET /api/duplicative-funding/readiness',
+      'GET /api/contract-intelligence/readiness',
       'GET /api/adverse-media?q=...',
       'GET /api/challenge-review',
       'GET /api/challenge-review/compare/:challengeId',

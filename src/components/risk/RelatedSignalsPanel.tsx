@@ -152,7 +152,7 @@ export default function RelatedSignalsPanel({
               <SearchX className="mx-auto h-8 w-8 text-[var(--color-muted)]" aria-hidden="true" />
               <p className="section-title mt-3">No related signals</p>
               <p className="mt-2 text-sm text-[var(--color-muted)]">
-                No related Challenge 1-3 signals found for this entity in the current validated queue.
+                No related Challenge 1-4 signals found for this entity in the current validated queue.
               </p>
             </div>
           ) : (
