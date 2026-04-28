@@ -1102,6 +1102,8 @@ function readinessReportForCandidates({
   if (!reviewerRolePresent) failedChecks.push('reviewer_role_present');
   if (!copyPass) failedChecks.push('non_accusatory_copy_guardrail_pass');
 
+  const readinessGatePass = gate.ready && failedChecks.length === 0;
+
   return {
     challenge_id: challengeId,
     challenge_name: challengeName,
@@ -1126,13 +1128,13 @@ function readinessReportForCandidates({
       non_accusatory_copy_guardrail_pass: copyPass,
     },
     readiness_gate: {
-      ready: gate.ready && failedChecks.length === 0,
+      ready: readinessGatePass,
       threshold: READINESS_GATE_THRESHOLD,
       failed_checks: failedChecks,
       checked_rows: gate.checked_rows,
       missing: gate.missing || {},
     },
-    queue_inclusion_enabled: Boolean(queueInclusionEnabled),
+    queue_inclusion_enabled: Boolean(queueInclusionEnabled) && readinessGatePass,
     sample: sortActionQueueRows(rows).slice(0, sampleLimit),
     warnings,
   };
@@ -4920,7 +4922,7 @@ app.get('/api/action-queue/readiness', async (req, res) => {
         reports.push({
           challenge_id: challengeId,
           challenge_name: readinessChallengeName(challengeId),
-          queue_inclusion_enabled: ACTION_QUEUE_INCLUDED_CHALLENGES.includes(challengeId),
+          queue_inclusion_enabled: false,
           readiness_gate: {
             ready: false,
             threshold: READINESS_GATE_THRESHOLD,
