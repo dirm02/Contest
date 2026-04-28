@@ -33,8 +33,11 @@ import {
   readReviewLog,
 } from '../components/risk/caseDecision';
 import CrossDatasetContextCard from '../components/risk/CrossDatasetContextCard';
+import OutcomeTrackingPanel from '../components/risk/OutcomeTrackingPanel';
 import RecipientRiskGraph from '../components/risk/RecipientRiskGraph';
 import RiskTimelineChart from '../components/risk/RiskTimelineChart';
+import ScoringMethodologyPanel from '../components/risk/scoringMethodology';
+import { readOutcomeLog } from '../components/risk/outcomeTracking';
 
 function sourceLabel(url: string) {
   try {
@@ -337,6 +340,8 @@ export default function CaseDecisionPage() {
           )}
         </article>
       </section>
+
+      <ScoringMethodologyPanel envelope={envelope} />
 
       <section className="app-card rounded-lg p-5">
         <p className="section-title">Sources and caveats</p>
@@ -822,6 +827,14 @@ export default function CaseDecisionPage() {
           </div>
         )}
       </section>
+
+      <OutcomeTrackingPanel
+        key={caseId}
+        caseId={caseId}
+        defaultReviewerRole={envelope.reviewerRole}
+        latestReviewEntry={latestEntry}
+        initialEntries={readOutcomeLog(caseId)}
+      />
 
       <section className="app-card rounded-lg p-5">
         <div className="mb-4">
