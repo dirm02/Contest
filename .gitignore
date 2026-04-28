@@ -25,6 +25,7 @@ dist-ssr
 
 # One-off Azure deploy artifacts (do not commit)
 deploy-bundle.zip
+.local-secrets/
 
 # Backend runtime state inside the monorepo
 backend/**/node_modules/
