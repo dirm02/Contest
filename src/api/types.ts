@@ -1458,7 +1458,7 @@ export interface ChallengeComparisonReport {
 }
 
 // Phase 6A cross-challenge action queue
-export type ActionQueueChallengeFilter = 'all' | '1' | '2' | '3';
+export type ActionQueueChallengeFilter = 'all' | '1' | '2' | '3' | '4' | '5' | '7' | '8' | '9';
 export type ActionQueueRiskBand = 'critical' | 'elevated' | 'low';
 export type ActionQueueConfidence = 'high' | 'medium' | 'low';
 export type ActionQueueMultiSignal = 'all' | 'single' | '2+';
@@ -1480,7 +1480,7 @@ export interface ActionQueueContextFlags {
 export interface ActionQueueRowApi {
   case_id: string;
   native_case_key: string;
-  challenge_id: 1 | 2 | 3;
+  challenge_id: 1 | 2 | 3 | 4 | 5 | 7 | 8 | 9;
   challenge_name: string;
   entity_key: string | null;
   entity_name: string;
@@ -1533,7 +1533,7 @@ export interface ActionQueueSummaryResponse {
 
 export interface RelatedSignalItemApi {
   case_id: string;
-  challenge_id: 1 | 2 | 3;
+  challenge_id: 1 | 2 | 3 | 4 | 5 | 7 | 8 | 9;
   challenge_name: string;
   native_case_key: string;
   entity_key: string | null;
@@ -1551,7 +1551,7 @@ export interface RelatedSignalItemApi {
 
 export interface RelatedSignalsResponse {
   case_id: string;
-  parsed_challenge_id: 1 | 2 | 3;
+  parsed_challenge_id: 1 | 2 | 3 | 4;
   native_case_key: string;
   primary_entity_key: string | null;
   primary_entity_name: string;

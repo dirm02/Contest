@@ -46,6 +46,11 @@ const CHALLENGE_LABELS: Record<number | string, string> = {
   1: 'Zombie Recipients',
   2: 'Ghost Capacity',
   3: 'Funding Loops',
+  4: 'Amendment Creep',
+  5: 'Vendor Concentration',
+  7: 'Policy Alignment',
+  8: 'Duplicative Funding',
+  9: 'Contract Intelligence',
 };
 
 const RISK_LABELS: Record<ActionQueueRiskBand, string> = {
@@ -192,7 +197,7 @@ export default function ActionQueuePage() {
               Cross-challenge review queue
             </h1>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--color-muted)]">
-              Read-only triage for validated Challenge 1-3 signals. Open a case for human review,
+              Read-only triage for validated Challenge 1-4 signals. Open a case for human review,
               or jump to the source module for the full evidence page.
             </p>
           </div>
@@ -239,10 +244,15 @@ export default function ActionQueuePage() {
               value={filters.challenge}
               onChange={(event) => setFilters((current) => ({ ...current, challenge: event.target.value as ActionQueueChallengeFilter }))}
             >
-              <option value="all">All validated</option>
+              <option value="all">All queue-ready</option>
               <option value="1">1 - Zombie Recipients</option>
               <option value="2">2 - Ghost Capacity</option>
               <option value="3">3 - Funding Loops</option>
+              <option value="4">4 - Amendment Creep</option>
+              <option value="5">5 - Vendor Concentration (readiness-only)</option>
+              <option value="7">7 - Policy Alignment (readiness-only)</option>
+              <option value="8">8 - Duplicative Funding (readiness-only)</option>
+              <option value="9">9 - Contract Intelligence (readiness-only)</option>
             </select>
           </label>
 
@@ -410,7 +420,7 @@ export default function ActionQueuePage() {
       </section>
 
       <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-subtle)] px-4 py-3 text-xs leading-5 text-[var(--color-muted)]">
-        Challenge 4 remains evidence-only in Phase 6A. Challenge 10 adverse media remains contextual and cannot create a queue case by itself.
+        Challenges 5, 7, 8, and 9 are readiness-only in this sprint. Challenge 10 adverse media remains contextual and cannot create a queue case by itself.
       </div>
     </section>
   );

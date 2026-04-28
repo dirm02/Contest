@@ -66,5 +66,10 @@ export function sourceModulePath(parsed: ParsedCaseId) {
   if (parsed.challengeId === 1) return `/zombies/${native}`;
   if (parsed.challengeId === 2) return `/ghost-capacity/${native}`;
   if (parsed.challengeId === 3) return `/loops/${native}`;
+  if (parsed.challengeId === 4) return `/amendment-creep/${native}`;
+  if (parsed.challengeId === 5) return '/vendor-concentration';
+  if (parsed.challengeId === 7) return '/policy-alignment';
+  if (parsed.challengeId === 8) return '/duplicative-funding';
+  if (parsed.challengeId === 9) return '/contract-intelligence';
   return null;
 }
