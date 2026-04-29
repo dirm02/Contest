@@ -54,7 +54,10 @@ export function ThoughtDisclosure({ events, isRunning, startedAt, completedAt }:
     return () => window.clearInterval(interval);
   }, [isRunning]);
 
-  const elapsed = elapsedSeconds(startedAt, completedAt);
+  const elapsed = isRunning ? elapsedSeconds(startedAt, completedAt) : elapsedSeconds(startedAt, completedAt);
+  // Using tick to ensure reactivity during run
+  tick;
+
   const phases = groupEventsIntoPhases(events);
   const latestEventStr = formatLatestEvent(events);
 

@@ -15,11 +15,12 @@ type EmptyStateProps = {
   onPickExample: (content: string) => void;
   onOpenCatalog: () => void;
   isSmall?: boolean;
+  hideHeader?: boolean;
 };
 
 const ICONS = [ShieldCheck, Network, ClipboardCheck, Database, FileSearch, AlertTriangle];
 
-export function EmptyState({ onPickExample, onOpenCatalog, isSmall }: EmptyStateProps) {
+export function EmptyState({ onPickExample, onOpenCatalog, isSmall, hideHeader }: EmptyStateProps) {
   const catalogQuery = useQuery({
     queryKey: shipQueryKeys.catalog,
     queryFn: getCatalog,
@@ -59,20 +60,22 @@ export function EmptyState({ onPickExample, onOpenCatalog, isSmall }: EmptyState
   }
 
   return (
-    <div className="flex h-full flex-col items-center justify-center overflow-y-auto p-6 pb-24">
-      <div className="w-full space-y-10">
-        <div className="space-y-4 text-center">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--color-muted)]">
-            Accountability Analyst
-          </p>
-          <h2 className="text-3xl font-semibold tracking-tight text-[var(--color-ink-strong)]">
-            What would you like to investigate today?
-          </h2>
-          <p className="mx-auto max-w-lg text-sm leading-relaxed text-[var(--color-muted)]">
-            Ask grounded questions about Canadian public spending — recipients, contracts, governance
-            networks, and more. Every answer is cited.
-          </p>
-        </div>
+    <div className={`flex h-full flex-col items-center justify-center overflow-y-auto p-6 ${hideHeader ? 'pb-8' : 'pb-24'}`}>
+      <div className="w-full max-w-5xl space-y-10">
+        {!hideHeader && (
+          <div className="space-y-4 text-center">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--color-muted)]">
+              Accountability Analyst
+            </p>
+            <h2 className="text-3xl font-semibold tracking-tight text-[var(--color-ink-strong)]">
+              What would you like to investigate today?
+            </h2>
+            <p className="mx-auto max-w-lg text-sm leading-relaxed text-[var(--color-muted)]">
+              Ask grounded questions about Canadian public spending — recipients, contracts, governance
+              networks, and more. Every answer is cited.
+            </p>
+          </div>
+        )}
 
         {catalogQuery.isLoading ? (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -110,22 +113,24 @@ export function EmptyState({ onPickExample, onOpenCatalog, isSmall }: EmptyState
           </div>
         )}
 
-        <div className="flex items-center justify-center gap-4 pt-2">
-          <button
-            onClick={onOpenCatalog}
-            className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-[var(--color-ink)] transition-colors hover:bg-[var(--color-surface-subtle)]"
-          >
-            <BookOpen className="size-4 text-[var(--color-muted)]" />
-            Browse all examples
-          </button>
-          <span className="text-[var(--color-border-soft)]">|</span>
-          <button
-            onClick={() => onPickExample('')}
-            className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-[var(--color-ink)] transition-colors hover:bg-[var(--color-surface-subtle)]"
-          >
-            Start blank conversation
-          </button>
-        </div>
+        {!hideHeader && (
+          <div className="flex items-center justify-center gap-4 pt-2">
+            <button
+              onClick={onOpenCatalog}
+              className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-[var(--color-ink)] transition-colors hover:bg-[var(--color-surface-subtle)]"
+            >
+              <BookOpen className="size-4 text-[var(--color-muted)]" />
+              Browse all examples
+            </button>
+            <span className="text-[var(--color-border-soft)]">|</span>
+            <button
+              onClick={() => onPickExample('')}
+              className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-[var(--color-ink)] transition-colors hover:bg-[var(--color-surface-subtle)]"
+            >
+              Start blank conversation
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

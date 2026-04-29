@@ -53,7 +53,7 @@ export function getRefinementIntent(text: string): 'refine' | 'compose' | 'comme
   return 'fresh';
 }
 
-export function deriveSuggestedRefinements(response: AnswerResponse): string[] {
+export function deriveSuggestedRefinements(_response: AnswerResponse): string[] {
   // This logic is mostly in followups.ts already, but we can extend it here if needed
   // as per the §5.4 requirements which are more specific about date/numeric/categorical.
   return []; // Placeholder if we want to move logic here

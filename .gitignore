@@ -90,3 +90,21 @@ services/postgres/**/*.log
 
 # GCP deployment local operator env
 deploy/gcp/env
+
+# Browser verification artifacts and local runtime output
+.playwright-cli/
+.playwright-mcp/
+.mcp_screenshot/
+output/playwright/
+output/dev-runtime/
+
+# Generated implementation prompts and review screenshots
+service-prompt*.md
+ui-prompt*.md
+*-prompt*.md
+accountability-current.png
+accountability-*.png
+ghost-graph-check.png
+*-screenshot*.png
+screenshot*.png
+ai/*.png

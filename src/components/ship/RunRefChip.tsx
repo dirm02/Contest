@@ -15,13 +15,12 @@ import { Database, Pin } from 'lucide-react';
 import type { MemoryEntry } from '../../lib/ship';
 
 type RunRefChipProps = {
-  runId: string;
   runNumber: number | null;
   memoryEntry?: MemoryEntry | null;
   onClick?: () => void;
 };
 
-export function RunRefChip({ runId, runNumber, memoryEntry, onClick }: RunRefChipProps) {
+export function RunRefChip({ runNumber, memoryEntry, onClick }: RunRefChipProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   const { refs, floatingStyles, context } = useFloating({

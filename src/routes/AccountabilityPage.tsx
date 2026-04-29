@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { BookOpen, MessageSquarePlus, RadioTower } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import CatalogModal from '../components/ship/CatalogModal';
+import { EmptyState } from '../components/ship/EmptyState';
+import { Composer } from '../components/ship/Composer';
 import ConversationList, { shipQueryKeys } from '../components/ship/ConversationList';
 import ConversationView from '../components/ship/ConversationView';
-import { createConversation, getHealthz } from '../lib/ship';
+import { createConversation } from '../lib/ship';
 
 type DraftInjection = {
   id: number;
@@ -19,12 +20,7 @@ export default function AccountabilityPage() {
   const [isCatalogOpen, setIsCatalogOpen] = useState(false);
   const [draftInjection, setDraftInjection] = useState<DraftInjection>(null);
   const [isCreating, setIsCreating] = useState(false);
-
-  const healthQuery = useQuery({
-    queryKey: ['ship', 'healthz'],
-    queryFn: getHealthz,
-    retry: 1,
-  });
+  const [landingComposer, setLandingComposer] = useState('');
 
   function selectConversation(nextConversationId: string) {
     navigate(`/accountability/${encodeURIComponent(nextConversationId)}`);
@@ -60,16 +56,12 @@ export default function AccountabilityPage() {
       return;
     }
 
-    setIsCreating(true);
-    try {
-      const conversation = await createConversation();
-      await queryClient.invalidateQueries({ queryKey: shipQueryKeys.conversations });
-      navigate(`/accountability/${encodeURIComponent(conversation.conversation_id)}`, {
-        state: { draft: example },
-      });
-    } finally {
-      setIsCreating(false);
+    if (!example) {
+      void createBlankConversation();
+      return;
     }
+
+    void startConversationWithMessage(example);
   }
 
   return (
@@ -94,42 +86,24 @@ export default function AccountabilityPage() {
               />
             </div>
           ) : (
-            <div className="flex flex-1 flex-col items-center justify-center p-6 lg:p-12 overflow-y-auto">
-              <div className="max-w-2xl w-full text-center">
-                <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--color-accent)] mb-3">
-                  Accountability Analyst
-                </p>
-                <h2 className="text-4xl font-semibold text-[var(--color-ink-strong)] tracking-tight mb-4">
-                  What would you like to investigate today?
-                </h2>
-                <p className="text-base text-[var(--color-muted)] leading-relaxed mb-12 max-w-lg mx-auto">
-                  Ask grounded questions about Canadian public spending — recipients, contracts, 
-                  governance networks, and more. Every answer is cited.
-                </p>
+            <div className="flex flex-1 flex-col overflow-hidden">
+              <div className="flex-1 overflow-y-auto">
+                <EmptyState
+                  onPickExample={handleCatalogExample}
+                  onOpenCatalog={() => setIsCatalogOpen(true)}
+                />
+              </div>
 
-                <div className="grid gap-4 sm:grid-cols-2 mb-12 text-left">
-                  <EmptyState onPickExample={handleCatalogExample} onOpenCatalog={() => setIsCatalogOpen(true)} />
-                </div>
-
-                <div className="flex items-center justify-center gap-6">
-                  <button
-                    type="button"
-                    onClick={() => setIsCatalogOpen(true)}
-                    className="inline-flex items-center gap-2 text-sm font-medium text-[var(--color-muted)] hover:text-[var(--color-accent)] transition-colors"
-                  >
-                    <BookOpen className="size-4" />
-                    Browse all examples
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void createBlankConversation()}
-                    disabled={isCreating}
-                    className="inline-flex items-center gap-2 text-sm font-medium text-[var(--color-muted)] hover:text-[var(--color-accent)] transition-colors disabled:opacity-50"
-                  >
-                    <MessageSquarePlus className="size-4" />
-                    Start blank conversation
-                  </button>
-                </div>
+              <div className="w-full px-4 lg:px-8 pb-8">
+                <Composer
+                  value={landingComposer}
+                  onChange={setLandingComposer}
+                  onSend={() => void startConversationWithMessage(landingComposer)}
+                  onOpenCatalog={() => setIsCatalogOpen(true)}
+                  isStreaming={false}
+                  disabled={isCreating}
+                  statusText={isCreating ? 'Initializing conversation...' : undefined}
+                />
               </div>
             </div>
           )}
@@ -144,4 +118,3 @@ export default function AccountabilityPage() {
     </section>
   );
 }
-

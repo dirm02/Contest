@@ -54,9 +54,10 @@ body {
 }
 
 .app-shell {
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .app-card {
@@ -182,4 +183,13 @@ body {
 
 .react-flow__attribution {
   display: none;
+}
+
+@keyframes caret-blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+.animate-caret { animation: caret-blink 1s steps(1, end) infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .animate-caret { animation: none; opacity: 1; }
 }

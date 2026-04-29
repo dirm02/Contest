@@ -10,8 +10,8 @@ import {
   flip,
   FloatingPortal,
 } from '@floating-ui/react';
-import { Archive, Pin, Trash2, MapPin, ChevronRight, Info } from 'lucide-react';
-import type { MemoryEntry, ShipConversation } from '../../lib/ship';
+import { Archive, Pin, Trash2, ChevronRight, Info } from 'lucide-react';
+import type { ShipConversation } from '../../lib/ship';
 import { getRunNumber } from '../../lib/lineage';
 
 type MemoryPopoverProps = {

@@ -1,5 +1,16 @@
 # chat.md
 
+### msg-sess_019dda11-af5f-7b53-bd81-d3b9d37fe5be-20260429T162839Z-001
+- Timestamp: 2026-04-29T16:28:39Z
+- Session ID: sess_019dda11-af5f-7b53-bd81-d3b9d37fe5be
+- Target Session ID: none
+- Type: claim
+- Files: `services/ship/output/ship/server.py`, `services/ship/output/ship/orchestrator.py`, `services/ship/output/ship/summarizer.py`, `chat.md`, `kanban.md`
+- References: `task-sess_019dda11-af5f-7b53-bd81-d3b9d37fe5be-001`
+- Requested Action: Reply here before editing the ship SSE stream transport, orchestrator event flow, summarizer token loop, or coordination files.
+- Waiting State: none
+- Body: Claiming the backend SSE cadence pass. The product goal is that `/accountability` visibly progresses through route, retrieve, synthesize, and verify; long-running backend work emits heartbeat events; answer prose grows in tiny chunks; and verifier rows appear one at a time instead of landing as a batch.
+
 ### msg-sess_567e13cb-d037-4a6a-adc8-9a17cf4e0f68-20260429T105754Z-001
 - Timestamp: 2026-04-29T10:57:54Z
 - Session ID: sess_567e13cb-d037-4a6a-adc8-9a17cf4e0f68
@@ -374,6 +385,17 @@
 - Waiting State: none
 - Body: The user extended the backend brief with an analytical query agent for normal open-ended warehouse questions. I am keeping the multi-turn contract and adding the schema catalog, curated lexicon, SQL plan compiler, sandbox validator/executor, analytical audit table, catalog endpoints, tests, and `services/ship/ANALYTICAL.md`.
 
+### msg-sess_019dd96a-b6dd-7e50-a444-f7ab78e398f9-20260429T163818Z-013
+- Timestamp: 2026-04-29T16:38:18Z
+- Session ID: sess_019dd96a-b6dd-7e50-a444-f7ab78e398f9
+- Target Session ID: none
+- Type: claim
+- Files: GCP Cloud SQL database, `chat.md`, `kanban.md`
+- References: `task-sess_019dd96a-b6dd-7e50-a444-f7ab78e398f9-006`
+- Requested Action: Reply here before running DDL against the shared GCP Postgres database if you are also changing database indexes or schema.
+- Waiting State: none
+- Body: User requested speed-up indexes on the deployed GCP Postgres database. I am doing a database-only pass: inspect existing schemas/indexes, create missing query-shaped indexes concurrently where possible, run ANALYZE on affected tables, and avoid the active ship backend files currently claimed by `sess_019dda11-af5f-7b53-bd81-d3b9d37fe5be`.
+
 ### msg-sess_019dd96a-b6dd-7e50-a444-f7ab78e398f9-20260429T153723Z-003
 - Timestamp: 2026-04-29T15:37:23Z
 - Session ID: sess_019dd96a-b6dd-7e50-a444-f7ab78e398f9
@@ -494,3 +516,36 @@
 - Requested Action: none
 - Waiting State: none
 - Body: Added executable `scripts/run-local-no-docker.sh`. It loads `.env.docker` or GCP secrets, writes the direct Cloud SQL URL into the gitignored backend env, syncs dependencies, restarts dossier/ship/web native processes, waits for health checks, and supports `status`/`stop`. Shell syntax and `status` command were verified.
+
+### msg-sess_019dda11-af5f-7b53-bd81-d3b9d37fe5be-20260429T164102Z-002
+- Timestamp: 2026-04-29T16:41:02Z
+- Session ID: sess_019dda11-af5f-7b53-bd81-d3b9d37fe5be
+- Target Session ID: none
+- Type: done
+- Files: `services/ship/output/ship/server.py`, `services/ship/output/ship/orchestrator.py`, `services/ship/output/ship/summarizer.py`, `output/dev-runtime/sse-feature01-prose-20260429T163535Z.log`, `output/playwright/backend-feature01-browser-live-drafting.png`, `output/playwright/backend-feature01-browser-final.png`, `chat.md`, `kanban.md`
+- References: `task-sess_019dda11-af5f-7b53-bd81-d3b9d37fe5be-001`
+- Requested Action: none
+- Waiting State: none
+- Body: Backend SSE cadence work is complete and source claims are released. Server streaming now yields bytes with no-transform, identity, and nginx no-buffer headers; orchestrator emits explicit route/retrieve/synthesize/verify phases, five-second heartbeats during quiet long work, router decisions for analytical turns, and spaced verifier checks; summarizer emits prose-only chunks of at most five characters with event-loop yields instead of raw structured JSON bursts. Verification passed with compileall, pytest, curl-N schools stream, and a browser run showing the live drafting state and final answer.
+
+### msg-sess_019dda1d-ed62-7340-acff-e0bb3c6725ee-20260429T164244Z-001
+- Timestamp: 2026-04-29T16:42:44Z
+- Session ID: sess_019dda1d-ed62-7340-acff-e0bb3c6725ee
+- Target Session ID: none
+- Type: claim
+- Files: `.gitignore`, git index generated-artifact paths, `chat.md`, `kanban.md`
+- References: `task-sess_019dda1d-ed62-7340-acff-e0bb3c6725ee-001`
+- Requested Action: Reply here before changing `.gitignore` or staging generated artifact paths during this cleanup.
+- Waiting State: none
+- Body: Claiming the branch hygiene pass requested by the user. I will make the Git view keep real product/source changes while excluding Playwright/MCP snapshots, screenshots, generated prompts, and dev-runtime artifacts, then commit and push the current branch.
+
+### msg-sess_019dda1d-ed62-7340-acff-e0bb3c6725ee-20260429T164536Z-002
+- Timestamp: 2026-04-29T16:45:36Z
+- Session ID: sess_019dda1d-ed62-7340-acff-e0bb3c6725ee
+- Target Session ID: none
+- Type: done
+- Files: `.gitignore`, git index generated-artifact paths, `chat.md`, `kanban.md`
+- References: `task-sess_019dda1d-ed62-7340-acff-e0bb3c6725ee-001`, `msg-sess_019dda1d-ed62-7340-acff-e0bb3c6725ee-20260429T164244Z-001`
+- Requested Action: none
+- Waiting State: none
+- Body: Branch hygiene cleanup is complete and claims are released. `.gitignore` now excludes Playwright CLI/MCP artifacts, MCP screenshots, runtime output, generated prompt briefs, and review screenshots; tracked generated artifacts were removed from the index while local files remain ignored. Verification passed with `git check-ignore --no-index`, `git diff --cached --check`, `npm run build`, and `uv run python -m compileall output/ship`.

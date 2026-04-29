@@ -124,7 +124,8 @@ def _stream_message_response(conversation_id: UUID, body: MessageCreate, request
             counter += 1
             name = getattr(event, "name", "error")
             envelope = event.envelope() if hasattr(event, "envelope") else {"event": "error", "ts": None, "data": event.data}
-            yield f"event: {name}\nid: {counter}\ndata: {json.dumps(envelope, ensure_ascii=False)}\n\n"
+            message = f"event: {name}\nid: {counter}\ndata: {json.dumps(envelope, ensure_ascii=False)}\n\n"
+            yield message.encode("utf-8")
 
     return StreamingResponse(
         event_stream(),
@@ -133,6 +134,7 @@ def _stream_message_response(conversation_id: UUID, body: MessageCreate, request
             "Cache-Control": "no-cache, no-transform",
             "X-Accel-Buffering": "no",
             "Connection": "keep-alive",
+            "Content-Encoding": "identity",
         },
     )
 

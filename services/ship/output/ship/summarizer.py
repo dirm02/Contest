@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
-import re
 from typing import Any
 
 from agents import Agent, AgentOutputSchema, ModelSettings, Runner, set_default_openai_key
@@ -106,16 +106,22 @@ async def summarize_streaming(result: RecipeResult, *, emit: EmitCallback | None
     if emit:
         await emit("summarizer_started", {"prompt_token_estimate": max(1, len(payload) // 4)})
     stream = Runner.run_streamed(_agent(), payload, max_turns=1)
-    emitted_any = False
+    text_streamer = _StructuredSummaryTextStreamer()
     async for event in stream.stream_events():
         delta = _event_delta(event)
         if delta and emit:
-            emitted_any = True
-            await emit("summarizer_token", {"text": delta})
+            for chunk in text_streamer.feed(delta):
+                await emit("summarizer_token", {"text": chunk})
+                await asyncio.sleep(0)
     summary = stream.final_output
-    if emit and not emitted_any:
+    if emit:
+        for chunk in text_streamer.flush():
+            await emit("summarizer_token", {"text": chunk})
+            await asyncio.sleep(0)
+    if emit and not text_streamer.emitted_any:
         for token in _summary_chunks(summary):
             await emit("summarizer_token", {"text": token})
+            await asyncio.sleep(0)
     if emit:
         prompt_tokens, completion_tokens = _usage_counts(stream)
         await emit("summarizer_completed", {"prompt_tokens": prompt_tokens, "completion_tokens": completion_tokens})
@@ -126,9 +132,10 @@ async def emit_cached_summary_tokens(summary: Summary, *, emit: EmitCallback | N
     if not emit:
         return
     text = " ".join([summary.headline, *(paragraph.text for paragraph in summary.paragraphs)])
-    await emit("summarizer_started", {"prompt_token_estimate": 0})
-    for token in _chunk_text(text):
+    await emit("summarizer_started", {"prompt_token_estimate": max(1, len(text) // 4)})
+    for token in _chunk_text(text, max_chars=5):
         await emit("summarizer_token", {"text": token})
+        await asyncio.sleep(0)
     await emit("summarizer_completed", {"prompt_tokens": 0, "completion_tokens": 0})
 
 
@@ -148,21 +155,143 @@ def _event_delta(event: Any) -> str | None:
 
 def _summary_chunks(summary: Summary) -> list[str]:
     text = " ".join([summary.headline, *(paragraph.text for paragraph in summary.paragraphs)])
-    return _chunk_text(text)
+    return _chunk_text(text, max_chars=5)
 
 
-def _chunk_text(text: str) -> list[str]:
-    parts = [part for part in re.split(r"(\s+)", text) if part]
-    chunks: list[str] = []
-    current = ""
-    for part in parts:
-        current += part
-        if len(current) >= 24:
-            chunks.append(current)
-            current = ""
-    if current:
-        chunks.append(current)
+def _chunk_text(text: str, *, max_chars: int = 5) -> list[str]:
+    if max_chars < 1:
+        raise ValueError("max_chars must be at least 1")
+    chunks = [text[index : index + max_chars] for index in range(0, len(text), max_chars)]
     return chunks or [""]
+
+
+class _StructuredSummaryTextStreamer:
+    """Extract human-readable prose from streamed structured-output JSON."""
+
+    _TARGET_KEYS = {"headline", "text"}
+    _ESCAPES = {
+        '"': '"',
+        "\\": "\\",
+        "/": "/",
+        "b": "\b",
+        "f": "\f",
+        "n": "\n",
+        "r": "\r",
+        "t": "\t",
+    }
+
+    def __init__(self, *, max_chars: int = 5) -> None:
+        self.max_chars = max_chars
+        self.started = False
+        self.raw_mode = False
+        self.in_string = False
+        self.escape = False
+        self.unicode_escape: str | None = None
+        self.streaming_target = False
+        self.current_key: str | None = None
+        self.last_string: str | None = None
+        self.string_buffer: list[str] = []
+        self.output_buffer = ""
+        self.expecting_value = False
+        self.emitted_any = False
+
+    def feed(self, text: str) -> list[str]:
+        chunks: list[str] = []
+        index = 0
+        if not self.started:
+            while index < len(text) and text[index].isspace():
+                index += 1
+            if index >= len(text):
+                return chunks
+            self.started = True
+            if text[index] not in "{[":
+                self.raw_mode = True
+
+        if self.raw_mode:
+            return self._append_output(text[index:])
+
+        for char in text[index:]:
+            chunks.extend(self._consume_json_char(char))
+        return chunks
+
+    def flush(self) -> list[str]:
+        if not self.output_buffer:
+            return []
+        chunk = self.output_buffer
+        self.output_buffer = ""
+        return [chunk]
+
+    def _consume_json_char(self, char: str) -> list[str]:
+        chunks: list[str] = []
+        if self.in_string:
+            if self.unicode_escape is not None:
+                self.unicode_escape += char
+                if len(self.unicode_escape) == 4:
+                    try:
+                        decoded = chr(int(self.unicode_escape, 16))
+                    except ValueError:
+                        decoded = f"\\u{self.unicode_escape}"
+                    chunks.extend(self._string_char(decoded))
+                    self.unicode_escape = None
+                    self.escape = False
+                return chunks
+            if self.escape:
+                if char == "u":
+                    self.unicode_escape = ""
+                    return chunks
+                chunks.extend(self._string_char(self._ESCAPES.get(char, char)))
+                self.escape = False
+                return chunks
+            if char == "\\":
+                self.escape = True
+                return chunks
+            if char == '"':
+                if self.streaming_target:
+                    chunks.extend(self.flush())
+                else:
+                    self.last_string = "".join(self.string_buffer)
+                self.in_string = False
+                self.streaming_target = False
+                self.string_buffer = []
+                return chunks
+            chunks.extend(self._string_char(char))
+            return chunks
+
+        if char == '"':
+            self.in_string = True
+            self.escape = False
+            self.unicode_escape = None
+            self.string_buffer = []
+            self.streaming_target = self.expecting_value and self.current_key in self._TARGET_KEYS
+            if self.streaming_target:
+                if self.emitted_any:
+                    chunks.extend(self._append_output("\n\n"))
+                self.emitted_any = True
+            return chunks
+        if char == ":":
+            self.current_key = self.last_string
+            self.last_string = None
+            self.expecting_value = True
+            return chunks
+        if char in ",}]":
+            self.expecting_value = False
+            self.current_key = None
+            return chunks
+        return chunks
+
+    def _string_char(self, char: str) -> list[str]:
+        if self.streaming_target:
+            return self._append_output(char)
+        self.string_buffer.append(char)
+        return []
+
+    def _append_output(self, text: str) -> list[str]:
+        chunks: list[str] = []
+        self.output_buffer += text
+        while len(self.output_buffer) >= self.max_chars:
+            chunks.append(self.output_buffer[: self.max_chars])
+            self.output_buffer = self.output_buffer[self.max_chars :]
+        return chunks
 
 
 def _usage_counts(stream: Any) -> tuple[int, int]:

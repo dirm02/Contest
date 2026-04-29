@@ -181,6 +181,7 @@ function AnswerCard({ response, onRegenerate, onSend }: { response: AnswerRespon
     setIsLoadingRun(true);
     setRunError(null);
     try {
+      if (!response.recipe_run_id) return null;
       const run = await getRecipeRun(response.recipe_run_id);
       setFullRun(run);
       return run;

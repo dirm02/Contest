@@ -1,7 +1,7 @@
 import { ChevronRight } from 'lucide-react';
-import type { AnswerResponse, MemoryEntry, ShipConversation } from '../../lib/ship';
+import type { AnswerResponse, ShipConversation } from '../../lib/ship';
 import { RunRefChip } from './RunRefChip';
-import { formatOperationDescription, getOperationSymbol, getRunNumber } from '../../lib/lineage';
+import { getRunNumber } from '../../lib/lineage';
 
 type LineageBreadcrumbProps = {
   response: AnswerResponse;
@@ -27,7 +27,6 @@ export function LineageBreadcrumb({ response, conversation, onJumpToRun }: Linea
     return (
       <RunRefChip
         key={runId}
-        runId={runId}
         runNumber={num}
         memoryEntry={entry}
         onClick={() => onJumpToRun(runId)}

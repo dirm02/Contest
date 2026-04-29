@@ -245,6 +245,7 @@ async def stream_user_message(
             "referenced_run_ids": plan.referenced_run_ids,
         },
     )
+    yield Event("phase_started", {"phase": "route"})
 
     if plan.mode == "not_answerable":
         response = NotAnswerableResponse(
@@ -277,6 +278,10 @@ async def stream_user_message(
 
     async def emit(name: str, data: dict[str, Any]) -> None:
         await queue.put(Event(name, data))
+        if name == "verifier_check":
+            await asyncio.sleep(0.05)
+            return
+        await asyncio.sleep(0)
 
     task = asyncio.create_task(
         _handle_turn_plan(
@@ -300,15 +305,26 @@ async def _drain_task_events(
     queue: asyncio.Queue[Event],
     started: float,
 ) -> AsyncGenerator[Event, None]:
-    last_heartbeat = time.perf_counter()
+    heartbeat_interval = 5.0
+    last_meaningful_event = time.perf_counter()
+    last_heartbeat = last_meaningful_event
+
+    def mark_event(event: Event) -> Event:
+        nonlocal last_meaningful_event, last_heartbeat
+        if event.name != "heartbeat":
+            now = time.perf_counter()
+            last_meaningful_event = now
+            last_heartbeat = now
+        return event
+
     while not task.done() or not queue.empty():
         if not queue.empty():
-            yield queue.get_nowait()
+            yield mark_event(queue.get_nowait())
             continue
         if task.done():
             break
 
-        timeout = max(0.1, 10.0 - (time.perf_counter() - last_heartbeat))
+        timeout = max(0.1, heartbeat_interval - (time.perf_counter() - last_heartbeat))
         queue_task = asyncio.create_task(queue.get())
         done, _pending = await asyncio.wait(
             {queue_task, task},
@@ -316,17 +332,19 @@ async def _drain_task_events(
             return_when=asyncio.FIRST_COMPLETED,
         )
         if queue_task in done:
-            yield queue_task.result()
+            yield mark_event(queue_task.result())
             continue
         queue_task.cancel()
         if task in done:
             break
         if not done:
-            last_heartbeat = time.perf_counter()
-            yield Event("heartbeat", {"elapsed_ms": int((last_heartbeat - started) * 1000)})
+            now = time.perf_counter()
+            if now - last_meaningful_event >= 3.0:
+                last_heartbeat = now
+                yield Event("heartbeat", {"elapsed_ms": int((now - started) * 1000)})
 
     while not queue.empty():
-        yield queue.get_nowait()
+        yield mark_event(queue.get_nowait())
 
 
 def _assistant_response_from_payload(payload: dict[str, Any]) -> AssistantResponse:
@@ -368,9 +386,37 @@ async def _handle_turn_plan(
     planned_ops = plan.operations or [PlannedOperation(kind="recipe_run", recipe_id=None, recipe_params={}, description="Run a fresh investigation.")]
     for planned_op in planned_ops:
         if planned_op.kind == "recipe_run":
-            if planned_op.recipe_id == "__analytical__" or plan.mode == "analytical_query":
+            if emit:
+                await emit("router_started", {})
+            if planned_op.recipe_id is None:
+                decision = await route(content, conversation_context=None)
                 if emit:
-                    await emit("phase_started", {"phase": "analytical"})
+                    await emit(
+                        "router_decision",
+                        {"decision": decision.decision, "recipe_id": decision.recipe_id, "reasoning_one_line": decision.reasoning_one_line},
+                    )
+                if decision.decision == "clarify":
+                    payload = decision.clarification or _clarification_payload(decision.recipe_id, content)
+                    response = ClarificationResponse(message_id=str(uuid4()), **payload.model_dump())
+                    await _store_assistant_response(pool, conversation_id, response)
+                    return response  # type: ignore[return-value]
+                if decision.decision == "not_answerable" or decision.recipe_id is None:
+                    response = NotAnswerableResponse(
+                        message_id=str(uuid4()),
+                        message=decision.not_answerable_reason or "No deterministic recipe can answer this question yet.",
+                    )
+                    await _store_assistant_response(pool, conversation_id, response)
+                    return response  # type: ignore[return-value]
+                planned_op.recipe_id = decision.recipe_id
+                planned_op.recipe_params = decision.params
+            elif emit:
+                await emit(
+                    "router_decision",
+                    {"decision": "execute", "recipe_id": planned_op.recipe_id, "reasoning_one_line": plan.reasoning_one_line},
+                )
+            if emit:
+                await emit("phase_started", {"phase": "retrieve"})
+            if planned_op.recipe_id == "__analytical__" or plan.mode == "analytical_query":
                 recipe_result, run_id, op_record, summary, verification = await _execute_analytical_operation(
                     pool=pool,
                     conversation_id=conversation_id,
@@ -381,31 +427,6 @@ async def _handle_turn_plan(
                     emit=emit,
                 )
             else:
-                if planned_op.recipe_id is None:
-                    if emit:
-                        await emit("router_started", {})
-                    decision = await route(content, conversation_context=None)
-                    if emit:
-                        await emit(
-                            "router_decision",
-                            {"decision": decision.decision, "recipe_id": decision.recipe_id, "reasoning_one_line": decision.reasoning_one_line},
-                        )
-                    if decision.decision == "clarify":
-                        payload = decision.clarification or _clarification_payload(decision.recipe_id, content)
-                        response = ClarificationResponse(message_id=str(uuid4()), **payload.model_dump())
-                        await _store_assistant_response(pool, conversation_id, response)
-                        return response  # type: ignore[return-value]
-                    if decision.decision == "not_answerable" or decision.recipe_id is None:
-                        response = NotAnswerableResponse(
-                            message_id=str(uuid4()),
-                            message=decision.not_answerable_reason or "No deterministic recipe can answer this question yet.",
-                        )
-                        await _store_assistant_response(pool, conversation_id, response)
-                        return response  # type: ignore[return-value]
-                    planned_op.recipe_id = decision.recipe_id
-                    planned_op.recipe_params = decision.params
-                if emit:
-                    await emit("phase_started", {"phase": "primitive"})
                 recipe_result, run_id, op_record, summary, verification = await _execute_recipe_operation(
                     pool=pool,
                     conversation_id=conversation_id,
@@ -436,8 +457,11 @@ async def _handle_turn_plan(
             last_result = _recipe_result_from_loaded(content, source_runs[0], caveats=["Conversational answer used prior run memory; no new SQL was executed."]) if source_runs else _empty_recipe_result(content)
             final_summary = _summary_for_commentary(content, source_runs, op_record)
             if emit:
+                await emit("phase_started", {"phase": "synthesize"})
                 await emit_cached_summary_tokens(final_summary, emit=emit)
             total_latency_ms = int((time.perf_counter() - started) * 1000)
+            if emit:
+                await emit("phase_started", {"phase": "verify"})
             final_verification = await verify(
                 final_summary,
                 last_result,
@@ -458,6 +482,7 @@ async def _handle_turn_plan(
             if not baseline_findings:
                 baseline_findings = (await registry.load(source_run_id)).findings
             if emit:
+                await emit("phase_started", {"phase": "retrieve"})
                 await emit("refinement_started", {"kind": planned_op.kind, "source_run_id": source_run_id, "description": planned_op.description})
             result = await _execute_refiner_operation(
                 pool=pool,
@@ -499,6 +524,7 @@ async def _handle_turn_plan(
                 planned_op.right_run_id = remembered_new_run_ids[-1]
             composition_sources = _planned_source_ids(planned_op)
             if emit:
+                await emit("phase_started", {"phase": "retrieve"})
                 await emit("composition_started", {"kind": planned_op.kind, "source_run_ids": composition_sources, "description": planned_op.description})
             result = await _execute_refiner_operation(
                 pool=pool,
@@ -571,11 +597,11 @@ async def _execute_recipe_operation(
     spec = RECIPES[planned_op.recipe_id]
     result = await spec.run(content, params, pool, emit=emit)
     if emit:
-        await emit("phase_started", {"phase": "summarizer"})
+        await emit("phase_started", {"phase": "synthesize"})
     summary = await summarize_streaming(result, emit=emit)
     total_latency_ms = int((time.perf_counter() - started) * 1000)
     if emit:
-        await emit("phase_started", {"phase": "verifier"})
+        await emit("phase_started", {"phase": "verify"})
     verification = await verify(summary, result, pool, total_latency_ms=total_latency_ms, emit=emit)
     run_id = await _store_recipe_run(
         pool,
@@ -629,14 +655,14 @@ async def _execute_analytical_operation(
     )
     result = analytical_to_recipe_result(content, analytical)
     if emit:
-        await emit("phase_started", {"phase": "summarizer"})
+        await emit("phase_started", {"phase": "synthesize"})
     summary = await summarize_streaming(result, emit=emit)
     for caveat in result.caveats:
         if caveat not in summary.caveats:
             summary.caveats.append(caveat)
     total_latency_ms = int((time.perf_counter() - started) * 1000)
     if emit:
-        await emit("phase_started", {"phase": "verifier"})
+        await emit("phase_started", {"phase": "verify"})
     verification = await verify(summary, result, pool, total_latency_ms=total_latency_ms, emit=emit, mode="fresh")
     run_id = await _store_recipe_run(
         pool,
@@ -719,11 +745,11 @@ async def _execute_refiner_operation(
     )
     summary = _summary_from_rows(result, refinement.op_record.description)
     if emit:
-        await emit("phase_started", {"phase": "summarizer"})
+        await emit("phase_started", {"phase": "synthesize"})
         await emit_cached_summary_tokens(summary, emit=emit)
     total_latency_ms = int((time.perf_counter() - started) * 1000)
     if emit:
-        await emit("phase_started", {"phase": "verifier"})
+        await emit("phase_started", {"phase": "verify"})
     verification = await verify(summary, result, pool, total_latency_ms=total_latency_ms, emit=emit)
     run_id = await _store_recipe_run(
         pool,
@@ -889,11 +915,11 @@ async def _handle_execute(
     spec = RECIPES[decision.recipe_id]
     result = await spec.run(content, params, pool, emit=emit)
     if emit:
-        await emit("phase_started", {"phase": "summarizer"})
+        await emit("phase_started", {"phase": "synthesize"})
     summary = await summarize_streaming(result, emit=emit)
     total_latency_ms = int((time.perf_counter() - started) * 1000)
     if emit:
-        await emit("phase_started", {"phase": "verifier"})
+        await emit("phase_started", {"phase": "verify"})
     verification = await verify(summary, result, pool, total_latency_ms=total_latency_ms, emit=emit)
     run_id = await _store_recipe_run(
         pool,
@@ -962,11 +988,11 @@ async def _handle_refine(
     )
     summary = _summary_for_refinement(result, refinement, latest_run)
     if emit:
-        await emit("phase_started", {"phase": "summarizer"})
+        await emit("phase_started", {"phase": "synthesize"})
         await emit_cached_summary_tokens(summary, emit=emit)
     total_latency_ms = int((time.perf_counter() - started) * 1000)
     if emit:
-        await emit("phase_started", {"phase": "verifier"})
+        await emit("phase_started", {"phase": "verify"})
     verification = await verify(summary, result, pool, total_latency_ms=total_latency_ms, emit=emit)
     run_id = await _store_recipe_run(
         pool,

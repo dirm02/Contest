@@ -65,6 +65,8 @@ function formatEvent(event: StreamEvent): string {
       return 'Final response received.';
     case 'error':
       return event.data.retryable ? `Recoverable stream error: ${event.data.message}` : `Stream error: ${event.data.message}`;
+    default:
+      return `Analyst activity: ${event.name.replaceAll('_', ' ')}`;
   }
 }
 

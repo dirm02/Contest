@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowDown, BookOpen, TriangleAlert } from 'lucide-react';
 import AssistantMessageCard from './AssistantMessageCard';
 import ActivityCard from './ActivityCard';
+import StreamingAnswerCard from './StreamingAnswerCard';
 import { Composer } from './Composer';
 import { EmptyState } from './EmptyState';
 import { shipQueryKeys } from './ConversationList';
@@ -140,8 +141,10 @@ export default function ConversationView({
   }, [conversationQuery.data?.title]);
 
   useEffect(() => {
-    if (liveItems.length > 0) scrollToBottom();
-  }, [liveItems, scrollToBottom]);
+    if (liveItems.length > 0 && !showLatestPill) {
+      scrollToBottom();
+    }
+  }, [liveItems, scrollToBottom, showLatestPill]);
 
   // Watch scroll position for "↓ Latest" pill.
   useEffect(() => {
@@ -430,39 +433,56 @@ export default function ConversationView({
 
               return (
                 <div key={item.id} className="space-y-4">
-                  <ActivityCard
-                    events={item.events}
-                    isRunning={item.isRunning}
-                    startedAt={item.startedAt}
-                    completedAt={item.completedAt}
-                  />
-
-                  {item.response ? (
-                    <AssistantMessageCard
-                      response={item.response}
-                      onPrefill={prefillComposer}
-                      onSend={(content) => void submitMessage(content)}
-                      onStartNewConversation={onStartNewConversation}
-                      onDismiss={dismissMessage}
-                      onRegenerate={() => regenerateAssistantResponse(item.id)}
+                  {item.isRunning ? (
+                    <StreamingAnswerCard
+                      events={item.events}
+                      summaryDraft={item.summaryDraft}
+                      startedAt={item.startedAt}
+                      isRunning={item.isRunning}
+                      onStop={cancelStream}
                     />
-                  ) : item.errorMessage ? (
-                    <div className="rounded-xl border border-[var(--color-risk-high)]/20 bg-[var(--color-risk-high-soft)] p-5">
-                      <p className="text-sm font-semibold text-[var(--color-ink-strong)]">
-                        The response was cut off
-                      </p>
-                      <p className="mt-1 text-xs text-[var(--color-muted)]">{item.errorMessage}</p>
-                      {item.retryContent && (
-                        <button
-                          type="button"
-                          onClick={() => void submitMessage(item.retryContent ?? '')}
-                          className="mt-3 inline-flex rounded-md border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs font-medium text-[var(--color-ink-strong)] hover:bg-[var(--color-surface-subtle)] transition-colors"
-                        >
-                          Try again
-                        </button>
+                  ) : (
+                    <>
+                      {item.events.length > 0 && (
+                        <ActivityCard
+                          events={item.events}
+                          isRunning={false}
+                          startedAt={item.startedAt}
+                          completedAt={item.completedAt}
+                          onStop={cancelStream}
+                        />
                       )}
-                    </div>
-                  ) : null}
+
+                      <div>
+                        {item.response ? (
+                          <AssistantMessageCard
+                            response={item.response}
+                            onPrefill={prefillComposer}
+                            onSend={(content) => void submitMessage(content)}
+                            onStartNewConversation={onStartNewConversation}
+                            onDismiss={dismissMessage}
+                            onRegenerate={() => regenerateAssistantResponse(item.id)}
+                          />
+                        ) : item.errorMessage ? (
+                          <div className="rounded-xl border border-[var(--color-risk-high)]/20 bg-[var(--color-risk-high-soft)] p-5">
+                            <p className="text-sm font-semibold text-[var(--color-ink-strong)]">
+                              The response was cut off
+                            </p>
+                            <p className="mt-1 text-xs text-[var(--color-muted)]">{item.errorMessage}</p>
+                            {item.retryContent && (
+                              <button
+                                type="button"
+                                onClick={() => void submitMessage(item.retryContent ?? '')}
+                                className="mt-3 inline-flex rounded-md border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs font-medium text-[var(--color-ink-strong)] hover:bg-[var(--color-surface-subtle)] transition-colors"
+                              >
+                                Try again
+                              </button>
+                            )}
+                          </div>
+                        ) : null}
+                      </div>
+                    </>
+                  )}
                 </div>
               );
             })}
