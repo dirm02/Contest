@@ -32,7 +32,7 @@ import PolicyAlignmentPage from './routes/PolicyAlignmentPage';
 
 const NAV_ITEMS: Array<{ to: string; label: string; end?: boolean; Icon: typeof Search }> = [
   { to: '/', label: 'Search', end: true, Icon: Search },
-  { to: '/investigations', label: 'Admin Panel', Icon: SlidersHorizontal },
+  { to: '/investigations', label: 'Investigation Panel', Icon: SlidersHorizontal },
   { to: '/people', label: 'People', Icon: Users },
 ];
 
