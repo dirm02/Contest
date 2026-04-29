@@ -122,8 +122,8 @@ export default function ConversationList({
           </div>
         ) : conversations.length === 0 ? (
           <div className="p-8 text-center">
-            <p className="text-[10px] font-bold text-[var(--color-muted)] uppercase tracking-widest leading-relaxed">
-              No active forensic threads found in the ship service.
+            <p className="mt-2 text-[10px] font-bold text-[var(--color-muted)] uppercase tracking-widest leading-relaxed">
+              No active forensic threads found.
             </p>
           </div>
         ) : (

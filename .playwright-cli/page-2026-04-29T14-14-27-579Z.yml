@@ -1,0 +1,57 @@
+- generic [ref=e3]:
+  - banner [ref=e5]:
+    - generic [ref=e6]:
+      - link "A Accountability Max Forensic System" [ref=e8] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e9]: A
+        - generic [ref=e10]:
+          - generic [ref=e11]: Accountability Max
+          - generic [ref=e12]: Forensic System
+      - generic [ref=e13]:
+        - generic [ref=e14]:
+          - generic [ref=e15]: OFFICIAL USE ONLY
+          - generic [ref=e16]: Secure Portal
+        - link "SYSTEM ONLINE" [ref=e17] [cursor=pointer]:
+          - /url: /api/health
+          - img [ref=e18]
+          - text: SYSTEM ONLINE
+  - generic [ref=e23]:
+    - complementary [ref=e24]:
+      - navigation [ref=e25]:
+        - generic [ref=e26]: Main Navigation
+        - link "SEARCH" [ref=e27] [cursor=pointer]:
+          - /url: /
+          - img [ref=e28]
+          - text: SEARCH
+        - link "AGENTS" [ref=e31] [cursor=pointer]:
+          - /url: /accountability
+          - img [ref=e32]
+          - text: AGENTS
+        - link "INVESTIGATION PANEL" [ref=e34] [cursor=pointer]:
+          - /url: /investigations
+          - img [ref=e35]
+          - text: INVESTIGATION PANEL
+        - link "PEOPLE" [ref=e36] [cursor=pointer]:
+          - /url: /people
+          - img [ref=e37]
+          - text: PEOPLE
+      - generic [ref=e43]:
+        - paragraph [ref=e44]: Audit Posture
+        - generic [ref=e45]:
+          - img [ref=e46]
+          - generic [ref=e49]: Active Investigation
+    - main [ref=e50]:
+      - generic [ref=e52]:
+        - generic [ref=e53]:
+          - paragraph [ref=e54]: Forensic Inquiry
+          - heading "Official Entity Search" [level=1] [ref=e55]
+          - paragraph [ref=e56]: The Accountability Max portal is optimized for high-signal entity lookup, funding provenance analysis, and evidence grounding across official CRA, FED, and secondary public sector datasets.
+        - generic [ref=e57]:
+          - generic [ref=e58]: Official Recipient Inquiry
+          - generic [ref=e59]:
+            - searchbox "Search organization" [ref=e60]
+            - button "EXECUTE INQUIRY" [ref=e61]
+        - generic [ref=e62]:
+          - img [ref=e65]
+          - paragraph [ref=e68]: AWAITING OFFICIAL INQUIRY
+          - paragraph [ref=e69]: The forensic workspace is ready. Enter a canonical name, alias, or business number root to generate an official accountability dossier.

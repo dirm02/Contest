@@ -9,7 +9,8 @@ The repo-root `docker compose --env-file .env.docker up --build` starts the full
 - `web`: React app on `http://localhost:8080`.
 - `dossier-api`: Node dossier API behind `/api/*`.
 - `ship-service`: FastAPI on `http://localhost:8765`, with conversation persistence in `investigator.ship_*` tables that the service creates on startup.
-- `postgres`: shared Postgres/pgvector database loaded from `services/postgres/seed/`.
+- `cloud-sql-proxy`: local tunnel to the shared GCP Cloud SQL/pgvector database.
+- `postgres`: optional local fallback profile, not used by the default local runtime.
 
 The user flow is:
 
@@ -23,9 +24,10 @@ The user flow is:
 ```bash
 cp /home/david/GitHub/hackathon2026/.env .env.docker
 # Confirm .env.docker has OPENAI_API_KEY, WEB_SEARCH_ENABLED, and CANLII_API_KEY.
+deploy/gcp/configure-local-gcp-db.sh
 ```
 
-Prepare the shared database seed from the source repo:
+The default local runtime now uses the GCP Cloud SQL database through Docker's `cloud-sql-proxy` service. Prepare the local seed only when you intentionally need the `local-postgres` fallback or when you are loading Cloud SQL from this repo:
 
 ```bash
 node scripts/prepare-project-database-seed.mjs --source=/home/david/GitHub/hackathon2026 --hardlink
@@ -68,12 +70,13 @@ Optional:
 - `SHIP_PROMPT_CACHE_RETENTION`, defaulting to `24h`
 - `SHIP_API_PORT`, defaulting to `8765` locally
 
-Cloud Run can omit `DATABASE_URL` when these are set instead:
+Cloud Run and local Docker can omit `DATABASE_URL` when these are set instead:
 
 - `DB_USER`
 - `DB_PASSWORD`
 - `DB_NAME`
 - `CLOUD_SQL_CONNECTION_NAME`
+- or `DB_HOST`/`DB_PORT` when connecting through the local `cloud-sql-proxy` service
 
 `scripts/start.sh` constructs the Cloud SQL Unix-socket `DATABASE_URL` at container startup without putting the password into a git-tracked file or deployment command.
 

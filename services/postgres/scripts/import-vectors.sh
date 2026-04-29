@@ -14,10 +14,22 @@ find_vector_file() {
   find "${SEED_DIR}/entity-vectors" "${SEED_DIR}" \
     -maxdepth 2 \
     -type f \
-    \( -name 'entity_vectors*.csv.gz' -o -name 'investigator_entity_embeddings*.csv.gz' \) \
+    \( -name 'entity_vectors*.csv.gz' -o -name 'entity_vectors*.csv' -o -name 'investigator_entity_embeddings*.csv.gz' -o -name 'investigator_entity_embeddings*.csv' \) \
     2>/dev/null \
     | sort \
     | tail -n 1
+}
+
+stream_vector_file() {
+  local file="$1"
+  case "$file" in
+    *.gz)
+      gzip -dc "$file"
+      ;;
+    *)
+      cat "$file"
+      ;;
+  esac
 }
 
 VECTOR_FILE="$(find_vector_file || true)"
@@ -73,7 +85,7 @@ CREATE UNLOGGED TABLE entity_vectors.entities_import (
 );
 SQL
 
-gzip -dc "$VECTOR_FILE" | psql_db -c "\copy entity_vectors.entities_import (entity_id, canonical_name, source_summary, embedding, embedding_model, embedding_text_hash, last_embedded_at, metadata) FROM STDIN WITH (FORMAT csv, HEADER true)"
+stream_vector_file "$VECTOR_FILE" | psql_db -c "\copy entity_vectors.entities_import (entity_id, canonical_name, source_summary, embedding, embedding_model, embedding_text_hash, last_embedded_at, metadata) FROM STDIN WITH (FORMAT csv, HEADER true)"
 
 psql_db <<'SQL'
 INSERT INTO entity_vectors.entities (

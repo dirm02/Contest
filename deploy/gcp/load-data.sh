@@ -22,8 +22,9 @@ set +a
 : "${CLOUD_SQL_USER:?CLOUD_SQL_USER is required}"
 
 PORT="${CLOUD_SQL_LOCAL_PORT:-55433}"
-CONNECTION_NAME="${PROJECT_ID}:${REGION}:${CLOUD_SQL_INSTANCE}"
-DB_PASSWORD="$(gcloud secrets versions access latest --secret maple-doge-db-password)"
+CONNECTION_NAME="${CLOUD_SQL_CONNECTION_NAME:-${PROJECT_ID}:${REGION}:${CLOUD_SQL_INSTANCE}}"
+DB_PASSWORD_SECRET="${DB_PASSWORD_SECRET:-maple-doge-db-password}"
+DB_PASSWORD="$(gcloud secrets versions access latest --secret "$DB_PASSWORD_SECRET")"
 SEED_DUMP_PATH="${SEED_DUMP_PATH:-services/postgres/seed/hackathon.dump}"
 VECTOR_EXPORT_PATH="${VECTOR_EXPORT_PATH:-services/postgres/seed/entity-vectors}"
 
@@ -87,7 +88,7 @@ else
   exit 1
 fi
 
-VECTOR_FILE="$(find "$VECTOR_EXPORT_PATH" -maxdepth 1 -type f -name 'entity_vectors*.csv.gz' 2>/dev/null | sort | tail -n 1 || true)"
+VECTOR_FILE="$(find "$VECTOR_EXPORT_PATH" -maxdepth 1 -type f \( -name 'entity_vectors*.csv.gz' -o -name 'entity_vectors*.csv' \) 2>/dev/null | sort | tail -n 1 || true)"
 if [[ -n "$VECTOR_FILE" ]]; then
   docker run --rm --network host \
     -e POSTGRES_USER="$CLOUD_SQL_USER" \

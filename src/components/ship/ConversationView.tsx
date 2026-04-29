@@ -389,12 +389,12 @@ export default function ConversationView({
     <section className="flex flex-1 flex-col rounded-sm border border-[var(--color-border)] bg-[var(--color-surface)] shadow-md overflow-hidden h-full">
       <header className="flex flex-col gap-4 border-b border-[var(--color-border)] bg-[var(--color-surface-subtle)] p-6 lg:flex-row lg:items-center lg:justify-between shrink-0">
         <div>
-          <p className="section-title">ACCOUNTABILITY ANALYST</p>
+          <p className="section-title">INTELLIGENCE AGENT</p>
           <h1 className="mt-1 text-2xl font-black text-[var(--color-ink-strong)] uppercase tracking-tighter">
             {conversationQuery.data?.title?.trim() || 'LIVE FORENSIC THREAD'}
           </h1>
           <p className="mt-1 text-[11px] font-bold text-[var(--color-muted)] uppercase tracking-widest">
-            OFFICIAL SHIP SERVICE · CACHED FINDINGS ACTIVE
+            OFFICIAL AGENT SERVICE · CACHED FINDINGS ACTIVE
           </p>
         </div>
         <button
@@ -415,7 +415,7 @@ export default function ConversationView({
               <div>
                 <p className="section-title text-[var(--color-risk-high)]">CONNECTION ERROR</p>
                 <p className="mt-2 text-sm font-bold text-[var(--color-ink-strong)] uppercase tracking-tight">
-                  SHIP CONVERSATION COULD NOT BE RETRIEVED.
+                  CONVERSATION COULD NOT BE RETRIEVED.
                 </p>
                 <p className="mt-1 text-xs font-medium text-[var(--color-muted)]">
                   {conversationQuery.error instanceof Error
@@ -494,7 +494,7 @@ export default function ConversationView({
                     </div>
                   ) : (
                     <div className="rounded-sm border border-[var(--color-border)] bg-white p-6 text-[11px] font-black text-[var(--color-muted)] uppercase tracking-[0.2em] shadow-sm animate-pulse">
-                      AWAITING ANALYST RESPONSE FROM SHIP BACKEND...
+                      AWAITING ANALYST RESPONSE FROM AGENT...
                     </div>
                   )}
                 </div>

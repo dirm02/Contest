@@ -23,10 +23,10 @@ export default function CatalogModal({ isOpen, onClose, onSelectExample }: Catal
       <section className="max-h-[88vh] w-full max-w-4xl overflow-hidden rounded-lg border border-[var(--color-border)] bg-white shadow-xl">
         <header className="flex items-start justify-between gap-4 border-b border-[var(--color-border)] p-5">
           <div>
-            <p className="section-title">Recipe catalog</p>
+            <p className="section-title">Agent catalog</p>
             <h2 className="mt-1 text-2xl font-black text-[var(--color-ink-strong)]">What can I ask?</h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--color-muted)]">
-              These examples come from the live ship catalog. Choosing one places the question in the composer so it can be reviewed before sending.
+              These examples come from the live agent catalog. Choosing one places the question in the composer so it can be reviewed before sending.
             </p>
           </div>
           <button
@@ -48,9 +48,9 @@ export default function CatalogModal({ isOpen, onClose, onSelectExample }: Catal
             </div>
           ) : catalogQuery.isError ? (
             <div className="rounded-lg border border-[var(--color-risk-high)] bg-[var(--color-risk-high-soft)] p-4 text-sm text-[var(--color-risk-high)]">
-              <p className="font-bold">Unable to load the recipe catalog.</p>
+              <p className="font-bold">Unable to load the agent catalog.</p>
               <p className="mt-1">
-                {catalogQuery.error instanceof Error ? catalogQuery.error.message : 'The ship catalog endpoint failed.'}
+                {catalogQuery.error instanceof Error ? catalogQuery.error.message : 'The agent catalog endpoint failed.'}
               </p>
               <button
                 type="button"

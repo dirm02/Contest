@@ -24,6 +24,10 @@ set +a
 : "${CLOUD_SQL_TIER:?CLOUD_SQL_TIER is required}"
 : "${CLOUD_SQL_STORAGE_GB:?CLOUD_SQL_STORAGE_GB is required}"
 
+DB_PASSWORD_SECRET="${DB_PASSWORD_SECRET:-maple-doge-db-password}"
+OPENAI_API_KEY_SECRET="${OPENAI_API_KEY_SECRET:-maple-doge-openai-api-key}"
+CANLII_API_KEY_SECRET="${CANLII_API_KEY_SECRET:-maple-doge-canlii-api-key}"
+
 gcloud config set project "$PROJECT_ID"
 
 gcloud services enable \
@@ -75,21 +79,22 @@ upsert_secret() {
   fi
 }
 
-upsert_secret maple-doge-db-password "$DB_PASSWORD"
+upsert_secret "$DB_PASSWORD_SECRET" "$DB_PASSWORD"
 
 if [[ -n "${OPENAI_API_KEY:-}" ]]; then
-  upsert_secret maple-doge-openai-api-key "$OPENAI_API_KEY"
+  upsert_secret "$OPENAI_API_KEY_SECRET" "$OPENAI_API_KEY"
 else
   echo "OPENAI_API_KEY is not set in the shell. Add it to Secret Manager before deploying ship-service." >&2
 fi
 
 if [[ -n "${CANLII_API_KEY:-}" ]]; then
-  upsert_secret maple-doge-canlii-api-key "$CANLII_API_KEY"
+  upsert_secret "$CANLII_API_KEY_SECRET" "$CANLII_API_KEY"
 else
   echo "CANLII_API_KEY is not set in the shell. Add it to Secret Manager before running CanLII-enabled flows." >&2
 fi
 
 echo "Bootstrap complete for project $PROJECT_ID."
 echo "Cloud SQL instance: $CLOUD_SQL_INSTANCE"
+echo "Database password secret: $DB_PASSWORD_SECRET"
 echo "Artifact Registry: $REGION-docker.pkg.dev/$PROJECT_ID/$ARTIFACT_REPOSITORY"
 echo "Repo root: $REPO_ROOT"

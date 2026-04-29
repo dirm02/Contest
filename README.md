@@ -216,7 +216,8 @@ The deployment stack now runs the entire application from this repo:
 | `web` | Serves the React app on `http://localhost:8080`, including search, dossiers, challenge pages, and `/accountability`. |
 | `dossier-api` | Serves the Node JSON API behind `/api/*`. |
 | `ship-service` | Serves the analytical conversation API behind `/ship-api/*`. |
-| `postgres` | Runs this repo's project-local Postgres/pgvector database on container port `5432` and host port `55432`. |
+| `cloud-sql-proxy` | Opens a local tunnel to the GCP Cloud SQL database used by the deployed app. |
+| `postgres` | Local seeded Postgres fallback, available only with the explicit `local-postgres` compose profile. |
 
 The browser entry point is:
 
@@ -224,7 +225,7 @@ The browser entry point is:
 http://localhost:8080
 ```
 
-The web container proxies `/api` to the Node dossier API and `/ship-api` to the ship analyst service, so users stay on one origin instead of juggling service ports.
+The web container proxies `/api` to the Node dossier API and `/ship-api` to the ship analyst service, so users stay on one origin instead of juggling service ports. By default those two API services connect to the GCP Cloud SQL database through the local Cloud SQL Auth Proxy; they no longer use the local Postgres container unless you deliberately opt into that fallback.
 
 ### Local Seed
 
@@ -232,7 +233,7 @@ Prepare the project-local database seed from the already-loaded hackathon source
 
 ```bash
 node scripts/prepare-project-database-seed.mjs --source=/home/david/GitHub/hackathon2026 --hardlink
-node scripts/export-entity-vectors.mjs --source-db=postgresql://hackathon:hackathon@localhost:5432/hackathon
+node scripts/export-entity-vectors.mjs --server-copy --source-db=postgresql://hackathon:hackathon@localhost:5432/hackathon --output=services/postgres/seed/entity-vectors/entity_vectors_full.csv.gz
 ```
 
 The first command places the `.local-db` importer and 13 GB dataset under `services/postgres/seed/` using hardlinks, so the data is available from this repo without duplicating disk. The second command exports `investigator.entity_embeddings` into `services/postgres/seed/entity-vectors/`.
@@ -240,14 +241,23 @@ The first command places the `.local-db` importer and 13 GB dataset under `servi
 The database container refuses to initialize an empty database. It needs either:
 
 - `services/postgres/seed/hackathon.dump`, or
-- `services/postgres/seed/.local-db/data/` plus an entity-vector CSV export.
+- `services/postgres/seed/.local-db/data/` plus an entity-vector CSV or CSV.GZ export.
 
 ### Local Runtime
 
 Secrets live in `.env.docker`, which is gitignored.
 
 ```bash
+deploy/gcp/configure-local-gcp-db.sh
 docker compose --env-file .env.docker up --build
+```
+
+`configure-local-gcp-db.sh` reads `deploy/gcp/env` when it exists, otherwise it uses the defaults in `deploy/gcp/env.example`. It writes the Cloud SQL connection name, database user/name, and Secret Manager database password into `.env.docker` without printing the password. The local screen flow is still `http://localhost:8080`; the difference is that every search, dossier API call, and `/accountability` chat now reaches the same GCP database that Cloud Run uses.
+
+The Docker Cloud SQL proxy expects Application Default Credentials from your local Google Cloud login. If the proxy cannot authenticate, run:
+
+```bash
+gcloud auth application-default login
 ```
 
 Health checks:
@@ -270,6 +280,16 @@ deploy/gcp/build-and-deploy.sh
 ```
 
 The GCP shape is Cloud Run for the three Docker services, Cloud SQL PostgreSQL 16 for the shared database, Artifact Registry for images, and Secret Manager for API keys and the database password. Cloud SQL supports the `pgvector` extension; the load script creates `vector`, `pg_trgm`, `fuzzystrmatch`, and `pgcrypto` before loading data.
+
+The app/deployment project is `agency2026ot-doge-v-0429`. The source-data BigQuery project remains `agency2026ot-data-1776775157`; do not move the BigQuery settings to the app project.
+
+If the database/API services are provisioned before the web service is redeployed, run this after the backend service URLs exist:
+
+```bash
+deploy/gcp/update-web-routing.sh
+```
+
+That updates the deployed UI so `/api` points at the Cloud SQL-backed dossier API and `/ship-api` points at the Cloud SQL-backed ship analyst API.
 
 ## Copyright
 

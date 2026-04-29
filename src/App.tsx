@@ -34,7 +34,7 @@ import AccountabilityPage from './routes/AccountabilityPage';
 
 const NAV_ITEMS: Array<{ to: string; label: string; end?: boolean; Icon: typeof Search }> = [
   { to: '/', label: 'SEARCH', end: true, Icon: Search },
-  { to: '/accountability', label: 'ANALYST', Icon: MessageSquareText },
+  { to: '/accountability', label: 'AGENTS', Icon: MessageSquareText },
   { to: '/investigations', label: 'INVESTIGATION PANEL', Icon: SlidersHorizontal },
   { to: '/people', label: 'PEOPLE', Icon: Users },
 ];

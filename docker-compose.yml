@@ -1,5 +1,22 @@
 services:
+  cloud-sql-proxy:
+    image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.18.1
+    env_file:
+      - ./.env.docker
+    command:
+      - "--address=0.0.0.0"
+      - "--port=5432"
+      - "${CLOUD_SQL_CONNECTION_NAME:?Run deploy/gcp/configure-local-gcp-db.sh after the GCP database is ready}"
+    environment:
+      GOOGLE_CLOUD_PROJECT: ${PROJECT_ID:-agency2026ot-doge-v-0429}
+    ports:
+      - "127.0.0.1:${CLOUD_SQL_LOCAL_PORT:-55433}:5432"
+    volumes:
+      - ${LOCAL_GCLOUD_CONFIG_DIR:?Run deploy/gcp/configure-local-gcp-db.sh after the GCP database is ready}:/root/.config/gcloud:ro
+
   postgres:
+    profiles:
+      - local-postgres
     build:
       context: ./services/postgres
       dockerfile: Dockerfile
@@ -34,9 +51,15 @@ services:
       - ./.env.docker
     environment:
       PORT: "3801"
-      DB_CONNECTION_STRING: postgresql://hackathon:hackathon@postgres:5432/hackathon
+      DB_CONNECTION_STRING: ""
+      DB_USER: ${DB_USER:?Run deploy/gcp/configure-local-gcp-db.sh after the GCP database is ready}
+      DB_PASSWORD: ${DB_PASSWORD:?Run deploy/gcp/configure-local-gcp-db.sh after the GCP database is ready}
+      DB_NAME: ${DB_NAME:-hackathon}
+      DB_HOST: cloud-sql-proxy
+      DB_PORT: "5432"
+      CLOUD_SQL_CONNECTION_NAME: ""
       DB_POOL_MAX: "25"
-      DECISION_DB_CONNECTION_STRING: postgresql://hackathon:hackathon@postgres:5432/hackathon
+      DECISION_DB_CONNECTION_STRING: ""
       DECISION_DB_POOL_MAX: "5"
       GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT:-agency2026ot-data-1776775157}
       BIGQUERY_DATASET: ${BIGQUERY_DATASET:-agency_hackathon_data}
@@ -45,8 +68,8 @@ services:
     ports:
       - "127.0.0.1:3801:3801"
     depends_on:
-      postgres:
-        condition: service_healthy
+      cloud-sql-proxy:
+        condition: service_started
     healthcheck:
       test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3801/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
       interval: 15s
@@ -60,7 +83,13 @@ services:
     env_file:
       - ./.env.docker
     environment:
-      DATABASE_URL: postgresql://hackathon:hackathon@postgres:5432/hackathon
+      DATABASE_URL: ""
+      DB_USER: ${DB_USER:?Run deploy/gcp/configure-local-gcp-db.sh after the GCP database is ready}
+      DB_PASSWORD: ${DB_PASSWORD:?Run deploy/gcp/configure-local-gcp-db.sh after the GCP database is ready}
+      DB_NAME: ${DB_NAME:-hackathon}
+      DB_HOST: cloud-sql-proxy
+      DB_PORT: "5432"
+      CLOUD_SQL_CONNECTION_NAME: ""
       PORT: "8765"
       SHIP_API_PORT: "8765"
       PRIMARY_MODEL: ${PRIMARY_MODEL:-gpt-5.5}
@@ -68,8 +97,8 @@ services:
     ports:
       - "127.0.0.1:8765:8765"
     depends_on:
-      postgres:
-        condition: service_healthy
+      cloud-sql-proxy:
+        condition: service_started
     healthcheck:
       test: ["CMD-SHELL", "python - <<'PY'\nimport urllib.request, sys\ntry:\n    urllib.request.urlopen('http://127.0.0.1:8765/healthz', timeout=5)\nexcept Exception:\n    sys.exit(1)\nPY"]
       interval: 15s

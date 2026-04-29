@@ -77,7 +77,7 @@ export default function AccountabilityPage() {
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between bg-white border-b border-[var(--color-border)] px-6 py-4">
         <div>
           <h1 className="text-xl font-black uppercase tracking-tight text-[var(--color-ink-strong)]">
-            Accountability <span className="text-[var(--color-accent)]">Analyst</span>
+            Intelligence <span className="text-[var(--color-accent)]">Agent</span>
           </h1>
           <p className="text-[10px] font-bold text-[var(--color-muted)] uppercase tracking-widest">
             Analytical Question Service · Grounded Investigation
@@ -94,7 +94,7 @@ export default function AccountabilityPage() {
           }`}
         >
           <RadioTower className="size-3" aria-hidden="true" />
-          {healthQuery.data?.status === 'ok' ? 'SHIP ONLINE' : healthQuery.isError ? 'SHIP UNAVAILABLE' : 'CHECKING SHIP'}
+          {healthQuery.data?.status === 'ok' ? 'AGENTS ONLINE' : healthQuery.isError ? 'AGENTS UNAVAILABLE' : 'VERIFYING AGENTS'}
         </div>
       </div>
 
