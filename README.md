@@ -23,6 +23,33 @@
 ## Human-In-The-Loop PoC
 Maple DOGE is built to support human reviewers, not replace them. The app ranks and explains public-spending signals, then routes cases into review queues, case workspaces, advisory actions, briefs, and outcome notes so a person can verify sources before any policy or operational decision is made.
 
+## Agent Orchestration And Vectors
+
+The `/accountability` analyst is a conversation layer over the same public-spending data. A user starts with a natural-language question, the backend classifies whether it should run a fixed investigation recipe, a warehouse-style analytical query, a refinement of prior results, or a clarification step, and the UI streams the work as Route, Retrieve, Synthesize, and Verify progress. Final answers include cited findings, SQL-backed evidence tables, caveats, and suggested follow-ups so a reviewer can keep iterating without losing the investigation context.
+
+```mermaid
+flowchart TD
+  user["Reviewer asks a question in /accountability"] --> ui["Chat UI sends question plus thread context"]
+  ui --> router["Router and classifier agent"]
+  router -->|Known investigation pattern| recipe["Recipe agent runs fixed accountability playbook"]
+  router -->|Open-ended data question| analytical["Analytical query agent plans safe SQL"]
+  router -->|Follow-up question| refinement["Refinement agent reuses pinned conversation evidence"]
+  router -->|Missing detail| clarification["Clarification agent asks for the needed scope"]
+  recipe --> retrieve["Retrieval agent gathers source records and citations"]
+  analytical --> sandbox["SQL sandbox agent validates read-only evidence queries"]
+  refinement --> memory["Memory agent loads prior answer, filters, and selected rows"]
+  retrieve --> source["Postgres source tables"]
+  sandbox --> source
+  memory --> source
+  source --> vectors["pgvector entity matcher links messy names to canonical organizations"]
+  vectors --> synth["Synthesis agent drafts the cited answer"]
+  synth --> verify["Verifier agent checks claims against SQL rows and citations"]
+  verify --> answer["Chat renders answer, evidence table, caveats, and follow-up chips"]
+  answer --> ui
+```
+
+The database also carries an entity-vector layer for matching and retrieval. Cloud SQL/Postgres uses `pgvector` alongside the source tables, with exported vectors under `services/postgres/seed/entity-vectors/` and loaded embeddings in `investigator.entity_embeddings`. Those vectors help connect messy organization names, funding recipients, charities, vendors, and source records to canonical entities, while the final UI still points reviewers back to the underlying rows and citations instead of treating the vector match as proof by itself.
+
 ## Project Summary
 
 Maple DOGE turns fragmented public-sector datasets into evidence-backed investigation modules.
