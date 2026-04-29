@@ -206,3 +206,9 @@ Maple DOGE demonstrates that a public-spending accountability app can combine:
 - human-in-the-loop review workflows
 
 Challenge 1 is the most complete decision workflow. The other challenges are implemented as investigation modules with ranked outputs, graphs, tables, charts, source caveats, and analytical evidence ready for deeper validation.
+
+## Copyright
+
+Copyright (c) From 2026-3000 dirm02. All rights reserved.
+
+This project is protected by the repository [COPYRIGHT](COPYRIGHT) notice. No permission is granted to use, copy, modify, publish, distribute, sublicense, or sell any part of the software or source code except as required by applicable law or with prior written permission from the copyright holder.
