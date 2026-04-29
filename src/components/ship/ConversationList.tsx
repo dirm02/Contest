@@ -111,14 +111,14 @@ export default function ConversationList({
           type="button"
           onClick={() => void handleNewConversation()}
           disabled={isCreating}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[var(--color-accent)] px-3 py-2 text-sm font-semibold text-white hover:bg-[var(--color-accent-hover)] transition-colors disabled:opacity-50 shadow-sm"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-[var(--color-accent)] px-3 py-2 text-sm font-semibold text-white hover:bg-[var(--color-accent-hover)] transition-colors disabled:opacity-50 shadow-sm"
         >
           <MessageSquarePlus className="size-4" aria-hidden="true" />
           New conversation
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-1">
+      <div className="flex-1 overflow-y-auto">
         {conversationsQuery.isError ? (
           <div className="m-3 rounded-lg border border-[var(--color-risk-high)]/30 bg-[var(--color-risk-high-soft)] p-3 text-sm">
             <p className="font-semibold text-[var(--color-ink-strong)]">Couldn't load conversations</p>
@@ -146,13 +146,13 @@ export default function ConversationList({
             <p className="text-sm text-[var(--color-muted)]">No conversations yet.</p>
           </div>
         ) : (
-          <nav className="space-y-4 pb-4">
+          <nav className="space-y-1 pb-4">
             {GROUP_ORDER.filter((g) => grouped[g]?.length).map((group) => (
               <div key={group}>
-                <p className="px-3 pb-1.5 pt-2 text-[10px] font-bold text-[var(--color-muted)] tracking-[0.14em] uppercase">
+                <p className="px-4 pb-1.5 pt-4 text-[10px] font-bold text-[var(--color-muted)] tracking-[0.14em] uppercase">
                   {group}
                 </p>
-                <div className="space-y-0.5">
+                <div className="space-y-px">
                   {grouped[group].map((conversation) => {
                     const isActive = conversation.conversation_id === activeConversationId;
                     return (
@@ -160,19 +160,19 @@ export default function ConversationList({
                         type="button"
                         key={conversation.conversation_id}
                         onClick={() => onSelectConversation(conversation.conversation_id)}
-                        className={`relative w-full px-3 py-2 text-left rounded-md transition-all ${
+                        className={`relative w-full px-4 py-3 text-left transition-all ${
                           isActive
-                            ? 'bg-[var(--color-accent)]/10 text-[var(--color-ink-strong)] shadow-sm'
+                            ? 'bg-[var(--color-accent)]/10 text-[var(--color-ink-strong)]'
                             : 'text-[var(--color-ink)] hover:bg-[var(--color-surface-subtle)]'
                         }`}
                       >
                         {isActive && (
-                          <div className="absolute left-0 top-2 bottom-2 w-0.5 bg-[var(--color-accent)] rounded-full" />
+                          <div className="absolute left-0 top-0 bottom-0 w-1 bg-[var(--color-accent)]" />
                         )}
-                        <span className={`block line-clamp-2 text-sm ${isActive ? 'font-semibold' : 'font-medium'}`}>
+                        <span className={`block line-clamp-1 text-sm ${isActive ? 'font-semibold' : 'font-medium'}`}>
                           {conversationTitle(conversation)}
                         </span>
-                        <span className="mt-0.5 block text-xs text-[var(--color-muted)]">
+                        <span className="mt-0.5 block text-[11px] text-[var(--color-muted)]">
                           {conversation.message_count} {conversation.message_count === 1 ? 'message' : 'messages'} · {relativeTime(conversation.updated_at)}
                         </span>
                       </button>

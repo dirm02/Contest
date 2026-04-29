@@ -85,7 +85,7 @@ function SqlDrawer({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md border border-[var(--color-border)] p-2 text-[var(--color-muted)] transition-colors hover:text-[var(--color-accent)] hover:bg-[var(--color-surface-subtle)]"
+            className="rounded-md border border-[var(--color-border)] p-2 text-[var(--color-muted)] transition-colors hover:text-[var(--color-info)] hover:bg-[var(--color-surface-subtle)]"
             title="Close drawer"
           >
             <X className="size-4" aria-hidden="true" />
@@ -284,7 +284,7 @@ function AnswerCard({ response, onRegenerate, onSend }: { response: AnswerRespon
           <span className="text-sm font-semibold text-[var(--color-ink-strong)]">
             Evidence · {findings.length.toLocaleString()} {findings.length === 1 ? 'finding' : 'findings'}
           </span>
-          <div className="flex items-center gap-2 text-xs font-medium text-[var(--color-accent)] group-hover:underline">
+          <div className="flex items-center gap-2 text-xs font-medium text-[var(--color-info)] group-hover:underline">
             {tableExpanded ? 'Hide' : 'Show details'}
           </div>
         </button>
@@ -367,10 +367,10 @@ function ClarificationCard({
                   <button
                     key={item}
                     onClick={() => onPrefill(item)}
-                    className="flex items-center justify-between group p-3 rounded-lg border border-[var(--color-border)] bg-white text-sm text-[var(--color-ink-strong)] hover:border-[var(--color-accent)] hover:bg-[var(--color-accent)]/5 transition-all text-left"
+                    className="flex items-center justify-between group p-3 rounded-lg border border-[var(--color-border)] bg-white text-sm text-[var(--color-ink-strong)] hover:border-[var(--color-info)] hover:bg-[var(--color-info)]/5 transition-all text-left"
                   >
                     <span className="font-medium">{item}</span>
-                    <ArrowRight className="size-3.5 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all text-[var(--color-accent)]" />
+                    <ArrowRight className="size-3.5 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all text-[var(--color-info)]" />
                   </button>
                 ))}
               </div>
@@ -395,11 +395,11 @@ function ClarificationCard({
             </div>
           )}
 
-          <div className="mt-6 flex items-center justify-between pt-4 border-t border-[var(--color-accent)]/10">
+          <div className="mt-6 flex items-center justify-between pt-4 border-t border-[var(--color-info)]/10">
             <button
               type="button"
               onClick={() => onSend(response.proceed_phrase)}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--color-accent)] hover:underline underline-offset-4 transition-all"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--color-info)] hover:underline underline-offset-4 transition-all"
             >
               Run it broadly anyway
               <ArrowRight className="size-3.5" aria-hidden="true" />

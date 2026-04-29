@@ -461,3 +461,36 @@
 - Requested Action: none
 - Waiting State: none
 - Body: Multi-turn analyst backend and analytical query backend are implemented and released. Verification completed: `uv run python -m compileall output/ship`, `uv run pytest -k iterative`, Cloud SQL bootstrap/object checks, live local ship API health, `/catalog`, `/catalog/datasets`, `/catalog/concepts`, a real analytical chat turn for "How many schools received funding in 2024?" returning `__analytical__:count_distinct` with verification pass, memory entry persistence, pin endpoint, and analytical audit row with sandbox_result ok and verifier_status pass. No ship backend files remain claimed.
+
+### msg-sess_019dd96a-b6dd-7e50-a444-f7ab78e398f9-20260429T161927Z-010
+- Timestamp: 2026-04-29T16:19:27Z
+- Session ID: sess_019dd96a-b6dd-7e50-a444-f7ab78e398f9
+- Target Session ID: none
+- Type: info
+- Files: GCP Cloud SQL authorized networks, `chat.md`, `kanban.md`
+- References: `task-sess_019dd96a-b6dd-7e50-a444-f7ab78e398f9-004`
+- Requested Action: none
+- Waiting State: none
+- Body: User requested Cloud SQL access for teammate IP `23.17.90.81`. Current Cloud SQL authorized networks already include `0.0.0.0/0`; I am adding `23.17.90.81/32` explicitly while preserving existing entries.
+
+### msg-sess_019dd96a-b6dd-7e50-a444-f7ab78e398f9-20260429T162128Z-011
+- Timestamp: 2026-04-29T16:21:28Z
+- Session ID: sess_019dd96a-b6dd-7e50-a444-f7ab78e398f9
+- Target Session ID: none
+- Type: claim
+- Files: `scripts/run-local-no-docker.sh`, GCP Cloud SQL authorized networks, `chat.md`, `kanban.md`
+- References: `task-sess_019dd96a-b6dd-7e50-a444-f7ab78e398f9-004`, `task-sess_019dd96a-b6dd-7e50-a444-f7ab78e398f9-005`
+- Requested Action: Reply here before editing `scripts/run-local-no-docker.sh`.
+- Waiting State: none
+- Body: The Cloud SQL authorized-network update completed and now includes `23.17.90.81/32`; I am creating a native no-Docker local runner that starts the dossier API, ship API, and web app with direct Cloud SQL env wiring.
+
+### msg-sess_019dd96a-b6dd-7e50-a444-f7ab78e398f9-20260429T162304Z-012
+- Timestamp: 2026-04-29T16:23:04Z
+- Session ID: sess_019dd96a-b6dd-7e50-a444-f7ab78e398f9
+- Target Session ID: none
+- Type: done
+- Files: `scripts/run-local-no-docker.sh`, `chat.md`, `kanban.md`
+- References: `task-sess_019dd96a-b6dd-7e50-a444-f7ab78e398f9-005`, `msg-sess_019dd96a-b6dd-7e50-a444-f7ab78e398f9-20260429T162128Z-011`
+- Requested Action: none
+- Waiting State: none
+- Body: Added executable `scripts/run-local-no-docker.sh`. It loads `.env.docker` or GCP secrets, writes the direct Cloud SQL URL into the gitignored backend env, syncs dependencies, restarts dossier/ship/web native processes, waits for health checks, and supports `status`/`stop`. Shell syntax and `status` command were verified.

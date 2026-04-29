@@ -74,7 +74,7 @@ export default function ActivityCard({
   }, [phases]);
 
   return (
-    <div className="w-full max-w-3xl mx-auto mb-6 rounded-xl border border-[var(--color-border)] bg-white shadow-sm overflow-hidden transition-all duration-300">
+    <div className="w-full mb-6 rounded-xl border border-[var(--color-border)] bg-white shadow-sm overflow-hidden transition-all duration-300">
       <header className="flex items-center justify-between px-4 py-3 bg-[var(--color-surface-subtle)] border-b border-[var(--color-border-soft)]">
         <div className="flex items-center gap-3">
           {isRunning ? (

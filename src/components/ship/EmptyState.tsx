@@ -37,7 +37,7 @@ export function EmptyState({ onPickExample, onOpenCatalog, isSmall }: EmptyState
         <p className="mb-6 text-sm font-medium text-[var(--color-muted)]">
           Try one of these, or ask your own question.
         </p>
-        <div className="grid w-full max-w-3xl grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2">
           {examples.slice(0, 4).map((ex, i) => {
             const Icon = ICONS[i % ICONS.length];
             return (
@@ -60,7 +60,7 @@ export function EmptyState({ onPickExample, onOpenCatalog, isSmall }: EmptyState
 
   return (
     <div className="flex h-full flex-col items-center justify-center overflow-y-auto p-6 pb-24">
-      <div className="w-full max-w-[768px] space-y-10">
+      <div className="w-full space-y-10">
         <div className="space-y-4 text-center">
           <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--color-muted)]">
             Accountability Analyst

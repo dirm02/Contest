@@ -354,7 +354,7 @@ export default function ConversationView({
 
   return (
     <section className="flex flex-1 flex-col bg-[var(--color-bg)] overflow-hidden h-full">
-      <header className="flex h-[52px] shrink-0 items-center justify-between border-b border-[var(--color-border)] bg-white px-4">
+      <header className="flex h-[52px] shrink-0 items-center justify-between border-b border-[var(--color-border)] bg-white px-4 sm:px-6 lg:px-8">
         <div className="flex items-center gap-4 min-w-0">
           <h1 className="truncate text-base font-semibold text-[var(--color-ink-strong)] tracking-tight">
             {titleText}
