@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="public/Maple%20DOGE.png" alt="Maple DOGE logo" width="96" />
+  <img src="public/Maple%20DOGE.png" alt="Maple DOGE logo" width="160" />
 
   <h1>Maple DOGE</h1>
 
