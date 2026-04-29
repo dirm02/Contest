@@ -1,0 +1,13 @@
+concept: research_institutions
+synonyms: [research institution, research institutions, institute, institutes, research centre, research center]
+description: Research institutes, centres, and academic research organizations.
+applicable_columns:
+  - {table: fed.grants_contributions, column: recipient_legal_name, match: name_pattern}
+  - {table: general.vw_entity_funding, column: canonical_name, match: name_pattern}
+predicate:
+  name_pattern:
+    sql_template: "({col} ILIKE '%research%' OR {col} ILIKE '%institute%' OR {col} ILIKE '%centre%' OR {col} ILIKE '%center%')"
+caveats:
+  - "Research-institution matching may include research programs inside larger organizations."
+confidence: 0.7
+version: 1

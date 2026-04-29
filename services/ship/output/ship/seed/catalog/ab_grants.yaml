@@ -1,0 +1,17 @@
+schema: ab
+name: ab_grants
+description: Alberta grant disclosure rows used by trend and policy-alignment recipes.
+grain: one row per Alberta grant payment or agreement
+primary_key: [id]
+row_count_estimate: 300000
+refresh_cadence: monthly
+coverage_period: ["2005-01-01", "2026-12-31"]
+safe_for_analytical: true
+columns:
+  - {name: id, type: string, nullable: true, description: Source grant row identifier, examples: ["grant-123"]}
+  - {name: recipient, type: string, nullable: true, description: Grant recipient name, examples: ["Community Association"]}
+  - {name: program, type: string, nullable: true, description: Grant program or stream, examples: ["Community Initiatives Program"]}
+  - {name: fiscal_year, type: string, nullable: true, description: Fiscal year label, units: fiscal_year, examples: ["2023-2024"]}
+  - {name: display_fiscal_year, type: string, nullable: true, description: Display fiscal year label, units: fiscal_year, examples: ["2023-2024"]}
+  - {name: amount, type: decimal, nullable: true, description: Grant amount in Canadian dollars, units: CAD, examples: ["10000.00"]}
+join_keys: {}

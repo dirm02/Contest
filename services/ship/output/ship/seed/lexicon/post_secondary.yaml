@@ -1,0 +1,15 @@
+concept: post_secondary
+synonyms: [university, universities, college, colleges, cegep, cégep, polytechnic, post secondary, post-secondary]
+description: Universities, colleges, CEGEPs, and polytechnic institutions.
+applicable_columns:
+  - {table: fed.grants_contributions, column: recipient_legal_name, match: name_pattern}
+  - {table: ab.ab_contracts, column: recipient, match: name_pattern}
+  - {table: ab.ab_grants, column: recipient, match: name_pattern}
+  - {table: general.vw_entity_funding, column: canonical_name, match: name_pattern}
+predicate:
+  name_pattern:
+    sql_template: "({col} ILIKE '%university%' OR {col} ILIKE '%college%' OR {col} ILIKE '%cégep%' OR {col} ILIKE '%cegep%' OR {col} ILIKE '%polytechnic%')"
+caveats:
+  - "Post-secondary matching is based on institution names, not a complete official institutional registry."
+confidence: 0.82
+version: 1

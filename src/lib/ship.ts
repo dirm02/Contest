@@ -4,6 +4,8 @@ export type Citation = {
   finding_index: number | null;
   sql_query_name: string | null;
   url: string | null;
+  /** When the cited finding lives in a prior run, this is set. */
+  source_run_id: string | null;
 };
 
 export type SummaryParagraph = {
@@ -33,11 +35,55 @@ export type Verification = {
   };
 };
 
+export type Operation =
+  | { kind: 'recipe_run';  recipe_id: string;  run_id: string;  description: string; row_count: number; timing_ms: number }
+  | { kind: 'filter';      source_run_id: string; description: string; before_count: number; after_count: number; predicate: string }
+  | { kind: 'project';     source_run_id: string; description: string; columns: string[] }
+  | { kind: 'sort';        source_run_id: string; description: string; sort_by: { column: string; dir: 'asc' | 'desc' }[] }
+  | { kind: 'slice';       source_run_id: string; description: string; offset: number; limit: number }
+  | { kind: 'aggregate';   source_run_id: string; description: string; group_by: string[]; aggregations: { column: string; fn: string; alias: string }[] }
+  | { kind: 'join';        left_run_id: string; right_run_id: string; description: string; keys: string[]; how: 'inner' | 'left' | 'outer' }
+  | { kind: 'union';       source_run_ids: string[]; description: string }
+  | { kind: 'intersect';   source_run_ids: string[]; description: string }
+  | { kind: 'compare';     baseline_run_id: string; comparison_run_id: string; description: string }
+  | { kind: 'commentary';  source_run_ids: string[]; description: string };
+
+export type AnswerDiff = {
+  baseline_run_id: string;
+  rows_added: number;
+  rows_removed: number;
+  rows_changed: number;
+  columns_added: string[];
+  columns_removed: string[];
+};
+
 export type AnswerResponse = {
   type: 'answer';
   message_id: string;
-  recipe_run_id: string;
+  /**
+   * The mode of this turn.
+   *  - 'fresh'        – ran a brand-new recipe, no prior context used
+   *  - 'refined'      – applied operations to a single prior run
+   *  - 'composed'     – combined multiple prior and/or new runs
+   *  - 'conversational' – no SQL ran; commentary on prior runs only
+   */
+  mode: 'fresh' | 'refined' | 'composed' | 'conversational';
+
+  /** The primary run produced by this turn. Null in `conversational` mode. */
+  recipe_run_id: string | null;
+
+  /** Backwards-compat: the most recent single source run, if any. */
   based_on_run_id: string | null;
+
+  /** Every prior run this answer reads from (memory recall). Ordered most-recent-first. */
+  source_run_ids: string[];
+
+  /** The operations applied this turn, in order. Each is a step in the lineage. */
+  operations: Operation[];
+
+  /** Diff against the most recent prior run, if applicable. Null when not meaningful. */
+  diff: AnswerDiff | null;
+
   summary: Summary;
   findings_preview: Record<string, unknown>[];
   verification: Verification;
@@ -100,6 +146,17 @@ export type ShipConversationRecipeRun = {
   created_at: string;
 };
 
+export type MemoryEntry = {
+  run_id: string;
+  recipe_id: string | null; // null for derived (refinement) runs
+  derived_from_run_id: string | null;
+  description: string;       // short human label, e.g. "AB sole-source ≥$250K, FY2023"
+  params_summary: string;    // human-friendly param recap
+  row_count: number;
+  created_at: string;
+  pinned: boolean;
+};
+
 export type ShipConversation = {
   conversation_id: string;
   title: string | null;
@@ -108,6 +165,9 @@ export type ShipConversation = {
   updated_at?: string;
   messages: ShipConversationMessage[];
   recipe_runs: ShipConversationRecipeRun[];
+
+  /** NEW — runs currently held in conversation memory and addressable by id. */
+  memory: MemoryEntry[];
 };
 
 export type SqlLogEntry = {
@@ -169,7 +229,16 @@ export type StreamEvent =
   | { name: 'refinement_filter_applied'; data: { filter: Record<string, unknown>; before_count: number; after_count: number } }
   | { name: 'heartbeat'; data: { elapsed_ms: number } }
   | { name: 'final_response'; data: AssistantResponse }
-  | { name: 'error'; data: { message: string; retryable: boolean } };
+  | { name: 'error'; data: { message: string; retryable: boolean } }
+  | { name: 'turn_classifier_started';  data: Record<string, never> }
+  | { name: 'turn_classifier_decision'; data: { mode: AnswerResponse['mode'] | 'clarify' | 'new_conversation' | 'not_answerable'; reasoning_one_line: string; referenced_run_ids: string[] } }
+  | { name: 'memory_recall';            data: { run_ids: string[]; reason: string } }
+  | { name: 'refinement_started';       data: { kind: Operation['kind']; source_run_id: string; description: string } }
+  | { name: 'refinement_completed';     data: { kind: Operation['kind']; source_run_id: string; before_count: number; after_count: number; timing_ms: number } }
+  | { name: 'composition_started';      data: { kind: 'join' | 'union' | 'intersect' | 'compare'; source_run_ids: string[]; description: string } }
+  | { name: 'composition_completed';    data: { kind: 'join' | 'union' | 'intersect' | 'compare'; source_run_ids: string[]; output_count: number; timing_ms: number } }
+  | { name: 'diff_computed';            data: AnswerDiff };
+
 
 export type StreamEventName = StreamEvent['name'];
 
@@ -357,6 +426,25 @@ export function deleteConversation(conversationId: string) {
 export function getHealthz() {
   return shipJson<{ status: string }>('/healthz');
 }
+
+export function pinRun(conversationId: string, runId: string) {
+  return shipJson<void>(`/conversations/${encodeURIComponent(conversationId)}/memory/${encodeURIComponent(runId)}/pin`, {
+    method: 'POST',
+  });
+}
+
+export function unpinRun(conversationId: string, runId: string) {
+  return shipJson<void>(`/conversations/${encodeURIComponent(conversationId)}/memory/${encodeURIComponent(runId)}/pin`, {
+    method: 'DELETE',
+  });
+}
+
+export function forgetRun(conversationId: string, runId: string) {
+  return shipJson<void>(`/conversations/${encodeURIComponent(conversationId)}/memory/${encodeURIComponent(runId)}`, {
+    method: 'DELETE',
+  });
+}
+
 
 function isStreamEvent(name: string, data: unknown): data is StreamEvent['data'] {
   if (!isRecord(data)) return false;

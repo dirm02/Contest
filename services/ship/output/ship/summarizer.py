@@ -20,6 +20,7 @@ class Citation(StrictModel):
     finding_index: int | None = None
     sql_query_name: str | None = None
     url: str | None = None
+    source_run_id: str | None = None
 
 
 class Paragraph(StrictModel):
@@ -50,6 +51,10 @@ def _agent() -> Agent[Any]:
             "Write a grounded 2-4 paragraph analytical summary for an investigative journalist or auditor. "
             "Every paragraph must include citations to finding_index and/or sql_query_name. "
             "When a cited finding row has source_url, include that exact source_url in citation.url. "
+            "When summarizing across prior runs, set citation.source_run_id to the run that produced the cited finding. "
+            "You may be summarizing across MULTIPLE recipe runs. Use the most recent run's findings as the primary subject unless the user explicitly asked about earlier runs. "
+            "When summarizing a refinement, explicitly name what changed from the baseline. When summarizing a comparison, lead with the magnitude of the difference, not just row counts. "
+            "When the mode is conversational, cite at least one finding for every numeric or named claim and introduce no new numbers that are absent from prior runs. "
             "When findings include both 'external_recipient' and 'public_system_oversight' buckets, present them in two clearly labeled sections; public delivery authorities belong in the public_system_oversight section and should not be conflated with external recipients whose record would concern a funder. "
             "Every numeric claim must cite a finding row that contains the same value, or a SQL query that returned that value. "
             "Name entities exactly as they appear in canonical_name fields. If a row has only source_legal_name or supplier_name, describe it as a source-record name and avoid treating it as a canonical entity. "

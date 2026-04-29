@@ -10,7 +10,7 @@ from pydantic import Field
 from .primitives.base import StrictModel
 
 
-Mode: TypeAlias = Literal["fresh", "refined", "composed", "conversational"]
+Mode: TypeAlias = Literal["fresh", "refined", "composed", "conversational", "analytical_query"]
 
 
 class SortKey(StrictModel):

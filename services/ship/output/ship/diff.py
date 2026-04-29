@@ -17,6 +17,8 @@ KEY_COLUMNS = (
     "entity_id",
     "canonical_name",
     "supplier_name",
+    "recipient",
+    "recipient_legal_name",
     "source_legal_name",
     "recipient_name",
 )

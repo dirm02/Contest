@@ -1,0 +1,13 @@
+concept: federal_departments
+synonyms: [federal department, federal departments, esdc, phac, health canada, innovation canada, department]
+description: Federal departments and agencies as funders or counterparties.
+applicable_columns:
+  - {table: fed.grants_contributions, column: owner_org, match: name_pattern}
+  - {table: fed.grants_contributions, column: owner_org_title, match: name_pattern}
+predicate:
+  name_pattern:
+    sql_template: "({col} ILIKE '%Canada%' OR {col} ILIKE '%ESDC%' OR {col} ILIKE '%PHAC%' OR {col} ILIKE '%Health%' OR {col} ILIKE '%Innovation%')"
+caveats:
+  - "Department matching is broad unless a specific department code is provided."
+confidence: 0.7
+version: 1

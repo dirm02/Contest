@@ -1,0 +1,13 @@
+concept: unions_and_associations
+synonyms: [union, unions, association, associations, federation, guild]
+description: Unions, associations, federations, and guilds.
+applicable_columns:
+  - {table: fed.grants_contributions, column: recipient_legal_name, match: name_pattern}
+  - {table: general.vw_entity_funding, column: canonical_name, match: name_pattern}
+predicate:
+  name_pattern:
+    sql_template: "({col} ILIKE '%union%' OR {col} ILIKE '%association%' OR {col} ILIKE '%federation%' OR {col} ILIKE '%guild%')"
+caveats:
+  - "Association matching is broad and may include trade groups, professional bodies, or community associations."
+confidence: 0.63
+version: 1

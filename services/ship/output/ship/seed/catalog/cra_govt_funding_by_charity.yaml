@@ -1,0 +1,15 @@
+schema: cra
+name: govt_funding_by_charity
+description: CRA charity return government-funding summary by charity and fiscal year.
+grain: one row per charity fiscal year
+primary_key: [bn, fiscal_year]
+row_count_estimate: 1000000
+refresh_cadence: yearly
+coverage_period: ["2000-01-01", "2026-12-31"]
+safe_for_analytical: true
+columns:
+  - {name: bn, type: string, nullable: false, description: CRA business number, examples: ["123456789RR0001"]}
+  - {name: fiscal_year, type: integer, nullable: false, description: CRA fiscal year, units: fiscal_year, examples: ["2024"]}
+  - {name: legal_name, type: string, nullable: true, description: Charity legal name, examples: ["Example Foundation"]}
+  - {name: total_govt, type: decimal, nullable: true, description: Total reported government funding, units: CAD, examples: ["400000.00"]}
+join_keys: {}

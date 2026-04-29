@@ -17,6 +17,12 @@ class Params(RecipeParams):
     last_filed_before: int = 2024
 
 
+def humanize(params: dict) -> str:
+    share = params.get("min_govt_share", 0.7)
+    year = params.get("fiscal_year_max") or params.get("last_filed_before") or 2024
+    return f"Zombie-recipient charities above {share:.0%} govt funding before {year}"
+
+
 async def run(question: str, params: Params, pool: asyncpg.Pool, *, emit: EmitCallback | None = None) -> RecipeResult:
     started = time.perf_counter()
     result = await funding_then_silent.run(

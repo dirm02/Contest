@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ChevronDown, ChevronRight, Clock3 } from 'lucide-react';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import type { StreamEvent } from '../../lib/ship';
 import { groupEventsIntoPhases, formatLatestEvent } from '../../lib/streamPhases';
 
@@ -54,21 +54,21 @@ export function ThoughtDisclosure({ events, isRunning, startedAt, completedAt }:
     return () => window.clearInterval(interval);
   }, [isRunning]);
 
-  const elapsed = elapsedSeconds(startedAt + tick * 0, completedAt);
+  const elapsed = elapsedSeconds(startedAt, completedAt);
   const phases = groupEventsIntoPhases(events);
   const latestEventStr = formatLatestEvent(events);
 
   if (isRunning) {
     return (
-      <div className="mb-4 inline-flex items-center gap-3 rounded-full border border-[var(--color-border)] bg-[var(--color-surface-subtle)] px-3 py-1.5 shadow-sm">
+      <div className="inline-flex items-center gap-3 rounded-full border border-[var(--color-border)] bg-white px-3 py-1.5 shadow-sm transition-all animate-in fade-in zoom-in-95">
         <div className="relative flex items-center justify-center">
           <div className="absolute inset-0 size-2.5 animate-ping rounded-full bg-[var(--color-accent)] opacity-20" />
-          <div className="size-2.5 rounded-full bg-[var(--color-accent)]" />
+          <div className="size-2 rounded-full bg-[var(--color-accent)]" />
         </div>
-        <span className="text-[11px] font-bold text-[var(--color-ink-strong)]" aria-live="polite">
+        <span className="text-[11px] font-semibold text-[var(--color-ink-strong)]" aria-live="polite">
           {latestEventStr}…
         </span>
-        <span className="text-[10px] font-medium tabular-nums text-[var(--color-muted)]">
+        <span className="text-[10px] font-medium tabular-nums text-[var(--color-muted)] border-l border-[var(--color-border-soft)] pl-2">
           {elapsed}
         </span>
       </div>
@@ -78,13 +78,13 @@ export function ThoughtDisclosure({ events, isRunning, startedAt, completedAt }:
   if (events.length === 0) return null;
 
   return (
-    <div className="mb-6 rounded-lg border border-transparent hover:border-[var(--color-border)] transition-colors">
+    <div className="rounded-lg border border-transparent hover:border-[var(--color-border-soft)] transition-colors">
       <button
         type="button"
         onClick={() => setIsExpanded((v) => !v)}
-        className="group flex w-full items-center justify-between rounded-lg px-3 py-2 hover:bg-[var(--color-surface-subtle)] transition-colors"
+        className="group flex w-full items-center justify-between rounded-lg px-2 py-1.5 hover:bg-[var(--color-surface-subtle)] transition-colors"
       >
-        <span className="flex items-center gap-2 text-[11px] font-bold text-[var(--color-muted)] group-hover:text-[var(--color-ink)]">
+        <span className="flex items-center gap-2 text-[11px] font-semibold text-[var(--color-muted)] group-hover:text-[var(--color-ink-strong)] transition-colors">
           {isExpanded ? (
             <ChevronDown className="size-3.5 shrink-0" aria-hidden="true" />
           ) : (
@@ -95,8 +95,8 @@ export function ThoughtDisclosure({ events, isRunning, startedAt, completedAt }:
       </button>
 
       {isExpanded && (
-        <div className="px-4 pb-4 pt-1">
-          <div className="space-y-4">
+        <div className="px-4 pb-4 pt-1 animate-in slide-in-from-top-1 duration-200">
+          <div className="space-y-4 border-l border-[var(--color-border-soft)] ml-1.5 pl-4 py-1">
             {phases.map((phase) => {
               const displayEvents = phase.events
                 .map((e) => formatEventDetails(e))
@@ -105,9 +105,9 @@ export function ThoughtDisclosure({ events, isRunning, startedAt, completedAt }:
               if (displayEvents.length === 0 && phase.status !== 'running') return null;
 
               return (
-                <div key={phase.id} className="relative pl-4">
+                <div key={phase.id} className="relative">
                   <div
-                    className={`absolute left-0 top-1.5 size-1.5 rounded-full ${
+                    className={`absolute -left-[21px] top-1.5 size-2 rounded-full border-2 border-white shadow-sm ${
                       phase.status === 'done'
                         ? 'bg-[var(--color-success)]'
                         : phase.status === 'failed'
@@ -117,13 +117,13 @@ export function ThoughtDisclosure({ events, isRunning, startedAt, completedAt }:
                         : 'bg-[var(--color-border-soft)]'
                     }`}
                   />
-                  <p className="text-[11px] font-bold text-[var(--color-ink-strong)]">
+                  <p className="text-[11px] font-semibold text-[var(--color-ink-strong)]">
                     {phase.name}
                   </p>
                   {displayEvents.length > 0 && (
-                    <ul className="mt-1 space-y-1">
+                    <ul className="mt-1.5 space-y-1.5">
                       {displayEvents.map((detail, idx) => (
-                        <li key={idx} className="text-[11px] leading-relaxed text-[var(--color-muted)] font-mono">
+                        <li key={idx} className="text-[10px] leading-relaxed text-[var(--color-muted)] font-mono bg-[var(--color-surface-subtle)]/50 px-2 py-1 rounded">
                           {detail}
                         </li>
                       ))}

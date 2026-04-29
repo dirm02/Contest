@@ -1,0 +1,14 @@
+concept: for_profit_corporations
+synonyms: [company, companies, corporation, corporations, ltd, limited, inc, incorporated]
+description: For-profit corporations and incorporated vendors.
+applicable_columns:
+  - {table: ab.ab_contracts, column: recipient, match: name_pattern}
+  - {table: ab.ab_sole_source, column: vendor, match: name_pattern}
+  - {table: fed.grants_contributions, column: recipient_legal_name, match: name_pattern}
+predicate:
+  name_pattern:
+    sql_template: "({col} ILIKE '% ltd%' OR {col} ILIKE '% limited%' OR {col} ILIKE '% inc%' OR {col} ILIKE '% incorporated%' OR {col} ILIKE '% corp%' OR {col} ILIKE '% corporation%')"
+caveats:
+  - "Corporate suffix matching is a proxy and may include nonprofit corporations."
+confidence: 0.62
+version: 1

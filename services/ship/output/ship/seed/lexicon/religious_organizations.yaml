@@ -1,0 +1,13 @@
+concept: religious_organizations
+synonyms: [religious organization, religious organizations, church, churches, mosque, synagogue, temple, parish, diocese]
+description: Religious organizations and places of worship.
+applicable_columns:
+  - {table: fed.grants_contributions, column: recipient_legal_name, match: name_pattern}
+  - {table: cra.govt_funding_by_charity, column: legal_name, match: name_pattern}
+predicate:
+  name_pattern:
+    sql_template: "({col} ILIKE '%church%' OR {col} ILIKE '%mosque%' OR {col} ILIKE '%synagogue%' OR {col} ILIKE '%temple%' OR {col} ILIKE '%parish%' OR {col} ILIKE '%diocese%')"
+caveats:
+  - "Religious-organization matching may miss organizations named after saints or communities without explicit religious terms."
+confidence: 0.72
+version: 1

@@ -1,0 +1,18 @@
+schema: ab
+name: ab_sole_source
+description: Alberta sole-source contract disclosure records.
+grain: one row per sole-source contract disclosure
+primary_key: [id]
+row_count_estimate: 200000
+refresh_cadence: monthly
+coverage_period: ["2005-01-01", "2026-12-31"]
+safe_for_analytical: true
+columns:
+  - {name: id, type: string, nullable: false, description: Source sole-source row identifier, examples: ["ss-12345"]}
+  - {name: vendor, type: string, nullable: true, description: Vendor name, examples: ["ABC Services Ltd."]}
+  - {name: ministry, type: string, nullable: true, description: Alberta ministry or public body, examples: ["Health"]}
+  - {name: display_fiscal_year, type: string, nullable: true, description: Display fiscal year label, units: fiscal_year, examples: ["2023-2024"]}
+  - {name: amount, type: decimal, nullable: true, description: Contract amount in Canadian dollars, units: CAD, examples: ["50000.00"]}
+  - {name: contract_services, type: string, nullable: true, description: Services or contract category description, examples: ["Consulting services"]}
+  - {name: department_city, type: string, nullable: true, description: Department city or regional proxy, examples: ["Edmonton"]}
+join_keys: {}

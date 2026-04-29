@@ -16,6 +16,12 @@ class Params(RecipeParams):
     fiscal_year_min: int | None = 2024
 
 
+def humanize(params: dict) -> str:
+    orgs = params.get("min_orgs_per_director") or 3
+    year = params.get("fiscal_year_min") or 2024
+    return f"Directors linked to {orgs}+ funded charities since {year}"
+
+
 async def run(question: str, params: Params, pool: asyncpg.Pool, *, emit: EmitCallback | None = None) -> RecipeResult:
     started = time.perf_counter()
     overlap = await governance_overlap.run(

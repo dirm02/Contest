@@ -1,9 +1,7 @@
 import { Link, NavLink, Route, Routes, useLocation } from 'react-router-dom';
 import {
-  DatabaseZap,
   MessageSquareText,
   Search,
-  ShieldCheck,
   SlidersHorizontal,
   Users,
 } from 'lucide-react';
@@ -33,10 +31,10 @@ import PolicyAlignmentPage from './routes/PolicyAlignmentPage';
 import AccountabilityPage from './routes/AccountabilityPage';
 
 const NAV_ITEMS: Array<{ to: string; label: string; end?: boolean; Icon: typeof Search }> = [
-  { to: '/', label: 'SEARCH', end: true, Icon: Search },
-  { to: '/accountability', label: 'AGENTS', Icon: MessageSquareText },
-  { to: '/investigations', label: 'INVESTIGATION PANEL', Icon: SlidersHorizontal },
-  { to: '/people', label: 'PEOPLE', Icon: Users },
+  { to: '/', label: 'Search', end: true, Icon: Search },
+  { to: '/accountability', label: 'Analyst', Icon: MessageSquareText },
+  { to: '/investigations', label: 'Investigations', Icon: SlidersHorizontal },
+  { to: '/people', label: 'People', Icon: Users },
 ];
 
 export default function App() {
@@ -47,64 +45,36 @@ export default function App() {
     <div className="app-shell bg-[var(--color-bg)]">
       <div className="h-1.5 w-full bg-[var(--color-accent)]" />
       
-      <header className="sticky top-0 z-40 border-b border-[var(--color-border)] bg-white shadow-sm">
-        <div className="mx-auto flex h-14 items-center justify-between px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-4">
-            <Link to="/" className="flex items-center gap-2 text-[var(--color-ink-strong)]">
-              <span className="flex size-8 items-center justify-center rounded-sm bg-[var(--color-accent)] text-white font-black text-xl">
-                A
-              </span>
-              <div className="flex flex-col leading-none">
-                <span className="text-sm font-black tracking-tighter uppercase">
-                  Accountability <span className="text-[var(--color-accent)]">Max</span>
-                </span>
-                <span className="text-[9px] font-bold text-[var(--color-muted)] tracking-widest uppercase">
-                  Forensic System
-                </span>
-              </div>
-            </Link>
-          </div>
+      <header className="sticky top-0 z-40 border-b border-[var(--color-border)] bg-white">
+        <div className="mx-auto flex h-12 items-center justify-between px-4 sm:px-6 lg:px-8">
+          <Link to="/" className="flex items-center gap-2.5 text-[var(--color-ink-strong)] group">
+            <span className="flex size-7 items-center justify-center rounded-md bg-[var(--color-accent)] text-white font-bold text-sm shadow-sm group-hover:bg-[var(--color-accent-hover)] transition-colors">
+              A
+            </span>
+            <span className="text-sm font-semibold tracking-tight">
+              Accountability <span className="text-[var(--color-accent)]">Max</span>
+            </span>
+          </Link>
 
-          <div className="flex items-center gap-6">
-            <div className="hidden md:flex flex-col items-end leading-none">
-              <span className="text-[10px] font-black text-[var(--color-ink-strong)] tracking-widest uppercase">
-                OFFICIAL USE ONLY
-              </span>
-              <span className="text-[9px] font-bold text-[var(--color-muted)] tracking-wider uppercase">
-                Secure Portal
-              </span>
-            </div>
-            <a
-              href="/api/health"
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center gap-2 rounded-sm border border-[var(--color-border)] bg-[var(--color-surface-subtle)] px-3 py-1 text-[10px] font-extrabold text-[var(--color-muted)] hover:bg-white"
-            >
-              <DatabaseZap className="size-3 text-[var(--color-success)]" aria-hidden="true" />
-              SYSTEM ONLINE
-            </a>
-          </div>
+          <span className="hidden md:inline text-[10px] font-medium text-[var(--color-muted)]">
+            Official use only
+          </span>
         </div>
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        <aside className="hidden w-64 flex-col border-r border-[var(--color-border)] bg-white lg:flex">
-          <nav className="flex-1 space-y-1 p-4">
-            <div className="mb-4 px-2">
-              <span className="text-[10px] font-black text-[var(--color-muted-light)] tracking-widest uppercase">
-                Main Navigation
-              </span>
-            </div>
+        <aside className="hidden w-56 flex-col border-r border-[var(--color-border)] bg-white lg:flex">
+          <nav className="flex-1 space-y-0.5 p-3">
             {NAV_ITEMS.map(({ Icon, ...item }) => (
               <NavLink
                 key={item.to}
                 to={item.to}
                 end={item.end}
                 className={({ isActive }) =>
-                  `flex items-center gap-3 border-l-2 px-3 py-2.5 text-[11px] font-black tracking-wider transition-colors ${
+                  `flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium transition-colors ${
                     isActive
-                      ? 'border-[var(--color-accent)] bg-[var(--color-surface-subtle)] text-[var(--color-accent)]'
-                      : 'border-transparent text-[var(--color-muted)] hover:bg-[var(--color-surface-subtle)] hover:text-[var(--color-ink-strong)]'
+                      ? 'bg-[var(--color-accent)]/10 text-[var(--color-accent)]'
+                      : 'text-[var(--color-muted)] hover:bg-[var(--color-surface-subtle)] hover:text-[var(--color-ink-strong)]'
                   }`
                 }
               >
@@ -113,20 +83,6 @@ export default function App() {
               </NavLink>
             ))}
           </nav>
-          
-          <div className="border-t border-[var(--color-border)] p-4">
-            <div className="rounded-sm bg-[var(--color-surface-subtle)] p-3 border border-[var(--color-border-soft)]">
-              <p className="text-[9px] font-black text-[var(--color-muted)] tracking-widest uppercase mb-1">
-                Audit Posture
-              </p>
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="size-3 text-[var(--color-success)]" />
-                <span className="text-[10px] font-bold text-[var(--color-ink)] uppercase">
-                  Active Investigation
-                </span>
-              </div>
-            </div>
-          </div>
         </aside>
 
         <main className="flex-1 overflow-hidden">

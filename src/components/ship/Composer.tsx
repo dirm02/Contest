@@ -1,6 +1,5 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { BookOpen, CornerDownLeft, Square, Send } from 'lucide-react';
-import { addToast } from './Toast';
+import { BookOpen, Square, Send } from 'lucide-react';
 
 type ComposerProps = {
   value: string;
@@ -77,83 +76,82 @@ export const Composer = forwardRef<HTMLTextAreaElement, ComposerProps>(function 
   const isSendDisabled = disabled || isStreaming || value.trim() === '';
 
   return (
-    <div className="sticky bottom-0 z-20 w-full bg-white/80 pb-4 pt-12 backdrop-blur-md">
-      <div className="relative mx-auto max-w-[768px] px-4 lg:px-8">
-        <div className="relative flex min-h-[56px] flex-col rounded-xl border border-[var(--color-border)] bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04),0_4px_12px_rgba(0,0,0,0.04)] focus-within:ring-2 focus-within:ring-[var(--color-accent)]/30 focus-within:ring-offset-0 transition-shadow">
-          <textarea
-            ref={internalRef}
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            onKeyDown={handleKeyDown}
-            disabled={disabled}
-            placeholder="Ask about a recipient, program, or risk signal…"
-            className="w-full resize-none bg-transparent px-4 py-3 pr-24 text-sm font-medium leading-relaxed text-[var(--color-ink-strong)] outline-none placeholder:text-[var(--color-muted)] max-h-[240px] min-h-[52px]"
-            rows={1}
-          />
-          <div className="absolute bottom-2 right-2 flex items-center gap-1">
-            {!isStreaming && (
-              <button
-                type="button"
-                onClick={onOpenCatalog}
-                className="flex size-8 items-center justify-center rounded-lg text-[var(--color-muted)] hover:bg-[var(--color-surface-subtle)] hover:text-[var(--color-ink-strong)] transition-colors"
-                title="Browse examples"
-                aria-label="Browse examples"
-              >
-                <BookOpen className="size-4" />
-              </button>
-            )}
-            {isStreaming ? (
-              <button
-                type="button"
-                onClick={onStop}
-                className="flex size-8 items-center justify-center rounded-full bg-white text-[var(--color-accent)] border border-[var(--color-border)] hover:bg-[var(--color-surface-subtle)] transition-colors"
-                title="Stop generation (Esc)"
-                aria-label="Stop generation"
-              >
-                <Square className="size-4 fill-current" />
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={onSend}
-                disabled={isSendDisabled}
-                className="flex size-8 items-center justify-center rounded-full bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] disabled:opacity-50 disabled:hover:bg-[var(--color-accent)] transition-colors"
-                title="Send message"
-                aria-label="Send message"
-              >
-                <Send className="size-4 -ml-0.5" />
-              </button>
-            )}
-          </div>
+    <div className="w-full">
+      <div className="relative flex min-h-[56px] flex-col rounded-xl border border-[var(--color-border)] bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04),0_4px_12px_rgba(0,0,0,0.04)] focus-within:ring-2 focus-within:ring-[var(--color-accent)]/30 focus-within:ring-offset-0 transition-shadow">
+        <textarea
+          ref={internalRef}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onKeyDown={handleKeyDown}
+          disabled={disabled}
+          placeholder="Ask about a recipient, program, or risk signal…"
+          className="w-full resize-none bg-transparent px-4 py-3 pr-24 text-sm font-medium leading-relaxed text-[var(--color-ink-strong)] outline-none placeholder:text-[var(--color-muted)] max-h-[240px] min-h-[52px]"
+          rows={1}
+        />
+        <div className="absolute bottom-2 right-2 flex items-center gap-1">
+          {!isStreaming && (
+            <button
+              type="button"
+              onClick={onOpenCatalog}
+              className="flex size-8 items-center justify-center rounded-lg text-[var(--color-muted)] hover:bg-[var(--color-surface-subtle)] hover:text-[var(--color-ink-strong)] transition-colors"
+              title="Browse examples"
+              aria-label="Browse examples"
+            >
+              <BookOpen className="size-4" />
+            </button>
+          )}
+          {isStreaming ? (
+            <button
+              type="button"
+              onClick={onStop}
+              className="flex size-8 items-center justify-center rounded-full bg-white text-[var(--color-accent)] border border-[var(--color-border)] hover:bg-[var(--color-surface-subtle)] transition-colors shadow-sm"
+              title="Stop generation (Esc)"
+              aria-label="Stop generation"
+            >
+              <Square className="size-4 fill-current" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={onSend}
+              disabled={isSendDisabled}
+              className="flex size-8 items-center justify-center rounded-full bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] disabled:opacity-50 disabled:hover:bg-[var(--color-accent)] transition-colors shadow-sm"
+              title="Send message"
+              aria-label="Send message"
+            >
+              <Send className="size-4 -ml-0.5" />
+            </button>
+          )}
         </div>
+      </div>
 
-        <div className="mt-2 flex items-center justify-between px-1 text-[10px] font-medium text-[var(--color-muted)]">
-          <div className="flex items-center gap-2 truncate">
-            {statusText ? (
-              <span className="truncate animate-pulse">{statusText}</span>
-            ) : (
-              <span />
-            )}
-          </div>
-          <div className="flex shrink-0 items-center gap-3">
-            <label className="flex cursor-pointer items-center gap-1.5 hover:text-[var(--color-ink)]">
-              <input
-                type="checkbox"
-                checked={enterToSend}
-                onChange={(e) => setEnterToSend(e.target.checked)}
-                className="rounded border-[var(--color-border)] text-[var(--color-accent)] focus:ring-[var(--color-accent)]"
-              />
-              <span>Enter to send</span>
-            </label>
-            {!enterToSend && <span className="hidden sm:inline">⌘↵ to send</span>}
-            {value.length > 3200 && (
-              <span className={value.length > 4000 ? 'text-[var(--color-risk-high)]' : 'text-[var(--color-warning)]'}>
-                {value.length} / 4000
-              </span>
-            )}
-          </div>
+      <div className="mt-2 flex items-center justify-between px-1 text-[10px] font-medium text-[var(--color-muted)]">
+        <div className="flex items-center gap-2 truncate">
+          {statusText ? (
+            <span className="truncate animate-pulse">{statusText}</span>
+          ) : (
+            <span />
+          )}
+        </div>
+        <div className="flex shrink-0 items-center gap-3">
+          <label className="flex cursor-pointer items-center gap-1.5 hover:text-[var(--color-ink)] transition-colors">
+            <input
+              type="checkbox"
+              checked={enterToSend}
+              onChange={(e) => setEnterToSend(e.target.checked)}
+              className="rounded border-[var(--color-border)] text-[var(--color-accent)] focus:ring-[var(--color-accent)] transition-colors"
+            />
+            <span>Enter to send</span>
+          </label>
+          {!enterToSend && <span className="hidden sm:inline">⌘↵ to send</span>}
+          {value.length > 3200 && (
+            <span className={value.length > 4000 ? 'text-[var(--color-risk-high)]' : 'text-[var(--color-warning)]'}>
+              {value.length} / 4000
+            </span>
+          )}
         </div>
       </div>
     </div>
   );
 });
+

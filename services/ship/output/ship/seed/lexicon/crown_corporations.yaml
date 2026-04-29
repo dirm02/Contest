@@ -1,0 +1,13 @@
+concept: crown_corporations
+synonyms: [crown corporation, crown corporations, crown corp, crown corps]
+description: Crown corporations and government-owned companies.
+applicable_columns:
+  - {table: fed.grants_contributions, column: recipient_legal_name, match: name_pattern}
+  - {table: general.vw_entity_funding, column: canonical_name, match: name_pattern}
+predicate:
+  name_pattern:
+    sql_template: "({col} ILIKE '%crown corporation%' OR {col} ILIKE '%corporation%' OR {col} ILIKE '%commission%')"
+caveats:
+  - "Crown corporation matching requires name proxies and may include non-Crown corporations."
+confidence: 0.55
+version: 1

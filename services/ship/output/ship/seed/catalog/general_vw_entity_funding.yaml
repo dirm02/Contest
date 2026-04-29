@@ -1,0 +1,21 @@
+schema: general
+name: vw_entity_funding
+description: Canonical cross-source public-funding view joining CRA, federal grants, Alberta grants, Alberta contracts, and sole-source totals.
+grain: one row per canonical entity
+primary_key: [entity_id]
+row_count_estimate: 850000
+refresh_cadence: ad-hoc
+coverage_period: ["2000-01-01", "2026-12-31"]
+safe_for_analytical: true
+columns:
+  - {name: entity_id, type: integer, nullable: false, description: Canonical entity identifier, examples: ["101"]}
+  - {name: canonical_name, type: string, nullable: false, description: Canonical entity name, examples: ["University of Alberta"]}
+  - {name: dataset_sources, type: array, nullable: true, description: Source datasets linked to this entity, examples: ["{fed,ab,cra}"]}
+  - {name: source_count, type: integer, nullable: true, description: Number of linked source families, examples: ["3"]}
+  - {name: cra_total_revenue, type: decimal, nullable: true, description: CRA revenue total where available, units: CAD, examples: ["1000000"]}
+  - {name: fed_total_grants, type: decimal, nullable: true, description: Federal grants total, units: CAD, examples: ["250000"]}
+  - {name: ab_total_grants, type: decimal, nullable: true, description: Alberta grants total, units: CAD, examples: ["100000"]}
+  - {name: ab_total_contracts, type: decimal, nullable: true, description: Alberta contracts total, units: CAD, examples: ["300000"]}
+  - {name: ab_total_sole_source, type: decimal, nullable: true, description: Alberta sole-source total, units: CAD, examples: ["50000"]}
+  - {name: total_all_funding, type: decimal, nullable: true, description: Cross-source funding total, units: CAD, examples: ["700000"]}
+join_keys: {}

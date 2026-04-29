@@ -1,18 +1,20 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { BookOpen, Loader2, Send, Square, TriangleAlert } from 'lucide-react';
+import { ArrowDown, BookOpen, TriangleAlert } from 'lucide-react';
 import AssistantMessageCard from './AssistantMessageCard';
-import ProgressTrail from './ProgressTrail';
+import ActivityCard from './ActivityCard';
+import { Composer } from './Composer';
+import { EmptyState } from './EmptyState';
 import { shipQueryKeys } from './ConversationList';
 import {
-  getCatalog,
   getConversation,
   messageContentText,
   responseFromHistoryMessage,
   streamMessage,
 } from '../../lib/ship';
 import type { AssistantResponse, ShipConversationMessage, StreamEvent } from '../../lib/ship';
+import { formatLatestEvent } from '../../lib/streamPhases';
 
 type DraftInjection = {
   id: number;
@@ -91,85 +93,6 @@ function makeId(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-function EmptyState({
-  onPickExample,
-  onOpenCatalog,
-}: {
-  onPickExample: (example: string) => void;
-  onOpenCatalog: () => void;
-}) {
-  const catalogQuery = useQuery({
-    queryKey: shipQueryKeys.catalog,
-    queryFn: getCatalog,
-  });
-
-  const examples = (catalogQuery.data?.recipes ?? [])
-    .flatMap((recipe) => recipe.examples)
-    .slice(0, 6);
-
-  return (
-    <div className="rounded-sm border border-dashed border-[var(--color-border)] bg-[var(--color-surface-subtle)] p-8 text-center">
-      <div className="mb-4 flex justify-center">
-        <div className="size-12 rounded-sm bg-[var(--color-accent-soft)] flex items-center justify-center border border-[var(--color-accent)]">
-          <BookOpen className="size-6 text-[var(--color-accent)]" />
-        </div>
-      </div>
-      <p className="section-title">AWAITING GROUNDED INQUIRY</p>
-      <h2 className="mt-2 text-2xl font-black text-[var(--color-ink-strong)] uppercase tracking-tight">
-        OFFICIAL ANALYST CONSOLE
-      </h2>
-      <p className="mt-3 max-w-2xl mx-auto text-sm font-medium text-[var(--color-muted)] leading-relaxed">
-        The forensic analyst is ready to process queries regarding Canadian public accountability data. 
-        All work is streamed and grounded in official source records.
-      </p>
-
-      {catalogQuery.isError ? (
-        <div className="mt-6 rounded-sm border border-[var(--color-risk-high)] bg-[var(--color-risk-high-soft)] p-4 text-sm text-[var(--color-risk-high)]">
-          <p className="font-black uppercase tracking-widest">CATALOG UNAVAILABLE</p>
-          <p className="mt-1 font-bold">
-            {catalogQuery.error instanceof Error ? catalogQuery.error.message : 'Unable to load inquiry suggestions.'}
-          </p>
-          <button
-            type="button"
-            onClick={() => void catalogQuery.refetch()}
-            className="mt-4 rounded-sm border border-[var(--color-risk-high)] bg-white px-4 py-1.5 text-[10px] font-black uppercase tracking-widest"
-          >
-            RETRY CATALOG
-          </button>
-        </div>
-      ) : catalogQuery.isLoading ? (
-        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {[0, 1, 2, 3, 4, 5].map((item) => (
-            <div key={item} className="h-10 animate-pulse rounded-sm bg-white border border-[var(--color-border-soft)]" />
-          ))}
-        </div>
-      ) : (
-        <div className="mt-6 flex flex-wrap justify-center gap-2">
-          {examples.map((example) => (
-            <button
-              type="button"
-              key={example}
-              onClick={() => onPickExample(example)}
-              className="rounded-sm border border-[var(--color-border)] bg-white px-3 py-2 text-[10px] font-black text-[var(--color-ink-strong)] uppercase tracking-wider hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-colors shadow-sm"
-            >
-              {example}
-            </button>
-          ))}
-        </div>
-      )}
-
-      <button
-        type="button"
-        onClick={onOpenCatalog}
-        className="mt-8 inline-flex items-center gap-2 rounded-sm border border-[var(--color-border)] bg-white px-6 py-2.5 text-[11px] font-black text-[var(--color-ink-strong)] uppercase tracking-[0.2em] hover:bg-[var(--color-surface-subtle)] transition-colors shadow-sm"
-      >
-        <BookOpen className="size-4" aria-hidden="true" />
-        OPEN RECIPE CATALOG
-      </button>
-    </div>
-  );
-}
-
 export default function ConversationView({
   conversationId,
   draftInjection,
@@ -183,20 +106,16 @@ export default function ConversationView({
   const [composer, setComposer] = useState('');
   const [liveItems, setLiveItems] = useState<ThreadItem[]>([]);
   const [dismissedMessages, setDismissedMessages] = useState<Set<string>>(new Set());
+  const [showLatestPill, setShowLatestPill] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const composerRef = useRef<HTMLTextAreaElement | null>(null);
   const consumedRouteState = useRef<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const scrollerRef = useRef<HTMLDivElement | null>(null);
 
-  const scrollToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  const scrollToBottom = useCallback((smooth = true) => {
+    messagesEndRef.current?.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto' });
   }, []);
-
-  useEffect(() => {
-    if (liveItems.length > 0) {
-      scrollToBottom();
-    }
-  }, [liveItems, scrollToBottom]);
 
   const conversationQuery = useQuery({
     queryKey: shipQueryKeys.conversation(conversationId),
@@ -210,6 +129,32 @@ export default function ConversationView({
 
   const threadItems = useMemo(() => [...historyItems, ...liveItems], [historyItems, liveItems]);
   const isStreaming = liveItems.some((item) => item.role === 'assistant' && item.isRunning);
+
+  // Update document title with conversation title.
+  useEffect(() => {
+    const title = conversationQuery.data?.title?.trim();
+    document.title = title ? `${title} · Accountability Analyst` : 'Accountability Analyst';
+    return () => {
+      document.title = 'Accountability Analyst';
+    };
+  }, [conversationQuery.data?.title]);
+
+  useEffect(() => {
+    if (liveItems.length > 0) scrollToBottom();
+  }, [liveItems, scrollToBottom]);
+
+  // Watch scroll position for "↓ Latest" pill.
+  useEffect(() => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    const onScroll = () => {
+      const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+      setShowLatestPill(distFromBottom > 240);
+    };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+    return () => el.removeEventListener('scroll', onScroll);
+  }, [threadItems.length]);
 
   const focusComposer = useCallback(() => {
     window.setTimeout(() => composerRef.current?.focus(), 0);
@@ -265,12 +210,10 @@ export default function ConversationView({
             setLiveItems((items) =>
               items.map((item) => {
                 if (item.id !== assistantItem.id || item.role !== 'assistant') return item;
-
                 const nextItem: AssistantThreadItem = {
                   ...item,
                   events: [...item.events, event],
                 };
-
                 if (event.name === 'summarizer_token') {
                   nextItem.summaryDraft = `${item.summaryDraft}${event.data.text}`;
                 }
@@ -285,7 +228,6 @@ export default function ConversationView({
                   nextItem.completedAt = Date.now();
                   nextItem.errorMessage = event.data.message;
                 }
-
                 return nextItem;
               }),
             );
@@ -301,7 +243,7 @@ export default function ConversationView({
                     ...item,
                     isRunning: false,
                     completedAt: Date.now(),
-                    errorMessage: 'The stream closed before the backend returned a final answer.',
+                    errorMessage: 'The stream closed before the analyst returned a final answer.',
                   }
                 : item,
             ),
@@ -309,10 +251,11 @@ export default function ConversationView({
         }
 
         await queryClient.invalidateQueries({ queryKey: shipQueryKeys.conversations });
+        await queryClient.invalidateQueries({ queryKey: shipQueryKeys.conversation(conversationId) });
       } catch (error) {
         const message =
           error instanceof DOMException && error.name === 'AbortError'
-            ? 'Request cancelled. The composer is ready for a new question.'
+            ? 'Cancelled. Send another question to continue.'
             : error instanceof Error
               ? error.message
               : 'The streaming connection dropped before a final answer arrived.';
@@ -342,11 +285,7 @@ export default function ConversationView({
     abortRef.current = null;
   }, [conversationId]);
 
-  useEffect(() => {
-    return () => {
-      abortRef.current?.abort();
-    };
-  }, []);
+  useEffect(() => () => abortRef.current?.abort(), []);
 
   useEffect(() => {
     if (!draftInjection) return;
@@ -372,81 +311,115 @@ export default function ConversationView({
     }
   }, [conversationId, location.pathname, location.state, navigate, prefillComposer, submitMessage]);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    void submitMessage(composer);
-  }
-
-  function cancelStream() {
-    abortRef.current?.abort();
-  }
+  const cancelStream = useCallback(() => abortRef.current?.abort(), []);
 
   function dismissMessage(messageId: string) {
     setDismissedMessages((current) => new Set(current).add(messageId));
   }
 
+  const regenerateAssistantResponse = useCallback(
+    (assistantItemId: string) => {
+      const assistantIndex = threadItems.findIndex((candidate) => candidate.id === assistantItemId);
+      if (assistantIndex <= 0) return;
+
+      const previousUser = threadItems
+        .slice(0, assistantIndex)
+        .reverse()
+        .find((candidate): candidate is UserThreadItem => candidate.role === 'user');
+
+      if (previousUser) void submitMessage(previousUser.content);
+    },
+    [submitMessage, threadItems],
+  );
+
+  // Find the most recent user message for ↑ recall.
+  const lastUserMessage = useMemo(() => {
+    for (let i = threadItems.length - 1; i >= 0; i--) {
+      const item = threadItems[i];
+      if (item.role === 'user') return item.content;
+    }
+    return undefined;
+  }, [threadItems]);
+
+  // Status text from the most recent in-flight stream.
+  const statusText = useMemo(() => {
+    const live = liveItems.find((item) => item.role === 'assistant' && item.isRunning) as
+      | AssistantThreadItem
+      | undefined;
+    if (!live) return undefined;
+    return formatLatestEvent(live.events) + '…';
+  }, [liveItems]);
+
+  const titleText = conversationQuery.data?.title?.trim() || 'New investigation';
+
   return (
-    <section className="flex flex-1 flex-col rounded-sm border border-[var(--color-border)] bg-[var(--color-surface)] shadow-md overflow-hidden h-full">
-      <header className="flex flex-col gap-4 border-b border-[var(--color-border)] bg-[var(--color-surface-subtle)] p-6 lg:flex-row lg:items-center lg:justify-between shrink-0">
-        <div>
-          <p className="section-title">INTELLIGENCE AGENT</p>
-          <h1 className="mt-1 text-2xl font-black text-[var(--color-ink-strong)] uppercase tracking-tighter">
-            {conversationQuery.data?.title?.trim() || 'LIVE FORENSIC THREAD'}
+    <section className="flex flex-1 flex-col bg-[var(--color-bg)] overflow-hidden h-full">
+      <header className="flex h-[52px] shrink-0 items-center justify-between border-b border-[var(--color-border)] bg-white px-4">
+        <div className="flex items-center gap-4 min-w-0">
+          <h1 className="truncate text-base font-semibold text-[var(--color-ink-strong)] tracking-tight">
+            {titleText}
           </h1>
-          <p className="mt-1 text-[11px] font-bold text-[var(--color-muted)] uppercase tracking-widest">
-            OFFICIAL AGENT SERVICE · CACHED FINDINGS ACTIVE
-          </p>
+          <div className="flex items-center gap-1.5 text-[11px] font-medium text-[var(--color-muted)]">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--color-success)] opacity-20" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-[var(--color-success)]" />
+            </span>
+            Connected
+          </div>
         </div>
-        <button
-          type="button"
-          onClick={onOpenCatalog}
-          className="inline-flex items-center gap-2 rounded-sm border border-[var(--color-border)] bg-white px-4 py-2 text-[10px] font-black text-[var(--color-ink-strong)] uppercase tracking-widest hover:bg-[var(--color-surface-subtle)] transition-colors shadow-sm"
-        >
-          <BookOpen className="size-4" aria-hidden="true" />
-          CATALOG
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onOpenCatalog}
+            className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-[var(--color-muted)] hover:bg-[var(--color-surface-subtle)] hover:text-[var(--color-ink-strong)] transition-colors"
+          >
+            <BookOpen className="size-3.5" aria-hidden="true" />
+            Browse examples
+          </button>
+        </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto p-6 bg-[var(--color-bg)]/30">
+      <div ref={scrollerRef} className="relative flex-1 overflow-y-auto">
         {conversationQuery.isError ? (
-          <div className="rounded-sm border-l-4 border-l-[var(--color-risk-high)] bg-white p-6 shadow-sm">
-            <div className="flex items-start gap-4">
-              <TriangleAlert className="mt-0.5 size-5 text-[var(--color-risk-high)]" aria-hidden="true" />
-              <div>
-                <p className="section-title text-[var(--color-risk-high)]">CONNECTION ERROR</p>
-                <p className="mt-2 text-sm font-bold text-[var(--color-ink-strong)] uppercase tracking-tight">
-                  CONVERSATION COULD NOT BE RETRIEVED.
-                </p>
-                <p className="mt-1 text-xs font-medium text-[var(--color-muted)]">
-                  {conversationQuery.error instanceof Error
-                    ? conversationQuery.error.message
-                    : 'The forensic service did not return the requested thread state.'}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => void conversationQuery.refetch()}
-                  className="mt-4 rounded-sm border border-[var(--color-border)] bg-white px-4 py-1.5 text-[10px] font-black uppercase tracking-widest"
-                >
-                  RETRY CONNECTION
-                </button>
+          <div className="mx-4 mt-8 lg:mx-8">
+            <div className="rounded-xl border border-[var(--color-risk-high)]/20 bg-[var(--color-risk-high-soft)] p-5">
+              <div className="flex items-start gap-3">
+                <TriangleAlert className="mt-0.5 size-4 text-[var(--color-risk-high)]" aria-hidden="true" />
+                <div>
+                  <p className="text-sm font-semibold text-[var(--color-ink-strong)]">
+                    Couldn't load this conversation
+                  </p>
+                  <p className="mt-1 text-xs text-[var(--color-muted)]">
+                    {conversationQuery.error instanceof Error
+                      ? conversationQuery.error.message
+                      : 'The analyst service did not return the requested thread.'}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => void conversationQuery.refetch()}
+                    className="mt-3 inline-flex items-center rounded-md border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs font-medium text-[var(--color-ink-strong)] hover:bg-[var(--color-surface-subtle)] transition-colors"
+                  >
+                    Try again
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         ) : conversationQuery.isLoading && threadItems.length === 0 ? (
-          <div className="space-y-4">
+          <div className="space-y-4 p-4 lg:p-8">
             {[0, 1, 2].map((item) => (
-              <div key={item} className="h-32 animate-pulse rounded-sm bg-white border border-[var(--color-border-soft)]" />
+              <div key={item} className="h-32 animate-pulse rounded-xl bg-white border border-[var(--color-border-soft)] shadow-sm" />
             ))}
           </div>
         ) : threadItems.length === 0 ? (
           <EmptyState onPickExample={prefillComposer} onOpenCatalog={onOpenCatalog} />
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-8 px-4 py-8 lg:px-8">
             {threadItems.map((item) => {
               if (item.role === 'user') {
                 return (
                   <div key={item.id} className="flex justify-end">
-                    <div className="max-w-[80%] rounded-sm bg-[var(--color-accent)] px-5 py-3.5 text-sm font-medium leading-relaxed text-white shadow-sm border border-[var(--color-accent-hover)]">
+                    <div className="max-w-[85%] rounded-2xl rounded-br-md bg-[var(--color-info-soft)] border border-[var(--color-info)]/10 px-4 py-2.5 text-sm leading-relaxed text-[var(--color-ink-strong)] whitespace-pre-wrap shadow-sm">
                       {item.content}
                     </div>
                   </div>
@@ -457,15 +430,12 @@ export default function ConversationView({
 
               return (
                 <div key={item.id} className="space-y-4">
-                  {item.events.length > 0 && (
-                    <ProgressTrail
-                      events={item.events}
-                      isRunning={item.isRunning}
-                      startedAt={item.startedAt}
-                      completedAt={item.completedAt}
-                      summaryDraft={item.summaryDraft}
-                    />
-                  )}
+                  <ActivityCard
+                    events={item.events}
+                    isRunning={item.isRunning}
+                    startedAt={item.startedAt}
+                    completedAt={item.completedAt}
+                  />
 
                   {item.response ? (
                     <AssistantMessageCard
@@ -474,77 +444,61 @@ export default function ConversationView({
                       onSend={(content) => void submitMessage(content)}
                       onStartNewConversation={onStartNewConversation}
                       onDismiss={dismissMessage}
+                      onRegenerate={() => regenerateAssistantResponse(item.id)}
                     />
                   ) : item.errorMessage ? (
-                    <div className="rounded-sm border-l-4 border-l-[var(--color-risk-high)] bg-white p-6 shadow-sm">
-                      <p className="section-title text-[var(--color-risk-high)]">STREAM INTERRUPTED</p>
-                      <p className="mt-2 text-sm font-bold text-[var(--color-ink-strong)] uppercase tracking-tight">
-                        ANALYST STREAM TERMINATED BEFORE RESPONSE COMPLETION.
+                    <div className="rounded-xl border border-[var(--color-risk-high)]/20 bg-[var(--color-risk-high-soft)] p-5">
+                      <p className="text-sm font-semibold text-[var(--color-ink-strong)]">
+                        The response was cut off
                       </p>
-                      <p className="mt-1 text-xs font-medium text-[var(--color-muted)]">{item.errorMessage}</p>
+                      <p className="mt-1 text-xs text-[var(--color-muted)]">{item.errorMessage}</p>
                       {item.retryContent && (
                         <button
                           type="button"
                           onClick={() => void submitMessage(item.retryContent ?? '')}
-                          className="mt-4 rounded-sm border border-[var(--color-border)] bg-white px-4 py-1.5 text-[10px] font-black uppercase tracking-widest"
+                          className="mt-3 inline-flex rounded-md border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs font-medium text-[var(--color-ink-strong)] hover:bg-[var(--color-surface-subtle)] transition-colors"
                         >
-                          RETRY OFFICIAL INQUIRY
+                          Try again
                         </button>
                       )}
                     </div>
-                  ) : (
-                    <div className="rounded-sm border border-[var(--color-border)] bg-white p-6 text-[11px] font-black text-[var(--color-muted)] uppercase tracking-[0.2em] shadow-sm animate-pulse">
-                      AWAITING ANALYST RESPONSE FROM AGENT...
-                    </div>
-                  )}
+                  ) : null}
                 </div>
               );
             })}
             <div ref={messagesEndRef} />
           </div>
         )}
+
+        {showLatestPill && (
+          <button
+            type="button"
+            onClick={() => scrollToBottom()}
+            className="fixed bottom-32 right-8 z-10 inline-flex items-center gap-1.5 rounded-full border border-[var(--color-border)] bg-white/80 backdrop-blur-md px-3 py-2 text-xs font-semibold text-[var(--color-ink-strong)] shadow-lg hover:bg-white transition-all animate-in fade-in slide-in-from-bottom-2"
+            aria-label="Scroll to latest"
+          >
+            <ArrowDown className="size-3.5" aria-hidden="true" />
+            Latest
+          </button>
+        )}
       </div>
 
-      <form onSubmit={handleSubmit} className="border-t border-[var(--color-border)] bg-white p-6 shadow-lg shrink-0">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end">
-          <label className="min-w-0 flex-1">
-            <span className="section-title">OFFICIAL INQUIRY COMPOSER</span>
-            <textarea
-              ref={composerRef}
-              value={composer}
-              onChange={(event) => setComposer(event.target.value)}
-              rows={3}
-              placeholder="ENTER INQUIRY REGARDING RECIPIENTS, PROGRAMS, OR RISK SIGNALS..."
-              className="mt-2 min-h-24 w-full resize-y rounded-sm border border-[var(--color-border)] bg-[var(--color-surface-subtle)] px-4 py-3 text-sm font-medium leading-relaxed text-[var(--color-ink-strong)] outline-none focus:border-[var(--color-accent)] focus:bg-white transition-colors"
-              disabled={conversationQuery.isError}
-            />
-          </label>
-          <div className="flex gap-3">
-            {isStreaming && (
-              <button
-                type="button"
-                onClick={cancelStream}
-                className="inline-flex min-h-[52px] items-center justify-center gap-2 rounded-sm border border-[var(--color-border)] bg-white px-6 text-[11px] font-black text-[var(--color-muted)] uppercase tracking-widest hover:text-[var(--color-risk-high)] transition-colors shadow-sm"
-              >
-                <Square className="size-4" aria-hidden="true" />
-                ABORT
-              </button>
-            )}
-            <button
-              type="submit"
-              disabled={!composer.trim() || isStreaming || conversationQuery.isError}
-              className="inline-flex min-h-[52px] items-center justify-center gap-3 rounded-sm bg-[var(--color-accent)] px-8 text-[11px] font-black text-white uppercase tracking-[0.2em] hover:bg-[var(--color-accent-hover)] transition-all shadow-md disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {isStreaming ? (
-                <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-              ) : (
-                <Send className="size-4" aria-hidden="true" />
-              )}
-              {isStreaming ? 'PROCESSING' : 'EXECUTE'}
-            </button>
-          </div>
+      <div className="sticky bottom-0 z-20 w-full px-4 lg:px-8 pb-8 pointer-events-none">
+        <div className="pointer-events-auto">
+          <Composer
+            ref={composerRef}
+            value={composer}
+            onChange={setComposer}
+            onSend={() => void submitMessage(composer)}
+            onStop={cancelStream}
+            onOpenCatalog={onOpenCatalog}
+            isStreaming={isStreaming}
+            disabled={conversationQuery.isError}
+            statusText={statusText}
+            lastUserMessage={lastUserMessage}
+          />
         </div>
-      </form>
+      </div>
     </section>
   );
 }

@@ -16,6 +16,8 @@ from .recipes.base import RecipeResult
 from .summarizer import Summary
 from .primitives.base import EmitCallback, StrictModel
 from .runtime_config import settings
+from .schema_catalog import get_catalog
+from .sql_sandbox import SqlSandbox
 
 
 class VerificationResult(StrictModel):
@@ -136,6 +138,10 @@ async def verify(
     *,
     total_latency_ms: int,
     emit: EmitCallback | None = None,
+    source_results: list[RecipeResult] | None = None,
+    source_run_ids: list[str] | None = None,
+    mode: str = "fresh",
+    diff: Any | None = None,
 ) -> VerificationResult:
     started = time.perf_counter()
     if emit:
@@ -151,14 +157,25 @@ async def verify(
     latency_budget_ms = 120_000 if has_web_citations or result.recipe_id == "adverse_media" else 45_000
     all_text = " ".join([summary.headline, *(paragraph.text for paragraph in summary.paragraphs)])
 
-    query_names = {entry.query_name for entry in result.sql_log}
+    source_results = source_results or [result]
+    source_run_ids = source_run_ids or [""]
+    source_by_id = {source_run_ids[index]: source for index, source in enumerate(source_results) if index < len(source_run_ids)}
+    primary_source_id = source_run_ids[0] if source_run_ids else ""
+    query_names = {entry.query_name for source in source_results for entry in source.sql_log} | {entry.query_name for entry in result.sql_log}
+    cross_run_citations = 0
     for paragraph_index, paragraph in enumerate(summary.paragraphs):
         if not paragraph.citations:
             failures.append(f"paragraph {paragraph_index} has no citation")
         for citation in paragraph.citations:
+            citation_source_id = citation.source_run_id or primary_source_id
+            citation_result = source_by_id.get(citation_source_id, result)
+            if citation.source_run_id and citation.source_run_id in source_by_id:
+                cross_run_citations += 1
+            elif citation.source_run_id and citation.source_run_id not in source_by_id:
+                failures.append(f"paragraph {paragraph_index} cites unknown source_run_id {citation.source_run_id}")
             if citation.finding_index is not None:
-                if citation.finding_index < 0 or citation.finding_index >= len(result.findings):
-                    failures.append(f"paragraph {paragraph_index} cites missing finding_index {citation.finding_index}")
+                if citation.finding_index < 0 or citation.finding_index >= len(citation_result.findings):
+                    failures.append(f"paragraph {paragraph_index} cites missing finding_index {citation.finding_index} in {citation_source_id or 'primary run'}")
                 else:
                     cited_findings += 1
                     cited_finding_indices.add(citation.finding_index)
@@ -170,7 +187,7 @@ async def verify(
                     cited_sql_names.add(citation.sql_query_name)
             if citation.url:
                 web_checked += 1
-                url_failure = await _verify_url(citation.url, paragraph.text, result)
+                url_failure = await _verify_url(citation.url, paragraph.text, citation_result)
                 if url_failure:
                     failures.append(url_failure)
     citation_failure_count = len(failures)
@@ -195,7 +212,12 @@ async def verify(
 
     numeric_failures_before = len(failures)
     numbers = []
-    candidates = _numeric_values_for_citations(result, cited_finding_indices, cited_sql_names)
+    candidates = []
+    for source in source_results:
+        candidates.extend(_numeric_values_for_citations(source, cited_finding_indices, cited_sql_names))
+    candidates.extend(_numeric_values_for_citations(result, cited_finding_indices, cited_sql_names))
+    if diff is not None:
+        candidates.extend(_collect_numeric_values(diff.model_dump(mode="json") if hasattr(diff, "model_dump") else diff))
     for match in _NUMBER_RE.finditer(all_text):
         parsed = _parse_number(match.group(0))
         if parsed is None:
@@ -241,6 +263,20 @@ async def verify(
     if total_latency_ms > latency_budget_ms:
         failures.append(f"latency {total_latency_ms}ms exceeded {latency_budget_ms}ms")
 
+    generated_sql_safe = None
+    if result.recipe_id.startswith("__analytical__:") and result.sql_log:
+        ok, reason, _ = SqlSandbox(pool, get_catalog()).validate(result.sql_log[0].sql)
+        generated_sql_safe = ok
+        if not ok:
+            failures.append(f"generated analytical SQL failed sandbox revalidation: {reason}")
+        if result.params.get("sandbox_result") != "ok":
+            failures.append(f"analytical sandbox result was {result.params.get('sandbox_result')}")
+
+    if mode == "conversational":
+        for index, paragraph in enumerate(summary.paragraphs):
+            if not paragraph.citations:
+                failures.append(f"conversational paragraph {index} has no citation")
+
     verification = VerificationResult(
         status="pass" if not failures else "failed",
         failures=failures,
@@ -257,6 +293,8 @@ async def verify(
             "web_urls_checked": web_checked,
             "total_latency_ms": total_latency_ms,
             "latency_budget_ms": latency_budget_ms,
+            "cross_run_citations_consistent": cross_run_citations,
+            "generated_sql_safe": generated_sql_safe,
         },
     )
     if emit:

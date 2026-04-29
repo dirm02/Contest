@@ -1,0 +1,16 @@
+concept: schools
+synonyms: [school, schools, elementary school, high school, school district, school board, conseil scolaire, commission scolaire, école, écoles]
+description: K-12 schools and school authorities.
+applicable_columns:
+  - {table: fed.grants_contributions, column: recipient_legal_name, match: name_pattern}
+  - {table: ab.ab_contracts, column: recipient, match: name_pattern}
+  - {table: ab.ab_sole_source, column: vendor, match: name_pattern}
+  - {table: ab.ab_grants, column: recipient, match: name_pattern}
+  - {table: cra.govt_funding_by_charity, column: legal_name, match: name_pattern}
+predicate:
+  name_pattern:
+    sql_template: "(({col} ILIKE '%school%' OR {col} ILIKE '%école%' OR {col} ILIKE '%conseil scolaire%' OR {col} ILIKE '%commission scolaire%') AND NOT ({col} ILIKE '%school of medicine%' OR {col} ILIKE '%school of business%' OR {col} ILIKE '%law school%'))"
+caveats:
+  - "School matching is name-pattern based and may miss French-only school authorities whose names omit common school terms."
+confidence: 0.85
+version: 1

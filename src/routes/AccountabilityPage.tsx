@@ -74,31 +74,7 @@ export default function AccountabilityPage() {
 
   return (
     <section className="flex flex-col h-full overflow-hidden">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between bg-white border-b border-[var(--color-border)] px-6 py-4">
-        <div>
-          <h1 className="text-xl font-black uppercase tracking-tight text-[var(--color-ink-strong)]">
-            Intelligence <span className="text-[var(--color-accent)]">Agent</span>
-          </h1>
-          <p className="text-[10px] font-bold text-[var(--color-muted)] uppercase tracking-widest">
-            Analytical Question Service · Grounded Investigation
-          </p>
-        </div>
-
-        <div
-          className={`inline-flex items-center gap-2 rounded-sm border px-3 py-1 text-[10px] font-black uppercase ${
-            healthQuery.data?.status === 'ok'
-              ? 'border-[var(--color-success)] bg-[var(--color-risk-low-soft)] text-[var(--color-success)]'
-              : healthQuery.isError
-                ? 'border-[var(--color-risk-high)] bg-[var(--color-risk-high-soft)] text-[var(--color-risk-high)]'
-                : 'border-[var(--color-warning)] bg-[var(--color-risk-medium-soft)] text-[var(--color-warning)]'
-          }`}
-        >
-          <RadioTower className="size-3" aria-hidden="true" />
-          {healthQuery.data?.status === 'ok' ? 'AGENTS ONLINE' : healthQuery.isError ? 'AGENTS UNAVAILABLE' : 'VERIFYING AGENTS'}
-        </div>
-      </div>
-
-      <div className="flex-1 grid grid-cols-1 xl:grid-cols-[320px_minmax(0,1fr)] overflow-hidden">
+      <div className="flex-1 grid grid-cols-1 xl:grid-cols-[280px_minmax(0,1fr)] overflow-hidden">
         <div className="border-r border-[var(--color-border)] bg-white overflow-y-auto">
           <ConversationList
             activeConversationId={conversationId ?? null}
@@ -106,7 +82,7 @@ export default function AccountabilityPage() {
           />
         </div>
 
-        <div className="flex flex-col overflow-hidden bg-[var(--color-bg)] p-4 sm:p-6 lg:p-8">
+        <div className="flex flex-col overflow-hidden bg-[var(--color-bg)]">
           {conversationId ? (
             <div className="flex-1 overflow-hidden flex flex-col">
               <ConversationView
@@ -118,43 +94,44 @@ export default function AccountabilityPage() {
               />
             </div>
           ) : (
-            <section className="flex flex-1 flex-col items-center justify-center rounded-sm border border-dashed border-[var(--color-border)] bg-white p-12 text-center shadow-inner">
-              <div className="max-w-2xl">
-                <div className="mb-6 flex justify-center">
-                  <div className="size-16 rounded-sm bg-[var(--color-accent-soft)] flex items-center justify-center border border-[var(--color-accent)] shadow-sm">
-                    <MessageSquarePlus className="size-8 text-[var(--color-accent)]" />
-                  </div>
-                </div>
-                <p className="section-title mb-2">FORENSIC CONSOLE READY</p>
-                <h2 className="text-3xl font-black text-[var(--color-ink-strong)] uppercase tracking-tighter mb-4">
-                  INITIALIZE ANALYST SESSION
+            <div className="flex flex-1 flex-col items-center justify-center p-6 lg:p-12 overflow-y-auto">
+              <div className="max-w-2xl w-full text-center">
+                <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--color-accent)] mb-3">
+                  Accountability Analyst
+                </p>
+                <h2 className="text-4xl font-semibold text-[var(--color-ink-strong)] tracking-tight mb-4">
+                  What would you like to investigate today?
                 </h2>
-                <p className="text-sm font-medium text-[var(--color-muted)] leading-relaxed mb-10">
-                  Select an existing forensic thread from the sidebar or execute a fresh 
-                  accountability inquiry to begin the evidence grounding process.
+                <p className="text-base text-[var(--color-muted)] leading-relaxed mb-12 max-w-lg mx-auto">
+                  Ask grounded questions about Canadian public spending — recipients, contracts, 
+                  governance networks, and more. Every answer is cited.
                 </p>
 
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-4 sm:grid-cols-2 mb-12 text-left">
+                  <EmptyState onPickExample={handleCatalogExample} onOpenCatalog={() => setIsCatalogOpen(true)} />
+                </div>
+
+                <div className="flex items-center justify-center gap-6">
+                  <button
+                    type="button"
+                    onClick={() => setIsCatalogOpen(true)}
+                    className="inline-flex items-center gap-2 text-sm font-medium text-[var(--color-muted)] hover:text-[var(--color-accent)] transition-colors"
+                  >
+                    <BookOpen className="size-4" />
+                    Browse all examples
+                  </button>
                   <button
                     type="button"
                     onClick={() => void createBlankConversation()}
                     disabled={isCreating}
-                    className="flex min-h-12 items-center justify-center gap-3 rounded-sm bg-[var(--color-accent)] px-6 py-2 text-[11px] font-black text-white uppercase tracking-[0.2em] hover:bg-[var(--color-accent-hover)] transition-all shadow-md disabled:opacity-50"
+                    className="inline-flex items-center gap-2 text-sm font-medium text-[var(--color-muted)] hover:text-[var(--color-accent)] transition-colors disabled:opacity-50"
                   >
-                    <MessageSquarePlus className="size-4" aria-hidden="true" />
-                    NEW CONVERSATION
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setIsCatalogOpen(true)}
-                    className="flex min-h-12 items-center justify-center gap-3 rounded-sm border border-[var(--color-border)] bg-white px-6 py-2 text-[11px] font-black text-[var(--color-ink-strong)] uppercase tracking-[0.2em] hover:bg-[var(--color-surface-subtle)] transition-colors shadow-sm"
-                  >
-                    <BookOpen className="size-4" aria-hidden="true" />
-                    INQUIRY CATALOG
+                    <MessageSquarePlus className="size-4" />
+                    Start blank conversation
                   </button>
                 </div>
               </div>
-            </section>
+            </div>
           )}
         </div>
       </div>

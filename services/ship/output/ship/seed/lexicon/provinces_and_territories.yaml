@@ -1,0 +1,12 @@
+concept: provinces_and_territories
+synonyms: [province, provinces, territory, territories, provincial government, territorial government]
+description: Provincial and territorial governments.
+applicable_columns:
+  - {table: fed.grants_contributions, column: recipient_legal_name, match: name_pattern}
+predicate:
+  name_pattern:
+    sql_template: "({col} ILIKE '%government of%' OR {col} ILIKE '%province of%' OR {col} ILIKE '%territory of%')"
+caveats:
+  - "Province and territory matching may include ministries or agencies named for a government."
+confidence: 0.75
+version: 1

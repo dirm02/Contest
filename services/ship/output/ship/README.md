@@ -102,6 +102,8 @@ The service bootstraps these tables on startup if they are missing:
 - `investigator.ship_conversations`
 - `investigator.ship_messages`
 - `investigator.ship_recipe_runs`
+- `investigator.ship_conversation_memory`
+- `investigator.ship_analytical_audit`
 
 ## API Shape
 
@@ -115,8 +117,13 @@ Stable endpoints:
 | `GET` | `/conversations` | List active conversations. |
 | `GET` | `/conversations/{conversation_id}` | Get messages and recipe-run metadata. |
 | `GET` | `/recipe_runs/{run_id}` | Get full findings, SQL log, summary, and verification. |
+| `POST` | `/conversations/{conversation_id}/runs/{run_id}/pin` | Keep a run in classifier memory. |
+| `POST` | `/conversations/{conversation_id}/runs/{run_id}/unpin` | Release an explicit memory pin. |
+| `POST` | `/conversations/{conversation_id}/runs/{run_id}/forget` | Hide a run from future classifier memory without deleting it. |
 | `DELETE` | `/conversations/{conversation_id}` | Archive a conversation. |
 | `GET` | `/catalog` | Get the recipe catalog for UI affordances. |
+| `GET` | `/catalog/datasets` | Get the analytical-query dataset catalog with PII columns removed. |
+| `GET` | `/catalog/concepts` | Get the curated concept lexicon available to analytical queries. |
 | `GET` | `/healthz` | Confirm Postgres connectivity. |
 | `GET` | `/docs` | FastAPI OpenAPI UI. |
 
@@ -135,6 +142,8 @@ Streaming events:
 - Web and CanLII: `web_search_started`, `web_search_completed`, `canlii_started`, `canlii_completed`
 - Summary: `summarizer_started`, `summarizer_token`, `summarizer_completed`
 - Verification: `verifier_started`, `verifier_check`, `verifier_completed`
+- Iterative turns: `turn_classifier_started`, `turn_classifier_decision`, `memory_recall`, `refinement_started`, `refinement_completed`, `composition_started`, `composition_completed`, `diff_computed`
+- Analytical query: `analytical_started`, `concept_extraction_started`, `concept_extraction_completed`, `plan_generation_started`, `plan_generation_completed`, `sql_compiled`, `sandbox_validation_started`, `sandbox_validation_completed`, `sandbox_execution_started`, `sandbox_execution_completed`, `analytical_completed`
 - Control: `heartbeat`, `final_response`, `error`
 
 The final streaming event is `final_response`. Its payload is the same discriminated-union response shape returned by the non-streaming endpoint.

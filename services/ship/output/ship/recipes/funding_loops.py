@@ -16,6 +16,11 @@ class Params(RecipeParams):
     exclude_denominational: bool = True
 
 
+def humanize(params: dict) -> str:
+    amount = params.get("min_amount") or params.get("min_total_amount") or 100_000
+    return f"Charity funding loops over ${amount:,.0f}"
+
+
 async def run(question: str, params: Params, pool: asyncpg.Pool, *, emit: EmitCallback | None = None) -> RecipeResult:
     started = time.perf_counter()
     cycles = await funding_cycles.run(

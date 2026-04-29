@@ -1,0 +1,14 @@
+concept: indigenous_organizations
+synonyms: [indigenous organization, indigenous organizations, first nation, first nations, métis, metis, inuit, band council, tribal council]
+description: First Nations, Métis, Inuit, and urban Indigenous organizations.
+applicable_columns:
+  - {table: fed.grants_contributions, column: recipient_legal_name, match: name_pattern}
+  - {table: ab.ab_grants, column: recipient, match: name_pattern}
+  - {table: general.vw_entity_funding, column: canonical_name, match: name_pattern}
+predicate:
+  name_pattern:
+    sql_template: "({col} ILIKE '%first nation%' OR {col} ILIKE '%first nations%' OR {col} ILIKE '%métis%' OR {col} ILIKE '%metis%' OR {col} ILIKE '%inuit%' OR {col} ILIKE '%indigenous%' OR {col} ILIKE '%tribal council%' OR {col} ILIKE '%band council%')"
+caveats:
+  - "Indigenous-organization matching is incomplete because many organizations use community names without explicit Indigenous terms."
+confidence: 0.68
+version: 1

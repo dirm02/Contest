@@ -1,0 +1,191 @@
+- generic [ref=e3]:
+  - banner [ref=e5]:
+    - generic [ref=e6]:
+      - link "A Accountability Max Forensic System" [ref=e8] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e9]: A
+        - generic [ref=e10]:
+          - generic [ref=e11]: Accountability Max
+          - generic [ref=e12]: Forensic System
+      - generic [ref=e13]:
+        - generic [ref=e14]:
+          - generic [ref=e15]: OFFICIAL USE ONLY
+          - generic [ref=e16]: Secure Portal
+        - link "SYSTEM ONLINE" [ref=e17] [cursor=pointer]:
+          - /url: /api/health
+          - img [ref=e18]
+          - text: SYSTEM ONLINE
+  - generic [ref=e23]:
+    - complementary [ref=e24]:
+      - navigation [ref=e25]:
+        - generic [ref=e26]: Main Navigation
+        - link "SEARCH" [ref=e27] [cursor=pointer]:
+          - /url: /
+          - img [ref=e28]
+          - text: SEARCH
+        - link "AGENTS" [ref=e31] [cursor=pointer]:
+          - /url: /accountability
+          - img [ref=e32]
+          - text: AGENTS
+        - link "INVESTIGATION PANEL" [ref=e34] [cursor=pointer]:
+          - /url: /investigations
+          - img [ref=e35]
+          - text: INVESTIGATION PANEL
+        - link "PEOPLE" [ref=e36] [cursor=pointer]:
+          - /url: /people
+          - img [ref=e37]
+          - text: PEOPLE
+      - generic [ref=e43]:
+        - paragraph [ref=e44]: Audit Posture
+        - generic [ref=e45]:
+          - img [ref=e46]
+          - generic [ref=e49]: Active Investigation
+    - main [ref=e50]:
+      - generic [ref=e52]:
+        - generic [ref=e53]:
+          - generic [ref=e54]:
+            - heading "Intelligence Agent" [level=1] [ref=e55]
+            - paragraph [ref=e56]: Analytical Question Service · Grounded Investigation
+          - generic [ref=e57]:
+            - img [ref=e58]
+            - text: AGENTS ONLINE
+        - generic [ref=e65]:
+          - complementary [ref=e67]:
+            - generic [ref=e68]:
+              - generic [ref=e69]:
+                - generic [ref=e70]:
+                  - paragraph [ref=e71]: FORENSIC THREADS
+                  - heading "Inquiry History" [level=2] [ref=e72]
+                - button "Refresh conversations" [ref=e73]:
+                  - img [ref=e74]
+              - button "NEW INQUIRY" [ref=e79]:
+                - img [ref=e80]
+                - text: NEW INQUIRY
+            - navigation [ref=e114]:
+              - button "Hello 4 SEGMENTS 2M AGO" [ref=e115]:
+                - generic [ref=e116]: Hello
+                - generic [ref=e117]:
+                  - generic [ref=e118]: 4 SEGMENTS
+                  - generic [ref=e119]: 2M AGO
+          - generic [ref=e91]:
+            - generic [ref=e92]:
+              - generic [ref=e93]:
+                - paragraph [ref=e94]: INTELLIGENCE AGENT
+                - heading "Hello" [level=1] [ref=e120]
+                - paragraph [ref=e96]: OFFICIAL AGENT SERVICE · CACHED FINDINGS ACTIVE
+              - button "CATALOG" [ref=e97]:
+                - img [ref=e98]
+                - text: CATALOG
+            - generic [ref=e101]:
+              - generic [ref=e122]: Hello
+              - article [ref=e124]:
+                - generic [ref=e125]:
+                  - img [ref=e127]
+                  - generic [ref=e129]:
+                    - heading "What would you like to investigate?" [level=2] [ref=e130]
+                    - paragraph [ref=e131]: Please ask a Canadian public-accountability question about funding, contracts, charities, vendors, policy spending, or adverse media.
+                    - generic [ref=e132]:
+                      - paragraph [ref=e133]: Or narrow your scope
+                      - list [ref=e134]:
+                        - listitem [ref=e135]: largest charity funding cycles
+                        - listitem [ref=e136]: organizations receiving both federal and Alberta funding
+                        - listitem [ref=e137]: contract concentration by category
+                        - listitem [ref=e138]: charities with high government funding that stopped filing
+                    - generic [ref=e139]:
+                      - paragraph [ref=e140]: Try one of these refinements
+                      - generic [ref=e141]:
+                        - button "Show the largest charity funding cycles." [ref=e142]
+                        - button "Which organizations receive both federal and Alberta funding?" [ref=e143]
+                        - button "How concentrated is health spending in Alberta?" [ref=e144]
+                    - button "Run it broadly anyway" [ref=e146]:
+                      - text: Run it broadly anyway
+                      - img [ref=e147]
+              - generic [ref=e150]: which schools received funding in 2024
+              - article [ref=e152]:
+                - generic [ref=e153]:
+                  - heading "Returned school-related funding recipients" [level=2] [ref=e154]
+                  - generic [ref=e156]:
+                    - button "Caveats" [ref=e157]:
+                      - img [ref=e158]
+                      - generic [ref=e161]: Caveats
+                      - img [ref=e162]
+                    - generic [ref=e164]:
+                      - generic "Findings cited" [ref=e165]: 9 findings
+                      - generic [ref=e166]: ·
+                      - generic "SQL references" [ref=e167]: 1 SQL refs
+                      - generic [ref=e168]: ·
+                      - generic "Latency" [ref=e169]: 43.3s
+                - generic [ref=e170]:
+                  - generic [ref=e171]:
+                    - paragraph [ref=e172]: "School-sector / education records: The clearest school record in the returned findings is Toronto District School Board, with dataset_sources listed as [\"cra\", \"fed\"], source_count 464, cra_total_revenue 17977779377.0, fed_total_grants 1405148317.35, total_all_funding 19382927694.35, and positive_funding_source_count 2. The returned education-related university records are The Governing Council of the University of Toronto, with total_all_funding 23171349991.71 and positive_funding_source_count 2, and The University of British Columbia, with total_all_funding 17243395897.42 and positive_funding_source_count 5."
+                    - generic [ref=e173]:
+                      - superscript [ref=e174]:
+                        - button "Citation 1": "[1]"
+                      - superscript [ref=e175]:
+                        - button "Citation 2": "[2]"
+                      - superscript [ref=e176]:
+                        - button "Citation 3": "[3]"
+                  - generic [ref=e177]:
+                    - paragraph [ref=e178]: "Public-system oversight / public delivery authorities: Many high-dollar returned records are public health or government bodies rather than schools. Alberta Health Services is the largest returned record, with total_all_funding 165961552107.59 and positive_funding_source_count 4; GOVERNMENT OF THE PROVINCE OF ALBERTA has total_all_funding 87813286719.0 and positive_funding_source_count 2; FRASER HEALTH AUTHORITY has total_all_funding 25782645981.0 and positive_funding_source_count 2. These should not be treated as school recipients merely because they appeared in the same keyword-filtered result set."
+                    - generic [ref=e179]:
+                      - superscript [ref=e180]:
+                        - button "Citation 4": "[4]"
+                      - superscript [ref=e181]:
+                        - button "Citation 5": "[5]"
+                      - superscript [ref=e182]:
+                        - button "Citation 6": "[6]"
+                  - generic [ref=e183]:
+                    - paragraph [ref=e184]: "Audit readout: the query returned row_count 20, but the supplied finding rows shown here are dominated by health authorities, government, and other non-school entities; therefore the reliable answer from the provided rows is that Toronto District School Board is the explicit school-board recipient, while The Governing Council of the University of Toronto and The University of British Columbia are education-sector recipients that may warrant separate classification review. Cross-source funding overlap should be treated as an audit lead, not proof of duplicative or improper funding."
+                    - generic [ref=e185]:
+                      - superscript [ref=e186]:
+                        - button "Citation 7": "[7]"
+                      - superscript [ref=e187]:
+                        - button "Citation 8": "[8]"
+                      - superscript [ref=e188]:
+                        - button "Citation 9": "[9]"
+                      - superscript [ref=e189]:
+                        - button "Citation 10": "[10]"
+                - list [ref=e191]:
+                  - listitem [ref=e192]: The findings do not include source_url values, so no URLs are cited.
+                  - listitem [ref=e193]: The supplied findings contain fewer displayed rows than the SQL log row_count, so additional school-related rows may exist outside the provided finding list.
+                  - listitem [ref=e194]: Cross-source funding overlap is an audit lead; programs can legitimately fund the same canonical recipient for different purposes.
+                - button "Evidence (5 findings) Show details" [ref=e196]:
+                  - generic [ref=e197]: Evidence (5 findings)
+                  - generic [ref=e198]: Show details
+                - generic [ref=e199]:
+                  - paragraph [ref=e200]: Suggested follow-ups
+                  - generic [ref=e201]:
+                    - button "What other public funds did School receive?" [ref=e202]:
+                      - text: What other public funds did School receive?
+                      - img [ref=e203]
+                    - button "Show governance links for School" [ref=e205]:
+                      - text: Show governance links for School
+                      - img [ref=e206]
+                    - button "Are there adverse media signals around School?" [ref=e208]:
+                      - text: Are there adverse media signals around School?
+                      - img [ref=e209]
+                    - button "Show me the supporting SQL" [ref=e211]:
+                      - text: Show me the supporting SQL
+                      - img [ref=e212]
+                - generic [ref=e214]:
+                  - button "Copy message" [ref=e215]:
+                    - img [ref=e216]
+                  - button "Copy as report" [ref=e219]:
+                    - img [ref=e220]
+                  - button "Regenerate response" [ref=e223]:
+                    - img [ref=e224]
+                  - button "Copy permalink" [ref=e227]:
+                    - img [ref=e228]
+                  - generic [ref=e231]:
+                    - button "Like response" [ref=e232]:
+                      - img [ref=e233]
+                    - button "Dislike response" [ref=e235]:
+                      - img [ref=e236]
+            - generic [ref=e106]:
+              - generic [ref=e107]:
+                - text: OFFICIAL INQUIRY COMPOSER
+                - textbox "OFFICIAL INQUIRY COMPOSER" [ref=e108]:
+                  - /placeholder: ENTER INQUIRY REGARDING RECIPIENTS, PROGRAMS, OR RISK SIGNALS...
+              - button "EXECUTE" [disabled] [ref=e110]:
+                - img [ref=e111]
+                - text: EXECUTE

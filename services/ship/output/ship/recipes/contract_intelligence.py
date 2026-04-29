@@ -15,6 +15,13 @@ class Params(RecipeParams):
     source: str = "ab_contracts"
 
 
+def humanize(params: dict) -> str:
+    year_min = params.get("fiscal_year_min")
+    year_max = params.get("fiscal_year_max")
+    years = f", FY{year_min}-{year_max}" if year_min and year_max else ""
+    return f"Alberta contract intelligence{years}"
+
+
 async def run(question: str, params: Params, pool: asyncpg.Pool, *, emit: EmitCallback | None = None) -> RecipeResult:
     started = time.perf_counter()
     conc = await concentration.run(

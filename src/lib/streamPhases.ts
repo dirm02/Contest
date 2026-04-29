@@ -50,10 +50,9 @@ export function groupEventsIntoPhases(events: StreamEvent[]): Phase[] {
     }
   }
 
-  let hasError = events.some((e) => e.name === 'error');
-  let hasFinal = events.some((e) => e.name === 'final_response');
+  const hasError = events.some((e) => e.name === 'error');
+  const hasFinal = events.some((e) => e.name === 'final_response');
 
-  let anyRunning = false;
   for (let i = 0; i < phases.length; i++) {
     const phase = phases[i];
     if (phase.events.length > 0) {

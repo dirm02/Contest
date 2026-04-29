@@ -1,0 +1,14 @@
+concept: municipalities
+synonyms: [municipality, municipalities, city, cities, town, towns, village, county, municipal district, regional district]
+description: Municipal governments and local public authorities.
+applicable_columns:
+  - {table: fed.grants_contributions, column: recipient_legal_name, match: name_pattern}
+  - {table: ab.ab_contracts, column: recipient, match: name_pattern}
+  - {table: ab.ab_grants, column: recipient, match: name_pattern}
+predicate:
+  name_pattern:
+    sql_template: "({col} ILIKE 'city of %' OR {col} ILIKE 'town of %' OR {col} ILIKE 'village of %' OR {col} ILIKE '%municipality%' OR {col} ILIKE '%county%' OR {col} ILIKE '%municipal district%')"
+caveats:
+  - "Municipality matching is name-based and may include municipal corporations or agencies."
+confidence: 0.78
+version: 1

@@ -59,6 +59,12 @@ class Params(RecipeParams):
     min_funding: float | None = None
 
 
+def humanize(params: dict) -> str:
+    jurisdiction = params.get("jurisdiction") or "Canada"
+    max_signals = params.get("max_signals") or 15
+    return f"Adverse-media signals in {jurisdiction} ({max_signals} candidates)"
+
+
 async def run(question: str, params: Params, pool: asyncpg.Pool, *, emit: EmitCallback | None = None) -> RecipeResult:
     started = time.perf_counter()
     signals = await adverse_signal_discovery.run(

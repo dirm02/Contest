@@ -15,6 +15,11 @@ class Params(RecipeParams):
     policy_keyword: str | None = None
 
 
+def humanize(params: dict) -> str:
+    keyword = params.get("policy_keyword") or params.get("category_keyword") or "policy"
+    return f"Policy-spending coverage for {keyword}"
+
+
 async def run(question: str, params: Params, pool: asyncpg.Pool, *, emit: EmitCallback | None = None) -> RecipeResult:
     started = time.perf_counter()
     keyword = params.policy_keyword or params.category_keyword

@@ -1,0 +1,12 @@
+concept: political_parties
+synonyms: [political party, political parties, electoral district association, eda, riding association]
+description: Political parties and electoral district associations.
+applicable_columns:
+  - {table: fed.grants_contributions, column: recipient_legal_name, match: name_pattern}
+predicate:
+  name_pattern:
+    sql_template: "({col} ILIKE '%party%' OR {col} ILIKE '%electoral district association%' OR {col} ILIKE '%riding association%')"
+caveats:
+  - "Political-party matching is a narrow name proxy; most direct political-finance data is outside this warehouse."
+confidence: 0.5
+version: 1

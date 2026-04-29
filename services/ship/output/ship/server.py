@@ -24,8 +24,11 @@ from .orchestrator import (
     list_conversations,
     stream_user_message,
 )
+from .memory import forget_run, pin_run, unpin_run
 from .primitives.base import create_pool
 from .recipes.catalog import catalog_for_prompt
+from .schema_catalog import get_catalog
+from .lexicon import get_lexicon
 
 
 class ConversationCreate(BaseModel):
@@ -165,6 +168,30 @@ async def get_recipe_run_endpoint(run_id: UUID) -> dict[str, Any]:
     return payload
 
 
+@app.post("/conversations/{conversation_id}/runs/{run_id}/pin")
+async def pin_run_endpoint(conversation_id: UUID, run_id: UUID) -> dict[str, Any]:
+    try:
+        return await pin_run(_pool(), conversation_id, run_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/conversations/{conversation_id}/runs/{run_id}/unpin")
+async def unpin_run_endpoint(conversation_id: UUID, run_id: UUID) -> dict[str, Any]:
+    try:
+        return await unpin_run(_pool(), conversation_id, run_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/conversations/{conversation_id}/runs/{run_id}/forget")
+async def forget_run_endpoint(conversation_id: UUID, run_id: UUID) -> dict[str, Any]:
+    try:
+        return await forget_run(_pool(), conversation_id, run_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
 @app.delete("/conversations/{conversation_id}")
 async def archive_conversation_endpoint(conversation_id: UUID) -> dict[str, Any]:
     archived = await archive_conversation(_pool(), conversation_id)
@@ -176,6 +203,16 @@ async def archive_conversation_endpoint(conversation_id: UUID) -> dict[str, Any]
 @app.get("/catalog")
 async def catalog_endpoint() -> dict[str, Any]:
     return {"recipes": catalog_for_prompt()}
+
+
+@app.get("/catalog/datasets")
+async def datasets_endpoint() -> dict[str, Any]:
+    return get_catalog().public_payload()
+
+
+@app.get("/catalog/concepts")
+async def concepts_endpoint() -> dict[str, Any]:
+    return get_lexicon().public_payload()
 
 
 @app.get("/healthz")

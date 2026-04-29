@@ -3,7 +3,7 @@ import {
   ArrowRight,
   Bot,
   GitBranch,
-  Info,
+  Lightbulb,
   Loader2,
   X,
 } from 'lucide-react';
@@ -162,9 +162,19 @@ function AnswerCard({ response, onRegenerate, onSend }: { response: AnswerRespon
   const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
   const [sortState, setSortState] = useState<SortState>(null);
   const [selectedSqlQuery, setSelectedSqlQuery] = useState<string | null>(null);
-  const [tableExpanded, setTableExpanded] = useState(false);
 
   const findings = fullRun?.findings ?? response.findings_preview;
+
+  // List-shape questions (which/how many/list/show/who) want the table front-and-center.
+  const isListShape = useMemo(() => {
+    const headline = response.summary.headline.toLowerCase();
+    const startsListy = /^(\d|which|how many|list|show|name|who|where)/i.test(headline);
+    const hasFewParagraphs = response.summary.paragraphs.length <= 1;
+    const fewFindings = (response.findings_preview?.length ?? 0) > 0 && (response.findings_preview?.length ?? 0) <= 25;
+    return startsListy || (hasFewParagraphs && fewFindings);
+  }, [response]);
+
+  const [tableExpanded, setTableExpanded] = useState<boolean>(isListShape);
 
   async function loadFullRun(): Promise<RecipeRun | null> {
     if (fullRun) return fullRun;
@@ -203,21 +213,36 @@ function AnswerCard({ response, onRegenerate, onSend }: { response: AnswerRespon
   // Pre-compute citations array for inline superscripts
   const flatCitations = response.summary.paragraphs.flatMap((p) => p.citations);
 
+  const headline = response.summary.headline.replace(/\.$/, '');
+
   return (
-    <article className="group relative rounded-xl bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04)] ring-1 ring-[var(--color-border)] p-6">
-      <div className="space-y-1">
-        <h2 className="text-2xl font-semibold tracking-tight text-[var(--color-ink-strong)]">
-          {response.summary.headline.replace(/\.$/, '')}
+    <article className="group relative rounded-xl bg-white shadow-sm ring-1 ring-[var(--color-border)] p-6 transition-shadow hover:shadow-md">
+      <div className="space-y-3">
+        <h2 className="text-2xl font-semibold tracking-tight text-[var(--color-ink-strong)] leading-tight">
+          {headline}
         </h2>
-        <ConfidenceRing response={response} />
+        <div className="flex items-center gap-3">
+          <ConfidenceRing response={response} />
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-medium text-[var(--color-muted)] bg-[var(--color-surface-subtle)] px-2 py-0.5 rounded-full tabular-nums">
+              {response.findings_preview.length} findings
+            </span>
+            <span className="text-[11px] font-medium text-[var(--color-muted)] bg-[var(--color-surface-subtle)] px-2 py-0.5 rounded-full tabular-nums">
+              {flatCitations.filter(c => c.sql_query_name).length} SQL refs
+            </span>
+            <span className="text-[11px] font-medium text-[var(--color-muted)] bg-[var(--color-surface-subtle)] px-2 py-0.5 rounded-full tabular-nums">
+              {seconds(response.latency_ms)}
+            </span>
+          </div>
+        </div>
       </div>
 
-      <div className="mt-6">
+      <div className="mt-6 space-y-4">
         {response.summary.paragraphs.map((paragraph, index) => (
-          <div key={`${response.message_id}-paragraph-${index}`} className="relative">
+          <div key={`${response.message_id}-paragraph-${index}`} className="relative leading-relaxed">
             <AnswerMarkdown>{paragraph.text}</AnswerMarkdown>
             {paragraph.citations.length > 0 && (
-              <span className="inline-flex flex-wrap items-center -ml-1">
+              <span className="inline-flex flex-wrap items-center -ml-0.5">
                 {paragraph.citations.map((citation, cIndex) => {
                   const globalIndex = flatCitations.indexOf(citation);
                   return (
@@ -237,8 +262,9 @@ function AnswerCard({ response, onRegenerate, onSend }: { response: AnswerRespon
       </div>
 
       {response.summary.caveats.length > 0 && (
-        <div className="mt-6 rounded-xl border border-[var(--color-warning)] bg-[var(--color-risk-medium-soft)] p-4">
-          <ul className="list-disc space-y-1.5 pl-5 text-sm leading-relaxed text-[var(--color-ink-strong)] font-medium">
+        <div className="mt-6 rounded-lg border-l-4 border-l-[var(--color-warning)] border-y border-r border-[var(--color-border)] bg-[var(--color-warning)]/5 p-4">
+          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-warning)] mb-1.5">Caveats</p>
+          <ul className="list-disc space-y-1 pl-5 text-sm leading-relaxed text-[var(--color-ink-strong)]">
             {response.summary.caveats.map((caveat) => (
               <li key={caveat}>{caveat}</li>
             ))}
@@ -246,32 +272,32 @@ function AnswerCard({ response, onRegenerate, onSend }: { response: AnswerRespon
         </div>
       )}
 
-      <div className="mt-8 border-t border-[var(--color-border-soft)] pt-6">
+      <div className="mt-8 border-t border-[var(--color-border-soft)] pt-5">
         <button
           type="button"
           onClick={() => {
             setTableExpanded(!tableExpanded);
             if (!tableExpanded && !fullRun) void loadFullRun();
           }}
-          className="flex w-full items-center justify-between text-left"
+          className="flex w-full items-center justify-between text-left group"
         >
-          <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--color-muted)] hover:text-[var(--color-ink)] transition-colors">
-            Evidence ({findings.length.toLocaleString()} findings)
+          <span className="text-sm font-semibold text-[var(--color-ink-strong)]">
+            Evidence · {findings.length.toLocaleString()} {findings.length === 1 ? 'finding' : 'findings'}
           </span>
-          <span className="text-xs font-semibold text-[var(--color-accent)] hover:underline">
+          <div className="flex items-center gap-2 text-xs font-medium text-[var(--color-accent)] group-hover:underline">
             {tableExpanded ? 'Hide' : 'Show details'}
-          </span>
+          </div>
         </button>
 
         {tableExpanded && (
           <div className="mt-4 space-y-4">
-            <div className="flex items-center gap-4 text-xs font-mono text-[var(--color-muted)]">
+            <div className="flex items-center gap-4 text-[10px] font-mono text-[var(--color-muted)]">
               <span>Recipe: {fullRun?.recipe_id ?? '...'}</span>
               <span>Run: {response.recipe_run_id}</span>
             </div>
 
             {runError && (
-              <div className="rounded-xl border border-[var(--color-risk-high)] bg-[var(--color-risk-high-soft)] p-3 text-sm text-[var(--color-risk-high)]">
+              <div className="rounded-xl border border-[var(--color-risk-high)]/20 bg-[var(--color-risk-high-soft)] p-3 text-sm text-[var(--color-risk-high)]">
                 {runError}
               </div>
             )}
@@ -289,8 +315,13 @@ function AnswerCard({ response, onRegenerate, onSend }: { response: AnswerRespon
         )}
       </div>
 
-      <SuggestedFollowups response={response} onSend={onSend} onOpenSql={() => openSql(flatCitations.find(c => c.sql_query_name)?.sql_query_name || '')} />
-      <MessageActions response={response} onRegenerate={onRegenerate} />
+      <div className="mt-6">
+        <SuggestedFollowups response={response} onSend={onSend} onOpenSql={() => openSql(flatCitations.find(c => c.sql_query_name)?.sql_query_name || '')} />
+      </div>
+      
+      <div className="mt-4 border-t border-[var(--color-border-soft)] pt-4">
+        <MessageActions response={response} onRegenerate={onRegenerate} />
+      </div>
 
       {selectedSqlQuery && (
         <SqlDrawer
@@ -315,42 +346,47 @@ function ClarificationCard({
   onSend: (content: string) => void;
 }) {
   return (
-    <article className="rounded-xl border border-[var(--color-warning)] bg-[var(--color-risk-medium-soft)] p-6">
+    <article className="rounded-xl border border-[var(--color-info)]/30 bg-[var(--color-info-soft)] p-6">
       <div className="flex items-start gap-4">
-        <span className="mt-1 shrink-0 rounded-full border border-[var(--color-warning)] bg-white p-1.5 text-[var(--color-warning)]">
-          <Info className="size-4" aria-hidden="true" />
+        <span className="mt-0.5 shrink-0 rounded-full bg-white p-1.5 text-[var(--color-info)] ring-1 ring-[var(--color-info)]/30">
+          <Lightbulb className="size-4" aria-hidden="true" />
         </span>
         <div className="min-w-0 flex-1">
           <h2 className="text-xl font-semibold text-[var(--color-ink-strong)] tracking-tight">
             {response.headline}
           </h2>
-          <p className="mt-2 text-sm leading-relaxed text-[var(--color-ink-strong)]">{response.reason}</p>
+          {response.reason && (
+            <p className="mt-2 text-sm leading-relaxed text-[var(--color-muted)]">{response.reason}</p>
+          )}
 
           {response.suggested_narrowings.length > 0 && (
-            <div className="mt-5">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--color-warning)]">
-                Or narrow your scope
-              </p>
-              <ul className="mt-2 list-disc space-y-1.5 pl-5 text-sm leading-relaxed text-[var(--color-ink)]">
+            <div className="mt-5 space-y-2">
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--color-muted)]">Suggested focus</p>
+              <div className="flex flex-col gap-1">
                 {response.suggested_narrowings.map((item) => (
-                  <li key={item}>{item}</li>
+                  <button
+                    key={item}
+                    onClick={() => onPrefill(item)}
+                    className="flex items-center justify-between group p-3 rounded-lg border border-[var(--color-border)] bg-white text-sm text-[var(--color-ink-strong)] hover:border-[var(--color-accent)] hover:bg-[var(--color-accent)]/5 transition-all text-left"
+                  >
+                    <span className="font-medium">{item}</span>
+                    <ArrowRight className="size-3.5 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all text-[var(--color-accent)]" />
+                  </button>
                 ))}
-              </ul>
+              </div>
             </div>
           )}
 
           {response.example_refinements.length > 0 && (
-            <div className="mt-6">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--color-warning)]">
-                Try one of these refinements
-              </p>
-              <div className="mt-3 flex flex-wrap gap-2">
+            <div className="mt-5">
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--color-muted)]">Example questions</p>
+              <div className="mt-2 flex flex-wrap gap-2">
                 {response.example_refinements.map((example) => (
                   <button
                     type="button"
                     key={example}
                     onClick={() => onPrefill(example)}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-warning)] bg-white px-3 py-1.5 text-xs font-semibold text-[var(--color-ink-strong)] shadow-sm transition-colors hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
+                    className="rounded-full border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs font-medium text-[var(--color-ink-strong)] hover:border-[var(--color-info)] hover:bg-[var(--color-info)]/5 transition-colors"
                   >
                     {example}
                   </button>
@@ -359,14 +395,14 @@ function ClarificationCard({
             </div>
           )}
 
-          <div className="mt-6 pt-2">
+          <div className="mt-6 flex items-center justify-between pt-4 border-t border-[var(--color-accent)]/10">
             <button
               type="button"
               onClick={() => onSend(response.proceed_phrase)}
-              className="inline-flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-semibold text-[var(--color-ink-strong)] ring-1 ring-[var(--color-warning)] transition-colors hover:bg-[var(--color-surface-subtle)]"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--color-accent)] hover:underline underline-offset-4 transition-all"
             >
               Run it broadly anyway
-              <ArrowRight className="size-4 text-[var(--color-warning)]" aria-hidden="true" />
+              <ArrowRight className="size-3.5" aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -385,9 +421,9 @@ function NewConversationCard({
   onDismiss: (messageId: string) => void;
 }) {
   return (
-    <article className="rounded-xl border border-[var(--color-accent)] bg-[var(--color-accent-soft)] p-6">
+    <article className="rounded-xl border border-[var(--color-warning)]/40 bg-[var(--color-risk-medium-soft)] p-6">
       <div className="flex items-start gap-4">
-        <span className="mt-1 shrink-0 rounded-full border border-[var(--color-accent)] bg-white p-1.5 text-[var(--color-accent)]">
+        <span className="mt-1 shrink-0 rounded-full border border-[var(--color-warning)]/40 bg-white p-1.5 text-[var(--color-warning)]">
           <GitBranch className="size-4" aria-hidden="true" />
         </span>
         <div className="min-w-0 flex-1 relative">
@@ -409,7 +445,7 @@ function NewConversationCard({
             <button
               type="button"
               onClick={() => onStartNewConversation(response.suggested_starter)}
-              className="inline-flex items-center gap-2 rounded-lg bg-[var(--color-accent)] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[var(--color-accent-hover)] shadow-sm"
+              className="inline-flex items-center gap-2 rounded-lg bg-[var(--color-warning)] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[var(--color-warning)]/90 shadow-sm"
             >
               Open new conversation
               <ArrowRight className="size-4" aria-hidden="true" />

@@ -17,6 +17,14 @@ class Params(RecipeParams):
     min_segment_amount: float = 100_000
 
 
+def humanize(params: dict) -> str:
+    source = params.get("source") or "all"
+    year_min = params.get("fiscal_year_min")
+    year_max = params.get("fiscal_year_max")
+    years = f", FY{year_min}-{year_max}" if year_min and year_max else ""
+    return f"Vendor concentration for {source}{years}"
+
+
 async def run(question: str, params: Params, pool: asyncpg.Pool, *, emit: EmitCallback | None = None) -> RecipeResult:
     started = time.perf_counter()
     concentration_result = await concentration.run(

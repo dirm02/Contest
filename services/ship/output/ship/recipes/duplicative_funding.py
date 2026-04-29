@@ -14,6 +14,13 @@ class Params(RecipeParams):
     min_source_count: int = 2
 
 
+def humanize(params: dict) -> str:
+    count = params.get("min_source_count") or 2
+    amount = params.get("min_amount")
+    suffix = f" over ${amount:,.0f}" if amount else ""
+    return f"Recipients funded by {count}+ source families{suffix}"
+
+
 async def _duplicative(pool: asyncpg.Pool, params: Params, *, emit: EmitCallback | None = None) -> PrimitiveResult:
     started = time.perf_counter()
     await emit_primitive_started(

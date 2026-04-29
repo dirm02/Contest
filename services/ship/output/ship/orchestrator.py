@@ -18,19 +18,52 @@ from pydantic import Field
 from .primitives.base import EmitCallback, StrictModel, json_ready
 from .recipes.base import RecipeResult
 from .recipes.catalog import RECIPES, REQUIRES_SPECIFICITY, coerce_params
-from .refine import apply_refinement, infer_refinement_filter, refinement_description
+from .analytical import ANALYTICAL_RECIPE_PREFIX, AnalyticalAgent, analytical_to_recipe_result, update_analytical_audit_verifier
+from .classifier import PlannedOperation, TurnClassification, classify_turn
+from .diff import compute_diff
+from .memory import build_memory_summary, humanize_run, list_memory_entries, remember_run
+from .refine import (
+    COMPOSITION_KINDS,
+    REFINEMENT_KINDS,
+    Refiner,
+    RunRegistry,
+    apply_refinement,
+    find_cached_derived_run,
+    infer_refinement_filter,
+    operation_hash,
+    refinement_description,
+)
 from .router import ClarificationPayload, NewConversationHint, RouterDecision, route
 from .summarizer import Citation, Paragraph, Summary, emit_cached_summary_tokens, summarize_streaming
 from .verify import VerificationResult, verify
+from .responses import (
+    AggregateOp,
+    AnswerDiff,
+    CommentaryOp,
+    CompareOp,
+    FilterOp,
+    IntersectOp,
+    JoinOp,
+    Operation,
+    ProjectOp,
+    RecipeRunOp,
+    SliceOp,
+    SortOp,
+    UnionOp,
+)
 
 
 class AnswerResponse(StrictModel):
     type: Literal["answer"] = "answer"
     message_id: str
+    mode: Literal["fresh", "refined", "composed", "conversational"] = "fresh"
+    recipe_run_id: str | None = None
+    based_on_run_id: str | None = None
+    source_run_ids: list[str] = Field(default_factory=list)
+    operations: list[Operation] = Field(default_factory=list)
+    diff: AnswerDiff | None = None
     summary: Summary
     findings_preview: list[dict[str, Any]] = Field(default_factory=list)
-    recipe_run_id: str
-    based_on_run_id: str | None = None
     verification: VerificationResult
     latency_ms: int
 
@@ -127,7 +160,7 @@ ORDER BY created_at, message_id
     )
     runs = await pool.fetch(
         """
-SELECT run_id, based_on_run_id, recipe_id, params, latency_ms, created_at
+SELECT run_id, based_on_run_id, recipe_id, params, latency_ms, is_derived, derived_op, op_hash, source_run_ids, created_at
 FROM investigator.ship_recipe_runs
 WHERE conversation_id = $1
 ORDER BY created_at, run_id
@@ -137,13 +170,14 @@ ORDER BY created_at, run_id
     payload = _record_to_json(conversation)
     payload["messages"] = [_record_to_json(row) for row in messages]
     payload["recipe_runs"] = [_record_to_json(row) for row in runs]
+    payload["memory"] = await list_memory_entries(pool, conversation_id)
     return payload
 
 
 async def get_recipe_run(pool: asyncpg.Pool, run_id: UUID) -> dict[str, Any] | None:
     row = await pool.fetchrow(
         """
-SELECT run_id, conversation_id, message_id, based_on_run_id, recipe_id, params, findings, sql_log, summary, verification, latency_ms, created_at
+SELECT run_id, conversation_id, message_id, based_on_run_id, recipe_id, params, findings, sql_log, summary, verification, latency_ms, is_derived, derived_op, op_hash, source_run_ids, created_at
 FROM investigator.ship_recipe_runs
 WHERE run_id = $1
 """.strip(),
@@ -200,91 +234,57 @@ async def stream_user_message(
     )
     await _ensure_conversation_title(pool, conversation_id, conversation, content)
 
-    latest_run = await _latest_recipe_run(pool, conversation_id)
-    cached_refinement = infer_refinement_filter(content, list(latest_run.get("findings") or [])) if latest_run else None
-    yield Event("router_started", {})
-    if latest_run is not None and cached_refinement is not None:
-        decision = RouterDecision(
-            decision="refine",
-            recipe_id=str(latest_run["recipe_id"]),
-            params={},
-            confidence="high",
-            refinement_filter=cached_refinement,
-            reasoning_one_line="Controller detected a cached-findings refinement before routing.",
-        )
-    else:
-        decision = await route(content, conversation_context=_router_context(latest_run))
-    decision = _controller_adjusted_decision(content, decision, latest_run)
+    memory_summary = await build_memory_summary(pool, conversation_id)
+    yield Event("turn_classifier_started", {})
+    plan = await classify_turn(content, memory_summary, conversation_topic=conversation.get("title"))
     yield Event(
-        "router_decision",
+        "turn_classifier_decision",
         {
-            "decision": decision.decision,
-            "recipe_id": decision.recipe_id,
-            "reasoning_one_line": decision.reasoning_one_line,
+            "mode": plan.mode,
+            "reasoning_one_line": plan.reasoning_one_line,
+            "referenced_run_ids": plan.referenced_run_ids,
         },
     )
 
-    if decision.decision == "not_answerable" or (decision.recipe_id is None and decision.decision == "execute"):
+    if plan.mode == "not_answerable":
         response = NotAnswerableResponse(
             message_id=str(uuid4()),
-            message=decision.not_answerable_reason or "No deterministic recipe can answer this question yet.",
+            message=plan.not_answerable_reason or "No deterministic recipe or analytical query can answer this question yet.",
         )
         await _store_assistant_response(pool, conversation_id, response)
         yield Event("final_response", response.model_dump(mode="json"))
         return
 
-    if decision.decision == "clarify":
-        payload = decision.clarification or _clarification_payload(decision.recipe_id, content)
+    if plan.mode == "clarify":
+        payload = plan.clarification or _clarification_payload(None, content)
         response = ClarificationResponse(message_id=str(uuid4()), **payload.model_dump())
         await _store_assistant_response(pool, conversation_id, response)
         yield Event("final_response", response.model_dump(mode="json"))
         return
 
-    if decision.decision == "needs_new_conversation":
-        hint = decision.new_conversation_hint or _new_conversation_hint(content, latest_run)
+    if plan.mode == "new_conversation":
+        latest_run = await _latest_recipe_run(pool, conversation_id)
+        hint = plan.new_conversation or _new_conversation_hint(content, latest_run)
         response = NeedsNewConversationResponse(message_id=str(uuid4()), **hint.model_dump())
         await _store_assistant_response(pool, conversation_id, response)
         yield Event("final_response", response.model_dump(mode="json"))
         return
 
-    if decision.decision == "refine" and latest_run is not None:
-        queue: asyncio.Queue[Event] = asyncio.Queue()
-
-        async def emit(name: str, data: dict[str, Any]) -> None:
-            await queue.put(Event(name, data))
-
-        yield Event("phase_started", {"phase": "refinement_filter"})
-        task = asyncio.create_task(
-            _handle_refine(
-                pool=pool,
-                conversation_id=conversation_id,
-                user_message_id=user_message_id,
-                content=content,
-                latest_run=latest_run,
-                decision=decision,
-                started=started,
-                emit=emit,
-            )
-        )
-        async for event in _drain_task_events(task, queue, started):
-            yield event
-        response = await task
-        yield Event("final_response", response.model_dump(mode="json"))
-        return
+    if plan.referenced_run_ids:
+        yield Event("memory_recall", {"run_ids": plan.referenced_run_ids, "reason": plan.reasoning_one_line})
 
     queue: asyncio.Queue[Event] = asyncio.Queue()
 
     async def emit(name: str, data: dict[str, Any]) -> None:
         await queue.put(Event(name, data))
 
-    yield Event("phase_started", {"phase": "primitive"})
     task = asyncio.create_task(
-        _handle_execute(
+        _handle_turn_plan(
             pool=pool,
             conversation_id=conversation_id,
             user_message_id=user_message_id,
             content=content,
-            decision=decision,
+            plan=plan,
             started=started,
             emit=emit,
         )
@@ -340,6 +340,532 @@ def _assistant_response_from_payload(payload: dict[str, Any]) -> AssistantRespon
     if response_type == "not_answerable":
         return NotAnswerableResponse.model_validate(payload)
     raise RuntimeError(f"unknown assistant response type {response_type!r}")
+
+
+async def _handle_turn_plan(
+    *,
+    pool: asyncpg.Pool,
+    conversation_id: UUID,
+    user_message_id: UUID,
+    content: str,
+    plan: TurnClassification,
+    started: float,
+    emit: EmitCallback | None = None,
+) -> AnswerResponse:
+    registry = RunRegistry(pool)
+    refiner = Refiner(registry)
+    operations: list[Operation] = []
+    source_run_ids: list[str] = list(plan.referenced_run_ids)
+    primary_run_id: str | None = None
+    based_on_run_id: str | None = source_run_ids[0] if source_run_ids else None
+    current_findings: list[dict[str, Any]] = []
+    baseline_findings: list[dict[str, Any]] = []
+    final_summary: Summary | None = None
+    final_verification: VerificationResult | None = None
+    last_result: RecipeResult | None = None
+    remembered_new_run_ids: list[str] = []
+
+    planned_ops = plan.operations or [PlannedOperation(kind="recipe_run", recipe_id=None, recipe_params={}, description="Run a fresh investigation.")]
+    for planned_op in planned_ops:
+        if planned_op.kind == "recipe_run":
+            if planned_op.recipe_id == "__analytical__" or plan.mode == "analytical_query":
+                if emit:
+                    await emit("phase_started", {"phase": "analytical"})
+                recipe_result, run_id, op_record, summary, verification = await _execute_analytical_operation(
+                    pool=pool,
+                    conversation_id=conversation_id,
+                    user_message_id=user_message_id,
+                    content=content,
+                    planned_op=planned_op,
+                    started=started,
+                    emit=emit,
+                )
+            else:
+                if planned_op.recipe_id is None:
+                    if emit:
+                        await emit("router_started", {})
+                    decision = await route(content, conversation_context=None)
+                    if emit:
+                        await emit(
+                            "router_decision",
+                            {"decision": decision.decision, "recipe_id": decision.recipe_id, "reasoning_one_line": decision.reasoning_one_line},
+                        )
+                    if decision.decision == "clarify":
+                        payload = decision.clarification or _clarification_payload(decision.recipe_id, content)
+                        response = ClarificationResponse(message_id=str(uuid4()), **payload.model_dump())
+                        await _store_assistant_response(pool, conversation_id, response)
+                        return response  # type: ignore[return-value]
+                    if decision.decision == "not_answerable" or decision.recipe_id is None:
+                        response = NotAnswerableResponse(
+                            message_id=str(uuid4()),
+                            message=decision.not_answerable_reason or "No deterministic recipe can answer this question yet.",
+                        )
+                        await _store_assistant_response(pool, conversation_id, response)
+                        return response  # type: ignore[return-value]
+                    planned_op.recipe_id = decision.recipe_id
+                    planned_op.recipe_params = decision.params
+                if emit:
+                    await emit("phase_started", {"phase": "primitive"})
+                recipe_result, run_id, op_record, summary, verification = await _execute_recipe_operation(
+                    pool=pool,
+                    conversation_id=conversation_id,
+                    user_message_id=user_message_id,
+                    content=content,
+                    planned_op=planned_op,
+                    started=started,
+                    emit=emit,
+                )
+            operations.append(op_record)
+            primary_run_id = str(run_id)
+            remembered_new_run_ids.append(str(run_id))
+            current_findings = recipe_result.findings
+            last_result = recipe_result
+            final_summary = summary
+            final_verification = verification
+            continue
+
+        if planned_op.kind == "commentary":
+            source_ids = planned_op.source_run_ids or source_run_ids
+            source_runs = [await registry.load(run_id) for run_id in source_ids]
+            primary_run_id = source_runs[0].run_id if source_runs else primary_run_id
+            based_on_run_id = primary_run_id
+            current_findings = source_runs[0].findings if source_runs else []
+            baseline_findings = current_findings
+            op_record = CommentaryOp(source_run_ids=[run.run_id for run in source_runs], description=planned_op.description)
+            operations.append(op_record)
+            last_result = _recipe_result_from_loaded(content, source_runs[0], caveats=["Conversational answer used prior run memory; no new SQL was executed."]) if source_runs else _empty_recipe_result(content)
+            final_summary = _summary_for_commentary(content, source_runs, op_record)
+            if emit:
+                await emit_cached_summary_tokens(final_summary, emit=emit)
+            total_latency_ms = int((time.perf_counter() - started) * 1000)
+            final_verification = await verify(
+                final_summary,
+                last_result,
+                pool,
+                total_latency_ms=total_latency_ms,
+                emit=emit,
+                source_results=[last_result],
+                source_run_ids=[run.run_id for run in source_runs],
+                mode="conversational",
+            )
+            continue
+
+        if planned_op.kind in REFINEMENT_KINDS:
+            source_run_id = planned_op.source_run_id or based_on_run_id
+            if source_run_id is None:
+                raise ValueError(f"{planned_op.kind} requires a source run")
+            planned_op.source_run_id = source_run_id
+            if not baseline_findings:
+                baseline_findings = (await registry.load(source_run_id)).findings
+            if emit:
+                await emit("refinement_started", {"kind": planned_op.kind, "source_run_id": source_run_id, "description": planned_op.description})
+            result = await _execute_refiner_operation(
+                pool=pool,
+                conversation_id=conversation_id,
+                user_message_id=user_message_id,
+                content=content,
+                refiner=refiner,
+                planned_op=planned_op,
+                started=started,
+                emit=emit,
+            )
+            operations.append(result["operation"])
+            primary_run_id = result["run_id"]
+            based_on_run_id = source_run_id
+            current_findings = result["recipe_result"].findings
+            last_result = result["recipe_result"]
+            final_summary = result["summary"]
+            final_verification = result["verification"]
+            if emit:
+                await emit(
+                    "refinement_completed",
+                    {
+                        "kind": planned_op.kind,
+                        "source_run_id": source_run_id,
+                        "before_count": len(baseline_findings),
+                        "after_count": len(current_findings),
+                        "timing_ms": result["timing_ms"],
+                    },
+                )
+                if _legacy_refinement_events_enabled():
+                    await emit(
+                        "refinement_filter_applied",
+                        {"filter": planned_op.model_dump(mode="json"), "before_count": len(baseline_findings), "after_count": len(current_findings)},
+                    )
+            continue
+
+        if planned_op.kind in COMPOSITION_KINDS:
+            if planned_op.kind == "join" and planned_op.right_run_id is None and remembered_new_run_ids:
+                planned_op.right_run_id = remembered_new_run_ids[-1]
+            composition_sources = _planned_source_ids(planned_op)
+            if emit:
+                await emit("composition_started", {"kind": planned_op.kind, "source_run_ids": composition_sources, "description": planned_op.description})
+            result = await _execute_refiner_operation(
+                pool=pool,
+                conversation_id=conversation_id,
+                user_message_id=user_message_id,
+                content=content,
+                refiner=refiner,
+                planned_op=planned_op,
+                started=started,
+                emit=emit,
+            )
+            operations.append(result["operation"])
+            primary_run_id = result["run_id"]
+            based_on_run_id = composition_sources[0] if composition_sources else based_on_run_id
+            if based_on_run_id and not baseline_findings:
+                baseline_findings = (await registry.load(based_on_run_id)).findings
+            current_findings = result["recipe_result"].findings
+            last_result = result["recipe_result"]
+            final_summary = result["summary"]
+            final_verification = result["verification"]
+            if emit:
+                await emit(
+                    "composition_completed",
+                    {"kind": planned_op.kind, "source_run_ids": composition_sources, "output_count": len(current_findings), "timing_ms": result["timing_ms"]},
+                )
+
+    if final_summary is None or final_verification is None or last_result is None:
+        raise RuntimeError("turn plan completed without a publishable result")
+
+    diff: AnswerDiff | None = None
+    if based_on_run_id and plan.mode in {"refined", "composed", "conversational"}:
+        if not baseline_findings:
+            baseline_findings = (await registry.load(based_on_run_id)).findings
+        diff = compute_diff(current_findings, baseline_findings, baseline_run_id=based_on_run_id)
+        if emit:
+            await emit("diff_computed", diff.model_dump(mode="json"))
+
+    total_latency_ms = int((time.perf_counter() - started) * 1000)
+    response_mode: Literal["fresh", "refined", "composed", "conversational"] = "fresh" if plan.mode in {"fresh", "analytical_query"} else plan.mode
+    response = AnswerResponse(
+        message_id=str(uuid4()),
+        mode=response_mode,
+        recipe_run_id=primary_run_id or based_on_run_id,
+        based_on_run_id=based_on_run_id,
+        source_run_ids=list(dict.fromkeys(source_run_ids + [run_id for op in operations for run_id in _operation_source_ids(op)])),
+        operations=operations,
+        diff=diff,
+        summary=final_summary,
+        findings_preview=current_findings[:25],
+        verification=final_verification,
+        latency_ms=total_latency_ms,
+    )
+    await _store_assistant_response(pool, conversation_id, response)
+    return response
+
+
+async def _execute_recipe_operation(
+    *,
+    pool: asyncpg.Pool,
+    conversation_id: UUID,
+    user_message_id: UUID,
+    content: str,
+    planned_op: PlannedOperation,
+    started: float,
+    emit: EmitCallback | None,
+) -> tuple[RecipeResult, UUID, RecipeRunOp, Summary, VerificationResult]:
+    if planned_op.recipe_id not in RECIPES:
+        raise ValueError(f"No registered deterministic recipe {planned_op.recipe_id!r}")
+    params = coerce_params(planned_op.recipe_id, planned_op.recipe_params or {})
+    spec = RECIPES[planned_op.recipe_id]
+    result = await spec.run(content, params, pool, emit=emit)
+    if emit:
+        await emit("phase_started", {"phase": "summarizer"})
+    summary = await summarize_streaming(result, emit=emit)
+    total_latency_ms = int((time.perf_counter() - started) * 1000)
+    if emit:
+        await emit("phase_started", {"phase": "verifier"})
+    verification = await verify(summary, result, pool, total_latency_ms=total_latency_ms, emit=emit)
+    run_id = await _store_recipe_run(
+        pool,
+        conversation_id=conversation_id,
+        message_id=user_message_id,
+        result=result,
+        summary=summary,
+        verification=verification,
+        latency_ms=total_latency_ms,
+        based_on_run_id=None,
+        is_derived=False,
+        derived_op=None,
+        op_hash=None,
+        source_run_ids=[],
+    )
+    await remember_run(
+        pool,
+        conversation_id=conversation_id,
+        run_id=run_id,
+        recipe_id=result.recipe_id,
+        params=result.params,
+        row_count=len(result.findings),
+    )
+    op_record = RecipeRunOp(
+        recipe_id=result.recipe_id,
+        run_id=str(run_id),
+        description=planned_op.description or humanize_run(result.recipe_id, result.params, len(result.findings)),
+        row_count=len(result.findings),
+        timing_ms=result.latency_ms,
+    )
+    return result, run_id, op_record, summary, verification
+
+
+async def _execute_analytical_operation(
+    *,
+    pool: asyncpg.Pool,
+    conversation_id: UUID,
+    user_message_id: UUID,
+    content: str,
+    planned_op: PlannedOperation,
+    started: float,
+    emit: EmitCallback | None,
+) -> tuple[RecipeResult, UUID, RecipeRunOp, Summary, VerificationResult]:
+    analytical = await AnalyticalAgent(pool=pool).run(
+        question=content,
+        conversation_id=conversation_id,
+        turn_id=user_message_id,
+        pool=pool,
+        memory_summary=[],
+        emit=emit,
+    )
+    result = analytical_to_recipe_result(content, analytical)
+    if emit:
+        await emit("phase_started", {"phase": "summarizer"})
+    summary = await summarize_streaming(result, emit=emit)
+    for caveat in result.caveats:
+        if caveat not in summary.caveats:
+            summary.caveats.append(caveat)
+    total_latency_ms = int((time.perf_counter() - started) * 1000)
+    if emit:
+        await emit("phase_started", {"phase": "verifier"})
+    verification = await verify(summary, result, pool, total_latency_ms=total_latency_ms, emit=emit, mode="fresh")
+    run_id = await _store_recipe_run(
+        pool,
+        conversation_id=conversation_id,
+        message_id=user_message_id,
+        result=result,
+        summary=summary,
+        verification=verification,
+        latency_ms=total_latency_ms,
+        based_on_run_id=None,
+        is_derived=False,
+        derived_op=result.params.get("plan"),
+        op_hash=result.params.get("schema_hash"),
+        source_run_ids=[],
+        run_id=UUID(analytical.run_id),
+    )
+    await update_analytical_audit_verifier(pool, UUID(analytical.run_id), verification.status)
+    await remember_run(
+        pool,
+        conversation_id=conversation_id,
+        run_id=run_id,
+        recipe_id=result.recipe_id,
+        params=result.params,
+        row_count=len(result.findings),
+    )
+    op_record = RecipeRunOp(
+        recipe_id=result.recipe_id,
+        run_id=str(run_id),
+        description=planned_op.description or f"Run analytical query {analytical.template_id}.",
+        row_count=len(result.findings),
+        timing_ms=analytical.timing_ms,
+    )
+    return result, run_id, op_record, summary, verification
+
+
+async def _execute_refiner_operation(
+    *,
+    pool: asyncpg.Pool,
+    conversation_id: UUID,
+    user_message_id: UUID,
+    content: str,
+    refiner: Refiner,
+    planned_op: PlannedOperation,
+    started: float,
+    emit: EmitCallback | None,
+) -> dict[str, Any]:
+    source_ids = _planned_source_ids(planned_op)
+    op_hash = operation_hash(planned_op, source_ids)
+    cached = await find_cached_derived_run(pool, conversation_id, op_hash, source_ids)
+    if cached:
+        result = RecipeResult(
+            recipe_id=str(cached["recipe_id"]),
+            question=content,
+            params=dict(cached.get("params") or {}),
+            findings=list(cached.get("findings") or []),
+            sql_log=[],
+            caveats=["Reused cached deterministic refinement result; no SQL or web search was executed."],
+            source_runs=[],
+            latency_ms=0,
+        )
+        summary = Summary.model_validate(cached["summary"]) if cached.get("summary") else _summary_from_rows(result, "Cached refinement reused.")
+        verification = VerificationResult.model_validate(cached["verification"]) if cached.get("verification") else VerificationResult(status="pass", failures=[], latency_ms=0, checks={})
+        op_payload = dict((cached.get("params") or {}).get("_derived_operation") or planned_op.model_dump(mode="json"))
+        op_record = _operation_from_payload(op_payload, fallback_run_id=source_ids[0] if source_ids else "")
+        return {"recipe_result": result, "run_id": str(cached["run_id"]), "operation": op_record, "summary": summary, "verification": verification, "timing_ms": 0}
+
+    refinement = await refiner.execute(planned_op)
+    result = RecipeResult(
+        recipe_id=refinement.recipe_id,
+        question=content,
+        params=refinement.params,
+        findings=refinement.findings,
+        sql_log=[],
+        caveats=[
+            *refinement.caveats,
+            "This run was derived from cached findings; no fresh SQL, web search, or CanLII lookup was executed.",
+        ],
+        source_runs=[],
+        latency_ms=refinement.timing_ms,
+    )
+    summary = _summary_from_rows(result, refinement.op_record.description)
+    if emit:
+        await emit("phase_started", {"phase": "summarizer"})
+        await emit_cached_summary_tokens(summary, emit=emit)
+    total_latency_ms = int((time.perf_counter() - started) * 1000)
+    if emit:
+        await emit("phase_started", {"phase": "verifier"})
+    verification = await verify(summary, result, pool, total_latency_ms=total_latency_ms, emit=emit)
+    run_id = await _store_recipe_run(
+        pool,
+        conversation_id=conversation_id,
+        message_id=user_message_id,
+        result=result,
+        summary=summary,
+        verification=verification,
+        latency_ms=total_latency_ms,
+        based_on_run_id=UUID(refinement.based_on_run_id) if refinement.based_on_run_id else None,
+        is_derived=True,
+        derived_op=refinement.op_record.model_dump(mode="json"),
+        op_hash=refinement.op_hash,
+        source_run_ids=refinement.source_run_ids,
+    )
+    await remember_run(
+        pool,
+        conversation_id=conversation_id,
+        run_id=run_id,
+        recipe_id=result.recipe_id,
+        params=result.params,
+        row_count=len(result.findings),
+        derived_from_run_id=UUID(refinement.based_on_run_id) if refinement.based_on_run_id else None,
+    )
+    return {"recipe_result": result, "run_id": str(run_id), "operation": refinement.op_record, "summary": summary, "verification": verification, "timing_ms": refinement.timing_ms}
+
+
+def _summary_from_rows(result: RecipeResult, description: str) -> Summary:
+    if not result.findings:
+        return Summary(
+            headline="The cached operation returned no matching rows.",
+            paragraphs=[Paragraph(text=f"{description} The operation produced 0 rows.", citations=[])],
+            caveats=result.caveats,
+        )
+    citations = [Citation(finding_index=index) for index, _ in enumerate(result.findings[:5])]
+    labels = [_row_label(row) for row in result.findings[:5]]
+    return Summary(
+        headline="Cached operation completed over prior findings.",
+        paragraphs=[
+            Paragraph(
+                text=f"{description} The resulting row set contains {len(result.findings)} rows. Leading rows include {', '.join(labels)}.",
+                citations=citations,
+            )
+        ],
+        caveats=result.caveats,
+    )
+
+
+def _summary_for_commentary(content: str, source_runs: list[Any], op: CommentaryOp) -> Summary:
+    if not source_runs:
+        return Summary(
+            headline="No prior run is available for commentary.",
+            paragraphs=[Paragraph(text="There is no recalled run to explain yet.", citations=[])],
+            caveats=["Run an investigation first, then ask a follow-up question."],
+        )
+    run = source_runs[0]
+    findings = run.findings
+    citations = [Citation(finding_index=index, source_run_id=run.run_id) for index, _ in enumerate(findings[:5])]
+    labels = [_row_label(row) for row in findings[:5]]
+    return Summary(
+        headline="Commentary on the recalled investigation.",
+        paragraphs=[
+            Paragraph(
+                text=f"This is commentary on the prior {run.recipe_id} result, not a new query. The recalled run has {len(findings)} rows; relevant leading rows include {', '.join(labels) if labels else 'no previewable rows'}.",
+                citations=citations,
+            )
+        ],
+        caveats=["Conversational mode uses prior cited findings only; no new SQL or web search was executed."],
+    )
+
+
+def _recipe_result_from_loaded(content: str, loaded: Any, *, caveats: list[str] | None = None) -> RecipeResult:
+    return RecipeResult(
+        recipe_id=loaded.recipe_id,
+        question=content,
+        params=loaded.params,
+        findings=loaded.findings,
+        sql_log=[],
+        caveats=caveats or [],
+        source_runs=[],
+        latency_ms=0,
+    )
+
+
+def _empty_recipe_result(content: str) -> RecipeResult:
+    return RecipeResult(recipe_id="__memory__", question=content, params={}, findings=[], sql_log=[], caveats=[], source_runs=[], latency_ms=0)
+
+
+def _planned_source_ids(planned_op: PlannedOperation) -> list[str]:
+    ids = [
+        planned_op.source_run_id,
+        planned_op.left_run_id,
+        planned_op.right_run_id,
+        planned_op.baseline_run_id,
+        planned_op.comparison_run_id,
+        *(planned_op.source_run_ids or []),
+    ]
+    return [str(run_id) for run_id in ids if run_id]
+
+
+def _operation_source_ids(operation: Operation) -> list[str]:
+    payload = operation.model_dump(mode="json")
+    ids = [
+        payload.get("source_run_id"),
+        payload.get("left_run_id"),
+        payload.get("right_run_id"),
+        payload.get("baseline_run_id"),
+        payload.get("comparison_run_id"),
+        *(payload.get("source_run_ids") or []),
+    ]
+    return [str(run_id) for run_id in ids if run_id]
+
+
+def _operation_from_payload(payload: dict[str, Any], *, fallback_run_id: str) -> Operation:
+    kind = payload.get("kind")
+    if kind == "filter":
+        return FilterOp.model_validate(payload)
+    if kind == "project":
+        return ProjectOp.model_validate(payload)
+    if kind == "sort":
+        return SortOp.model_validate(payload)
+    if kind == "slice":
+        return SliceOp.model_validate(payload)
+    if kind == "aggregate":
+        return AggregateOp.model_validate(payload)
+    if kind == "join":
+        return JoinOp.model_validate(payload)
+    if kind == "union":
+        return UnionOp.model_validate(payload)
+    if kind == "intersect":
+        return IntersectOp.model_validate(payload)
+    if kind == "compare":
+        return CompareOp.model_validate(payload)
+    if kind == "commentary":
+        return CommentaryOp.model_validate(payload)
+    return CommentaryOp(source_run_ids=[fallback_run_id] if fallback_run_id else [], description="Cached operation")
+
+
+def _legacy_refinement_events_enabled() -> bool:
+    import os
+
+    return os.environ.get("ANALYST_LEGACY_REFINEMENT_EVENT", "true").lower() not in {"0", "false", "no"}
 
 
 async def _handle_execute(
@@ -475,13 +1001,18 @@ async def _store_recipe_run(
     verification: VerificationResult,
     latency_ms: int,
     based_on_run_id: UUID | None,
+    is_derived: bool = False,
+    derived_op: dict[str, Any] | None = None,
+    op_hash: str | None = None,
+    source_run_ids: list[str] | None = None,
+    run_id: UUID | None = None,
 ) -> UUID:
-    run_id = uuid4()
+    run_id = run_id or uuid4()
     await pool.execute(
         """
 INSERT INTO investigator.ship_recipe_runs
-    (run_id, conversation_id, message_id, based_on_run_id, recipe_id, params, findings, sql_log, summary, verification, latency_ms)
-VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7::jsonb, $8::jsonb, $9::jsonb, $10::jsonb, $11)
+    (run_id, conversation_id, message_id, based_on_run_id, recipe_id, params, findings, sql_log, summary, verification, latency_ms, is_derived, derived_op, op_hash, source_run_ids)
+VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7::jsonb, $8::jsonb, $9::jsonb, $10::jsonb, $11, $12, $13::jsonb, $14, $15::jsonb)
 """.strip(),
         run_id,
         conversation_id,
@@ -494,6 +1025,10 @@ VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7::jsonb, $8::jsonb, $9::jsonb, $10::jso
         _json_param(summary.model_dump(mode="json")),
         _json_param(verification.model_dump(mode="json")),
         latency_ms,
+        is_derived,
+        _json_param(derived_op) if derived_op is not None else None,
+        op_hash,
+        _json_param(source_run_ids or []),
     )
     await _touch_conversation(pool, conversation_id)
     return run_id

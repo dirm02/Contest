@@ -1,0 +1,23 @@
+schema: fed
+name: grants_contributions
+description: Federal grants and contributions disclosure records used by existing funding and concentration recipes.
+grain: one row per disclosed federal grant or contribution agreement
+primary_key: [_id]
+row_count_estimate: 1000000
+refresh_cadence: monthly
+coverage_period: ["2005-01-01", "2026-12-31"]
+safe_for_analytical: true
+columns:
+  - {name: _id, type: string, nullable: false, description: Source disclosure row identifier, examples: ["gc-123"]}
+  - {name: recipient_legal_name, type: string, nullable: true, description: Legal recipient name, examples: ["University of Alberta"]}
+  - {name: recipient_operating_name, type: string, nullable: true, description: Operating recipient name where disclosed, examples: ["UAlberta"]}
+  - {name: recipient_province, type: string, nullable: true, description: Recipient province code, enum_values: ["AB", "BC", "MB", "NB", "NL", "NS", "NT", "NU", "ON", "PE", "QC", "SK", "YT"], examples: ["AB"]}
+  - {name: owner_org, type: string, nullable: true, description: Federal organization code, examples: ["ESDC"]}
+  - {name: owner_org_title, type: string, nullable: true, description: Federal organization title, examples: ["Employment and Social Development Canada"]}
+  - {name: agreement_start_date, type: date, nullable: true, description: Agreement start date, units: iso_date, examples: ["2024-04-01"]}
+  - {name: agreement_value, type: decimal, nullable: true, description: Agreement value in Canadian dollars, units: CAD, examples: ["125000.00"]}
+  - {name: prog_name_en, type: string, nullable: true, description: Program name, examples: ["Youth Employment and Skills Strategy"]}
+  - {name: agreement_title_en, type: string, nullable: true, description: Agreement title, examples: ["Skills training project"]}
+  - {name: description_en, type: string, nullable: true, description: Agreement description, examples: ["Funding for community services"]}
+join_keys: {}
+notes: Direct date filtering uses EXTRACT(YEAR FROM agreement_start_date).

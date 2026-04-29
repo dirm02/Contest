@@ -1,0 +1,14 @@
+concept: hospitals
+synonyms: [hospital, hospitals, health authority, regional health, health services]
+description: Hospitals and health authorities.
+applicable_columns:
+  - {table: fed.grants_contributions, column: recipient_legal_name, match: name_pattern}
+  - {table: ab.ab_contracts, column: recipient, match: name_pattern}
+  - {table: ab.ab_grants, column: recipient, match: name_pattern}
+predicate:
+  name_pattern:
+    sql_template: "({col} ILIKE '%hospital%' OR {col} ILIKE '%health authority%' OR {col} ILIKE '%regional health%' OR {col} ILIKE '%health services%')"
+caveats:
+  - "Hospital matching may include public health authorities and hospital foundations."
+confidence: 0.8
+version: 1

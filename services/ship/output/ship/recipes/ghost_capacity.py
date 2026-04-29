@@ -15,6 +15,12 @@ class Params(RecipeParams):
     fiscal_year_min: int | None = 2023
 
 
+def humanize(params: dict) -> str:
+    pct = params.get("min_overhead_pct", 0.7)
+    year = params.get("fiscal_year_min") or 2023
+    return f"Ghost-capacity charities over {pct:.0%} overhead since {year}"
+
+
 async def _ghost_capacity(pool: asyncpg.Pool, params: Params, *, emit: EmitCallback | None = None) -> PrimitiveResult:
     started = time.perf_counter()
     await emit_primitive_started(

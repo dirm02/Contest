@@ -1,0 +1,14 @@
+concept: nonprofits_and_charities
+synonyms: [nonprofit, nonprofits, non-profit, charity, charities, foundation, society]
+description: Charities, nonprofit societies, and foundations.
+applicable_columns:
+  - {table: fed.grants_contributions, column: recipient_legal_name, match: name_pattern}
+  - {table: cra.govt_funding_by_charity, column: legal_name, match: name_pattern}
+  - {table: general.vw_entity_funding, column: canonical_name, match: name_pattern}
+predicate:
+  name_pattern:
+    sql_template: "({col} ILIKE '%foundation%' OR {col} ILIKE '%society%' OR {col} ILIKE '%charity%' OR {col} ILIKE '%non-profit%' OR {col} ILIKE '%nonprofit%')"
+caveats:
+  - "Nonprofit and charity matching by name does not prove legal status unless CRA records are the source table."
+confidence: 0.66
+version: 1

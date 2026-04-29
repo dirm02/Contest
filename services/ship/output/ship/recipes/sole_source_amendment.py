@@ -15,6 +15,13 @@ class Params(RecipeParams):
     min_segment_amount: float = 50_000
 
 
+def humanize(params: dict) -> str:
+    amount = params.get("min_amount") or params.get("min_segment_amount") or 50_000
+    year = params.get("fiscal_year_min") or params.get("fiscal_year_max")
+    suffix = f", FY{year}" if year else ""
+    return f"Alberta sole-source contracts over ${amount:,.0f}{suffix}"
+
+
 async def run(question: str, params: Params, pool: asyncpg.Pool, *, emit: EmitCallback | None = None) -> RecipeResult:
     started = time.perf_counter()
     conc = await concentration.run(

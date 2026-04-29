@@ -41,6 +41,12 @@
 - Disconnect behavior follows the final ship instruction: a closed browser/client stops receiving the SSE stream, but the server-side conversation run is not cancelled and continues to persist the assistant message and recipe run for recovery through `GET /conversations/{id}` and `GET /recipe_runs/{run_id}`.
 - Integrator documentation was extended in `output/ship/INTEGRATION.md` with the SSE event table, `fetch + ReadableStream` example, Python `httpx` stream example, and nginx buffering guidance.
 
+## Multi-Turn And Analytical Query Backend
+
+- 2026-04-29: added the turn classifier, conversation memory table, pin/unpin/forget endpoints, operation-aware `AnswerResponse` fields, deterministic cached refinement/composition operations, cross-run citation support, and diff events.
+- 2026-04-29: added the analytical query path for concrete open-ended warehouse questions. It uses a curated dataset catalog, curated concept lexicon, structured query plans, a Python SQL compiler, SQLGlot sandbox validation, read-only execution, and `investigator.ship_analytical_audit`.
+- Focused proof: `cd services/ship && uv run pytest -k iterative` passed 8 tests covering classifier modes, refinement/composition operations, analytical query compilation, and sandbox rejection/capping behavior.
+
 ## Portable Service Handoff Prepared
 
 - 2026-04-29: `output/ship` now has a local `AGENTS.md` that defines the service contract, stable files, architecture rules, docs rules, verification expectations, and environment requirements for future agents working inside the service package.
