@@ -1,6 +1,7 @@
 import { Link, NavLink, Route, Routes } from 'react-router-dom';
 import {
   DatabaseZap,
+  MessageSquareText,
   Search,
   ShieldCheck,
   SlidersHorizontal,
@@ -29,9 +30,11 @@ import VendorConcentrationPage from './routes/VendorConcentrationPage';
 import ContractIntelligencePage from './routes/ContractIntelligencePage';
 import DuplicativeFundingPage from './routes/DuplicativeFundingPage';
 import PolicyAlignmentPage from './routes/PolicyAlignmentPage';
+import AnalystPage from './routes/AnalystPage';
 
 const NAV_ITEMS: Array<{ to: string; label: string; end?: boolean; Icon: typeof Search }> = [
   { to: '/', label: 'Search', end: true, Icon: Search },
+  { to: '/analyst', label: 'Analyst', Icon: MessageSquareText },
   { to: '/investigations', label: 'Investigation Panel', Icon: SlidersHorizontal },
   { to: '/people', label: 'People', Icon: Users },
 ];
@@ -102,6 +105,7 @@ export default function App() {
       <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col px-4 py-6 sm:px-6 lg:px-8">
         <Routes>
           <Route path="/" element={<SearchPage />} />
+          <Route path="/analyst" element={<AnalystPage />} />
           <Route path="/action-queue" element={<ActionQueuePage />} />
           <Route path="/cases/:caseId" element={<CaseDecisionPage />} />
           <Route path="/investigations" element={<ChallengeAtlasPage />} />
