@@ -447,6 +447,8 @@ async def _handle_turn_plan(
 
         if planned_op.kind == "commentary":
             source_ids = planned_op.source_run_ids or source_run_ids
+            if not source_ids:
+                raise RuntimeError("commentary operation requires a recalled run; empty commentary plans must clarify or run SQL")
             source_runs = [await registry.load(run_id) for run_id in source_ids]
             primary_run_id = source_runs[0].run_id if source_runs else primary_run_id
             based_on_run_id = primary_run_id

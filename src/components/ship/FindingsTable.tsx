@@ -72,6 +72,23 @@ function formatNumber(value: number): string {
   }).format(value);
 }
 
+function getAggregateMetric(findings: Record<string, unknown>[]) {
+  if (findings.length !== 1) return null;
+  const row = findings[0];
+  const columns = Object.keys(row).filter((column) => row[column] !== null && row[column] !== undefined);
+  if (columns.length !== 1) return null;
+
+  const column = columns[0];
+  const value = row[column];
+  if (typeof value !== 'number') return null;
+
+  return {
+    column,
+    label: humanizeColumn(column),
+    value,
+  };
+}
+
 export default function FindingsTable({
   findings,
   tableId,
@@ -87,6 +104,8 @@ export default function FindingsTable({
     localStorage.setItem('analyst.findings.density', density);
   }, [density]);
 
+  const columnStorageKey = `analyst.findings.columns.${tableId}`;
+
   const allColumns = useMemo(() => {
     return Array.from(
       findings.reduce((set, row) => {
@@ -98,32 +117,42 @@ export default function FindingsTable({
 
   const [visibleColumns, setVisibleColumns] = useState<Set<string>>(() => {
     try {
-      const saved = localStorage.getItem(`analyst.findings.columns.${tableId}`);
-      if (saved) return new Set(JSON.parse(saved));
+      const saved = localStorage.getItem(columnStorageKey);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          const savedColumns = new Set(parsed.filter((column): column is string => allColumns.includes(column)));
+          if (savedColumns.size > 0) return savedColumns;
+        }
+      }
     } catch {}
     return new Set(allColumns);
   });
 
   useEffect(() => {
-    // If allColumns changed and we don't have them in visibleColumns, add them
-    setVisibleColumns(prev => {
-      const next = new Set(prev);
+    setVisibleColumns((prev) => {
+      const next = new Set(Array.from(prev).filter((column) => allColumns.includes(column)));
+      if (allColumns.length > 0 && next.size === 0) {
+        return new Set(allColumns);
+      }
+
       let changed = false;
       for (const col of allColumns) {
-        if (!next.has(col) && !localStorage.getItem(`analyst.findings.columns.${tableId}`)) {
+        if (!next.has(col) && !localStorage.getItem(columnStorageKey)) {
           next.add(col);
           changed = true;
         }
       }
-      return changed ? next : prev;
+      return changed || next.size !== prev.size ? next : prev;
     });
-  }, [allColumns, tableId]);
+  }, [allColumns, columnStorageKey]);
 
   useEffect(() => {
-    localStorage.setItem(`analyst.findings.columns.${tableId}`, JSON.stringify(Array.from(visibleColumns)));
-  }, [visibleColumns, tableId]);
+    localStorage.setItem(columnStorageKey, JSON.stringify(Array.from(visibleColumns)));
+  }, [columnStorageKey, visibleColumns]);
 
   const columns = allColumns.filter((c) => visibleColumns.has(c));
+  const aggregateMetric = getAggregateMetric(findings);
 
   const sortedFindings = useMemo(() => {
     return [...findings].sort((a, b) => {
@@ -195,6 +224,36 @@ export default function FindingsTable({
     return (
       <div className="rounded-lg border border-dashed border-[var(--color-border)] bg-[var(--color-surface-subtle)] p-6 text-center text-sm font-medium text-[var(--color-muted)]">
         No matching findings.
+      </div>
+    );
+  }
+
+  if (aggregateMetric) {
+    return (
+      <div className="rounded-lg border border-[var(--color-border)] bg-white shadow-sm">
+        <div className="border-b border-[var(--color-border-soft)] bg-[var(--color-surface-subtle)] px-4 py-3">
+          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--color-muted)]">
+            Aggregate result
+          </p>
+        </div>
+        <div className="grid gap-4 px-4 py-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+          <div>
+            <p className="text-sm font-semibold capitalize text-[var(--color-ink-strong)]">
+              {aggregateMetric.label}
+            </p>
+            <p className="mt-1 max-w-xl text-sm leading-relaxed text-[var(--color-muted)]">
+              This question returned a calculated total, not a row-by-row list of matching records.
+            </p>
+          </div>
+          <div className="min-w-36 rounded-lg border border-[var(--color-border-soft)] bg-[var(--color-surface-subtle)] px-4 py-3 text-left sm:text-right">
+            <p className="text-3xl font-semibold tabular-nums text-[var(--color-ink-strong)]">
+              {formatNumber(aggregateMetric.value)}
+            </p>
+            <p className="mt-1 text-xs font-medium capitalize text-[var(--color-muted)]">
+              {aggregateMetric.label}
+            </p>
+          </div>
+        </div>
       </div>
     );
   }

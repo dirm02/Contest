@@ -175,6 +175,7 @@ function AnswerCard({
   const [selectedSqlQuery, setSelectedSqlQuery] = useState<string | null>(null);
 
   const findings = fullRun?.findings ?? response.findings_preview;
+  const hasEvidence = findings.length > 0 || Boolean(response.recipe_run_id);
 
   // List-shape questions (which/how many/list/show/who) want the table front-and-center.
   const isListShape = useMemo(() => {
@@ -273,48 +274,50 @@ function AnswerCard({
         </div>
       )}
 
-      <div className="mt-8 border-t border-[var(--color-border-soft)] pt-5">
-        <button
-          type="button"
-          onClick={() => {
-            setTableExpanded(!tableExpanded);
-            if (!tableExpanded && !fullRun) void loadFullRun();
-          }}
-          className="flex w-full items-center justify-between text-left group"
-        >
-          <span className="text-sm font-semibold text-[var(--color-ink-strong)]">
-            Evidence · {findings.length.toLocaleString()} {findings.length === 1 ? 'finding' : 'findings'}
-          </span>
-          <div className="flex items-center gap-2 text-xs font-medium text-[var(--color-info)] group-hover:underline">
-            {tableExpanded ? 'Hide' : 'Show details'}
-          </div>
-        </button>
-
-        {tableExpanded && (
-          <div className="mt-4 space-y-4">
-            <div className="flex items-center gap-4 text-[10px] font-mono text-[var(--color-muted)]">
-              <span>Recipe: {fullRun?.recipe_id ?? '...'}</span>
-              <span>Run: {response.recipe_run_id}</span>
+      {hasEvidence && (
+        <div className="mt-8 border-t border-[var(--color-border-soft)] pt-5">
+          <button
+            type="button"
+            onClick={() => {
+              setTableExpanded(!tableExpanded);
+              if (!tableExpanded && !fullRun) void loadFullRun();
+            }}
+            className="flex w-full items-center justify-between text-left group"
+          >
+            <span className="text-sm font-semibold text-[var(--color-ink-strong)]">
+              Evidence · {findings.length.toLocaleString()} {findings.length === 1 ? 'finding' : 'findings'}
+            </span>
+            <div className="flex items-center gap-2 text-xs font-medium text-[var(--color-info)] group-hover:underline">
+              {tableExpanded ? 'Hide' : 'Show details'}
             </div>
+          </button>
 
-            {runError && (
-              <div className="rounded-xl border border-[var(--color-risk-high)]/20 bg-[var(--color-risk-high-soft)] p-3 text-sm text-[var(--color-risk-high)]">
-                {runError}
+          {tableExpanded && (
+            <div className="mt-4 space-y-4">
+              <div className="flex items-center gap-4 text-[10px] font-mono text-[var(--color-muted)]">
+                <span>Recipe: {fullRun?.recipe_id ?? (response.recipe_run_id ? '...' : 'not saved')}</span>
+                {response.recipe_run_id && <span>Run: {response.recipe_run_id}</span>}
               </div>
-            )}
 
-            <div className="overflow-hidden rounded-xl border border-[var(--color-border)]">
-              <FindingsTable
-                findings={findings}
-                tableId={tableId}
-                highlightedIndex={highlightedIndex}
-                sortState={sortState}
-                onSortChange={setSortState}
-              />
+              {runError && (
+                <div className="rounded-xl border border-[var(--color-risk-high)]/20 bg-[var(--color-risk-high-soft)] p-3 text-sm text-[var(--color-risk-high)]">
+                  {runError}
+                </div>
+              )}
+
+              <div className="overflow-hidden rounded-xl border border-[var(--color-border)]">
+                <FindingsTable
+                  findings={findings}
+                  tableId={tableId}
+                  highlightedIndex={highlightedIndex}
+                  sortState={sortState}
+                  onSortChange={setSortState}
+                />
+              </div>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
 
       <div className="mt-6">
         <SuggestedFollowups response={response} onSend={onSend} onOpenSql={() => openSql(flatCitations.find(c => c.sql_query_name)?.sql_query_name || '')} />

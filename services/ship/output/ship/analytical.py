@@ -188,6 +188,7 @@ class AnalyticalAgent:
 
     def plan(self, question: str, extraction: ConceptExtraction) -> tuple[QueryPlan, list[ResolvedConcept]]:
         lowered = question.lower()
+        named_recipient = _extract_named_funding_recipient(question)
         table_name = _choose_table(lowered)
         table = self.catalog.table(table_name)
         if table is None:
@@ -210,6 +211,8 @@ class AnalyticalAgent:
             column = _geo_column(table_name)
             if column:
                 filters.append(FilterSpec(column=column, op="=", value=geo["value"]))
+        if named_recipient:
+            filters.append(FilterSpec(column=name_column, op="ILIKE", value=f"%{named_recipient}%"))
         if "phac" in lowered:
             filters.append(FilterSpec(column=_department_column(table_name), op="ILIKE", value="%PHAC%"))
         if "esdc" in lowered:
@@ -236,7 +239,7 @@ class AnalyticalAgent:
             select_list = []
             sort_by = []
             limit = 1
-        elif "total" in lowered or "sum" in lowered:
+        elif named_recipient or "total" in lowered or "sum" in lowered:
             template = "aggregate_by_group"
             aggregations = [Aggregation(column=amount_column, fn="sum", alias="total_amount")]
             group_by = []
@@ -342,7 +345,7 @@ def _metric_intents(question: str) -> list[str]:
     intents = []
     for key, pattern in {
         "count": r"\b(how many|count|distinct)\b",
-        "sum": r"\b(total|sum)\b",
+        "sum": r"\b(how much|total|sum)\b",
         "average": r"\b(avg|average)\b",
         "median": r"\bmedian\b",
         "list": r"\b(list|which|show)\b",
@@ -363,6 +366,26 @@ def _choose_table(lowered: str) -> str:
     if "alberta" in lowered and "grant" in lowered:
         return "ab.ab_grants"
     return "fed.grants_contributions"
+
+
+def _extract_named_funding_recipient(question: str) -> str | None:
+    patterns = [
+        r"\bhow\s+much\s+(?:public\s+|government\s+)?funding\s+did\s+(.+?)\s+receiv(?:e|ed)\b",
+        r"\bhow\s+much\s+did\s+(.+?)\s+receiv(?:e|ed)\s+(?:in|from)\s+(?:public\s+|government\s+)?funding\b",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, question, flags=re.IGNORECASE)
+        if match:
+            return _clean_named_recipient(match.group(1))
+    return None
+
+
+def _clean_named_recipient(value: str) -> str:
+    cleaned = re.sub(r"\b(in|during|for)\s+(?:fy)?20\d{2}.*$", "", value, flags=re.IGNORECASE)
+    cleaned = cleaned.strip(" ?'\".,")
+    cleaned = re.sub(r"^(?:the|a|an)\s+", "", cleaned, flags=re.IGNORECASE)
+    cleaned = cleaned.replace("%", "").replace("_", " ")
+    return " ".join(cleaned.split())[:120]
 
 
 def _name_column(table_name: str) -> str:

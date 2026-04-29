@@ -31,3 +31,15 @@ def test_iterative_analytical_universities_threshold_uses_having():
     assert plan.template_id == "aggregate_by_group"
     assert "HAVING total_amount > 10000000.0" in compiled.sql
     assert "university" in compiled.sql.lower()
+
+
+def test_iterative_analytical_named_funding_total_filters_recipient_name():
+    agent = AnalyticalAgent(catalog=get_catalog(), sandbox=NoopSandbox())
+    extraction = agent.extract_concepts("How much funding did Pizza Pizza receive?")
+    plan, concepts = agent.plan("How much funding did Pizza Pizza receive?", extraction)
+    compiled = compile_query_plan(plan, get_catalog(), concepts)
+
+    assert plan.template_id == "aggregate_by_group"
+    assert plan.limit == 1
+    assert "SUM(agreement_value) AS total_amount" in compiled.sql
+    assert "recipient_legal_name ILIKE '%Pizza Pizza%'" in compiled.sql

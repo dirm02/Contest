@@ -156,7 +156,7 @@ async def classify_turn(
 
     try:
         result = await Runner.run(_agent(), _classifier_payload(message, memory_summary, conversation_topic), max_turns=1)
-        plan = _validate_run_ids(result.final_output, memory_summary)
+        plan = _validate_plan(message, result.final_output, memory_summary)
     except Exception as exc:
         plan = TurnClassification(
             mode="fresh",
@@ -218,7 +218,9 @@ def classify_turn_deterministic(
     if latest_run_id:
         if "forget that" in lowered or "start over" in lowered:
             return _fresh_classification_for(text, lowered, reason="The user asked to start over.")
-        if re.search(r"\bwhy\b|\bexplain\b|\bsummarize\b|\bhow\b", lowered) and not _looks_like_filter(lowered):
+        if _looks_analytical(lowered) and not _references_prior_result(lowered):
+            return _analytical_classification()
+        if re.search(r"\bwhy\b|\bexplain\b|\bsummarize\b|\bhow\b", lowered) and not _looks_like_filter(lowered) and not _looks_analytical(lowered):
             return TurnClassification(
                 mode="conversational",
                 reasoning_one_line="The user asked for commentary on the latest cached run.",
@@ -301,12 +303,7 @@ def classify_turn_deterministic(
             reason="The user asked for high-government-funding charities with stale filings.",
         )
     if _looks_analytical(lowered):
-        return TurnClassification(
-            mode="analytical_query",
-            reasoning_one_line="The question is a concrete warehouse aggregate/list request outside fixed recipes.",
-            operations=[PlannedOperation(kind="recipe_run", recipe_id="__analytical__", recipe_params={}, description="Run a sandboxed analytical warehouse query.")],
-            referenced_run_ids=[],
-        )
+        return _analytical_classification()
     if "charity zombies" in lowered or "zombie" in lowered:
         return _fresh_classification_for(text, lowered, recipe_id="zombie_recipients", reason="The user asked for the zombie-recipient recipe.")
     return None
@@ -333,6 +330,44 @@ def _classifier_payload(message: str, memory_summary: list[dict[str, Any]], conv
     return json.dumps(
         {"message": message, "conversation_topic": conversation_topic, "memory": memory_summary},
         ensure_ascii=False,
+    )
+
+
+def _validate_plan(message: str, plan: TurnClassification, memory_summary: list[dict[str, Any]]) -> TurnClassification:
+    plan = _validate_run_ids(plan, memory_summary)
+    empty_commentary_ops = [op for op in plan.operations if op.kind == "commentary" and not op.source_run_ids]
+    if not empty_commentary_ops:
+        return plan
+
+    text = " ".join(message.strip().split())
+    lowered = text.lower()
+    if _looks_analytical(lowered) and not _references_prior_result(lowered):
+        return _analytical_classification()
+
+    latest = memory_summary[0] if memory_summary else None
+    if latest:
+        latest_run_id = str(latest["run_id"])
+        for op in empty_commentary_ops:
+            op.source_run_ids = [latest_run_id]
+        plan.mode = "conversational"
+        plan.referenced_run_ids = [latest_run_id]
+        plan.reasoning_one_line = "Commentary was attached to the latest recalled run."
+        return plan
+
+    return TurnClassification(
+        mode="clarify",
+        reasoning_one_line="Commentary needs a prior investigation, but no prior run was available.",
+        operations=[],
+        referenced_run_ids=[],
+        clarification=ClarificationPayload(
+            headline="Run an investigation first",
+            reason="That follow-up needs an existing result to explain, but this conversation has no recalled investigation yet.",
+            suggested_narrowings=[
+                "Ask a concrete funding question, for example 'How much funding did Pizza Pizza receive?'",
+                "Choose a catalog example to create an investigation result first.",
+            ],
+            example_refinements=["How much funding did Pizza Pizza receive?", "Which schools received funding in 2024?"],
+        ),
     )
 
 
@@ -389,9 +424,22 @@ def _fresh_classification_for(text: str, lowered: str, *, recipe_id: str | None 
 
 
 def _looks_analytical(lowered: str) -> bool:
-    metric = r"\b(how many|count|total|sum|average|avg|median|list|top\s+\d+|which|distinct recipients|more than|over\s+\$?\d)"
+    metric = r"\b(how many|how much|count|total|sum|average|avg|median|list|top\s+\d+|which|distinct recipients|more than|over\s+\$?\d|received?|receive)\b"
     concept = r"\b(school|schools|hospital|hospitals|indigenous|university|universities|college|municipal|cities|city|contracts?|grants?|funding|charities|crown corporation|department|phac|esdc|manitoba|quebec|alberta)\b"
     return bool(re.search(metric, lowered) and re.search(concept, lowered))
+
+
+def _analytical_classification() -> TurnClassification:
+    return TurnClassification(
+        mode="analytical_query",
+        reasoning_one_line="The question is a concrete warehouse aggregate/list request outside fixed recipes.",
+        operations=[PlannedOperation(kind="recipe_run", recipe_id="__analytical__", recipe_params={}, description="Run a sandboxed analytical warehouse query.")],
+        referenced_run_ids=[],
+    )
+
+
+def _references_prior_result(lowered: str) -> bool:
+    return bool(re.search(r"\b(that|those|them|these|previous|prior|last result|latest result|result set|findings|run)\b", lowered))
 
 
 def _looks_like_zombie_recipient(lowered: str) -> bool:

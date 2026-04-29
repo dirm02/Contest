@@ -1,4 +1,4 @@
-from output.ship.classifier import classify_turn_deterministic
+from output.ship.classifier import PlannedOperation, TurnClassification, _validate_plan, classify_turn_deterministic
 
 
 LATEST = {
@@ -46,6 +46,36 @@ def test_iterative_classifier_composed_and_analytical_modes():
     assert analytical is not None
     assert analytical.mode == "analytical_query"
     assert analytical.operations[0].recipe_id == "__analytical__"
+
+    named_total = classify_turn_deterministic("How much funding did Pizza Pizza receive?", [])
+    assert named_total is not None
+    assert named_total.mode == "analytical_query"
+    assert named_total.operations[0].recipe_id == "__analytical__"
+
+    named_total_with_memory = classify_turn_deterministic("How much funding did Pizza Pizza receive?", [LATEST])
+    assert named_total_with_memory is not None
+    assert named_total_with_memory.mode == "analytical_query"
+    assert named_total_with_memory.operations[0].recipe_id == "__analytical__"
+
+
+def test_iterative_classifier_rewrites_empty_commentary_for_named_funding_question():
+    bad_plan = TurnClassification(
+        mode="fresh",
+        reasoning_one_line="Bad LLM plan selected commentary without memory.",
+        operations=[
+            PlannedOperation(
+                kind="commentary",
+                source_run_ids=[],
+                description="Query funding records for recipient names matching Pizza Pizza.",
+            )
+        ],
+        referenced_run_ids=[],
+    )
+
+    plan = _validate_plan("How much funding did Pizza Pizza receive?", bad_plan, [])
+    assert plan.mode == "analytical_query"
+    assert plan.operations[0].kind == "recipe_run"
+    assert plan.operations[0].recipe_id == "__analytical__"
 
 
 def test_iterative_classifier_routes_visible_zombie_charity_question_to_recipe():

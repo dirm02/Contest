@@ -288,7 +288,7 @@ export function isAssistantResponse(value: unknown): value is AssistantResponse 
 
   if (value.type === 'answer') {
     return (
-      isString(value.recipe_run_id) &&
+      (value.recipe_run_id === null || isString(value.recipe_run_id)) &&
       (value.based_on_run_id === null || isString(value.based_on_run_id)) &&
       isRecord(value.summary) &&
       isRecordArray(value.findings_preview) &&
