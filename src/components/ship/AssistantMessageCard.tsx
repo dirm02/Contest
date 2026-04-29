@@ -37,6 +37,7 @@ type AssistantMessageCardProps = {
   onStartNewConversation: (content: string) => void;
   onDismiss: (messageId: string) => void;
   onRegenerate: () => void;
+  userQuestion?: string;
 };
 
 function seconds(ms: number): string {
@@ -153,7 +154,17 @@ function SqlDrawer({
   );
 }
 
-function AnswerCard({ response, onRegenerate, onSend }: { response: AnswerResponse; onRegenerate: () => void; onSend: (c: string) => void }) {
+function AnswerCard({
+  response,
+  onRegenerate,
+  onSend,
+  userQuestion,
+}: {
+  response: AnswerResponse;
+  onRegenerate: () => void;
+  onSend: (c: string) => void;
+  userQuestion?: string;
+}) {
   const rawId = useId();
   const tableId = useMemo(() => `ship-findings-${rawId.replaceAll(':', '')}`, [rawId]);
   const [fullRun, setFullRun] = useState<RecipeRun | null>(null);
@@ -168,11 +179,13 @@ function AnswerCard({ response, onRegenerate, onSend }: { response: AnswerRespon
   // List-shape questions (which/how many/list/show/who) want the table front-and-center.
   const isListShape = useMemo(() => {
     const headline = response.summary.headline.toLowerCase();
-    const startsListy = /^(\d|which|how many|list|show|name|who|where)/i.test(headline);
-    const hasFewParagraphs = response.summary.paragraphs.length <= 1;
+    const question = (userQuestion ?? '').toLowerCase();
+    const startsListy =
+      /^(\d|which|how many|list|show|name|who|where)/i.test(headline) ||
+      /^(which|how many|list|show|name|who|where)/i.test(question);
     const fewFindings = (response.findings_preview?.length ?? 0) > 0 && (response.findings_preview?.length ?? 0) <= 25;
-    return startsListy || (hasFewParagraphs && fewFindings);
-  }, [response]);
+    return startsListy || fewFindings;
+  }, [response, userQuestion]);
 
   const [tableExpanded, setTableExpanded] = useState<boolean>(isListShape);
 
@@ -222,20 +235,7 @@ function AnswerCard({ response, onRegenerate, onSend }: { response: AnswerRespon
         <h2 className="text-2xl font-semibold tracking-tight text-[var(--color-ink-strong)] leading-tight">
           {headline}
         </h2>
-        <div className="flex items-center gap-3">
-          <ConfidenceRing response={response} />
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] font-medium text-[var(--color-muted)] bg-[var(--color-surface-subtle)] px-2 py-0.5 rounded-full tabular-nums">
-              {response.findings_preview.length} findings
-            </span>
-            <span className="text-[11px] font-medium text-[var(--color-muted)] bg-[var(--color-surface-subtle)] px-2 py-0.5 rounded-full tabular-nums">
-              {flatCitations.filter(c => c.sql_query_name).length} SQL refs
-            </span>
-            <span className="text-[11px] font-medium text-[var(--color-muted)] bg-[var(--color-surface-subtle)] px-2 py-0.5 rounded-full tabular-nums">
-              {seconds(response.latency_ms)}
-            </span>
-          </div>
-        </div>
+        <ConfidenceRing response={response} />
       </div>
 
       <div className="mt-6 space-y-4">
@@ -491,10 +491,11 @@ export default function AssistantMessageCard({
   onStartNewConversation,
   onDismiss,
   onRegenerate,
+  userQuestion,
 }: AssistantMessageCardProps) {
   switch (response.type) {
     case 'answer':
-      return <AnswerCard response={response} onRegenerate={onRegenerate} onSend={onSend} />;
+      return <AnswerCard response={response} onRegenerate={onRegenerate} onSend={onSend} userQuestion={userQuestion} />;
     case 'clarification_needed':
       return <ClarificationCard response={response} onPrefill={onPrefill} onSend={onSend} />;
     case 'needs_new_conversation':

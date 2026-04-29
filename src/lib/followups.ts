@@ -64,9 +64,21 @@ function detectMetricColumn(response: AnswerResponse): string | null {
     .filter(([k, v]) => typeof v === 'number' && !k.toLowerCase().includes('id') && !k.toLowerCase().includes('count'))
     .map(([k]) => k);
   if (numericKeys.length === 0) return null;
-  // Prefer columns that look like money or totals.
-  const moneyish = numericKeys.find((k) => /(amount|funding|value|dollars|total|grant|spend)/i.test(k));
-  return moneyish ?? numericKeys[0];
+  // Prefer query-safe money columns that the backend classifier can match from
+  // humanized chip text. "total revenue" is useful, but it should not outrank a
+  // more direct public-funding or grant column when both are present.
+  const priorityPatterns = [
+    /total_government_funding/i,
+    /total_all_funding/i,
+    /(?:funding|grant)/i,
+    /(?:amount|value|dollars|spend|contract)/i,
+    /(?:revenue|total)/i,
+  ];
+  for (const pattern of priorityPatterns) {
+    const match = numericKeys.find((key) => pattern.test(key));
+    if (match) return match;
+  }
+  return numericKeys[0];
 }
 
 function detectCategoricalColumn(response: AnswerResponse): string | null {
@@ -105,13 +117,6 @@ export function generateFollowups(response: AnswerResponse): string[] {
   const year = detectYear(response);
   const headline = response.summary.headline.toLowerCase();
 
-  // Always: a "Show me the full list" or top-N chip when we have findings.
-  if ((response.findings_preview?.length ?? 0) > 0) {
-    if (headline.includes('schools') || headline.includes('funding')) {
-      out.push('Show me the full list');
-    }
-  }
-
   if (metric) {
     out.push(`Sort by ${humanize(metric)}`);
     if (out.length < 3) out.push(`Top 10 by ${humanize(metric)}`);
@@ -127,7 +132,7 @@ export function generateFollowups(response: AnswerResponse): string[] {
 
   // Refinements based on question shape
   if (headline.includes('which') || headline.includes('recipients')) {
-    out.push('Filter to Alberta only');
+    out.push('Filter to Alberta');
     out.push('Add adverse media signals for these recipients');
   }
 
@@ -138,9 +143,12 @@ export function generateFollowups(response: AnswerResponse): string[] {
     if (out.length < 5) out.push(`Show governance links for ${entity}`);
   }
 
-  // Always end with the SQL inspection.
-  out.push('Show me the supporting SQL');
+  const sqlInspection = 'Show me the supporting SQL';
+  out.push(sqlInspection);
 
-  // Dedup and cap.
-  return Array.from(new Set(out)).slice(0, 5);
+  // Dedup and cap, keeping the SQL inspection action visible instead of letting
+  // it fall off when answer-specific chips fill the first five slots.
+  const unique = Array.from(new Set(out));
+  const withoutSql = unique.filter((item) => item !== sqlInspection);
+  return [...withoutSql.slice(0, 4), sqlInspection];
 }

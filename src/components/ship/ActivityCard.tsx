@@ -124,7 +124,7 @@ export default function ActivityCard({
 
   if (!isExpanded && !isRunning && events.length > 0) {
     return (
-      <div className="w-full my-4 border-y border-[var(--color-border)] bg-white shadow-sm overflow-hidden transition-all duration-300">
+      <div className="w-full border border-[var(--color-border)] rounded-xl bg-white shadow-sm overflow-hidden transition-all duration-300">
         <div className="flex items-center justify-between px-4 py-2 bg-[var(--color-surface-subtle)]/50 text-[11px] text-[var(--color-muted)]">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="size-3.5 text-[var(--color-success)]" />
@@ -145,7 +145,7 @@ export default function ActivityCard({
   }
 
   return (
-    <div className="w-full my-4 border-y border-[var(--color-border)] bg-white shadow-sm overflow-hidden transition-all duration-300">
+    <div className="w-full border border-[var(--color-border)] rounded-xl bg-white shadow-sm overflow-hidden transition-all duration-300">
       <header className="flex items-center justify-between px-4 py-3 bg-[var(--color-surface-subtle)] border-b border-[var(--color-border-soft)]">
         <div className="flex items-center gap-3">
           {isRunning ? (

@@ -49,7 +49,7 @@ export default function StreamingAnswerCard({
         onStop={onStop}
       />
 
-      <div className="w-full">
+      <div className="group relative rounded-xl bg-white shadow-sm ring-1 ring-[var(--color-border)] p-6 transition-shadow hover:shadow-md w-full">
         {!hasStartedDrafting ? (
           <div className="space-y-3 py-4">
             <div className="flex items-center gap-2 text-sm font-medium text-[var(--color-muted)] animate-pulse">

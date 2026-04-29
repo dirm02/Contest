@@ -48,6 +48,14 @@ def test_iterative_classifier_composed_and_analytical_modes():
     assert analytical.operations[0].recipe_id == "__analytical__"
 
 
+def test_iterative_classifier_routes_visible_zombie_charity_question_to_recipe():
+    plan = classify_turn_deterministic("Which charities had government funding above 70% and stopped filing?", [])
+    assert plan is not None
+    assert plan.mode == "fresh"
+    assert plan.operations[0].kind == "recipe_run"
+    assert plan.operations[0].recipe_id == "zombie_recipients"
+
+
 def test_iterative_classifier_refuses_or_clarifies_bad_questions():
     weather = classify_turn_deterministic("What's the weather?", [])
     assert weather is not None

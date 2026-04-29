@@ -214,7 +214,9 @@ async def verify(
     numbers = []
     candidates = []
     for source in source_results:
+        candidates.append(float(len(source.findings)))
         candidates.extend(_numeric_values_for_citations(source, cited_finding_indices, cited_sql_names))
+    candidates.append(float(len(result.findings)))
     candidates.extend(_numeric_values_for_citations(result, cited_finding_indices, cited_sql_names))
     if diff is not None:
         candidates.extend(_collect_numeric_values(diff.model_dump(mode="json") if hasattr(diff, "model_dump") else diff))
@@ -231,7 +233,7 @@ async def verify(
             {
                 "check": "S4_numeric",
                 "status": "pass" if len(failures) == numeric_failures_before else "fail",
-                "details": f"{len(numbers)} numeric claims checked against cited finding rows and cited SQL rows.",
+                "details": f"{len(numbers)} numeric claims checked against row counts, cited finding rows, and cited SQL rows.",
             },
         )
 

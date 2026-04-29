@@ -18,6 +18,7 @@
 - `output/ship.run` now supports stateful conversations through the same orchestration layer as the HTTP service. The original recipe rows above remain direct CLI/sweep evidence for recipe correctness.
 - SQL-only recipes keep the 30-second latency target. URL-cited adverse-media answers use a 120-second verification budget because live official-source web corroboration is quality-first.
 - `adverse_media` filters CanLII URLs because they returned HTTP 403 to the verifier in this environment; direct official regulator, auditor, court, or government pages are preferred.
+- 2026-04-29: cached refinement summaries may cite the displayed finding rows while also naming the derived row count. The verifier now treats the current result and source-result row counts as valid numeric evidence so suggested follow-up queries do not fail verification solely for phrases such as "2 rows."
 
 ## Manual Database Audit
 

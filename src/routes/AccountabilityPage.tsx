@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
+import { AlertTriangle } from 'lucide-react';
 import CatalogModal from '../components/ship/CatalogModal';
 import { EmptyState } from '../components/ship/EmptyState';
 import { Composer } from '../components/ship/Composer';
@@ -21,6 +22,7 @@ export default function AccountabilityPage() {
   const [draftInjection, setDraftInjection] = useState<DraftInjection>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [landingComposer, setLandingComposer] = useState('');
+  const [creationError, setCreationError] = useState<string | null>(null);
 
   function selectConversation(nextConversationId: string) {
     navigate(`/accountability/${encodeURIComponent(nextConversationId)}`);
@@ -28,23 +30,40 @@ export default function AccountabilityPage() {
 
   async function createBlankConversation() {
     setIsCreating(true);
+    setCreationError(null);
     try {
       const conversation = await createConversation();
       await queryClient.invalidateQueries({ queryKey: shipQueryKeys.conversations });
       selectConversation(conversation.conversation_id);
+    } catch (error) {
+      setCreationError(error instanceof Error ? error.message : 'The analyst service did not create a conversation.');
     } finally {
       setIsCreating(false);
     }
   }
 
   async function startConversationWithMessage(content: string) {
+    const trimmed = content.trim();
+    if (!trimmed) {
+      await createBlankConversation();
+      return;
+    }
+
     setIsCreating(true);
+    setCreationError(null);
     try {
       const conversation = await createConversation();
       await queryClient.invalidateQueries({ queryKey: shipQueryKeys.conversations });
+      try {
+        sessionStorage.setItem(`accountability.pendingAutoSend:${conversation.conversation_id}`, trimmed);
+      } catch {
+        // Router state still carries the message; storage is only a resilience fallback.
+      }
       navigate(`/accountability/${encodeURIComponent(conversation.conversation_id)}`, {
-        state: { autoSend: content },
+        state: { autoSend: trimmed },
       });
+    } catch (error) {
+      setCreationError(error instanceof Error ? error.message : 'The analyst service did not start the question.');
     } finally {
       setIsCreating(false);
     }
@@ -91,10 +110,23 @@ export default function AccountabilityPage() {
                 <EmptyState
                   onPickExample={handleCatalogExample}
                   onOpenCatalog={() => setIsCatalogOpen(true)}
+                  onStartBlank={() => void createBlankConversation()}
+                  disabled={isCreating}
                 />
               </div>
 
               <div className="w-full px-4 lg:px-8 pb-8">
+                {creationError && (
+                  <div className="mb-3 rounded-xl border border-[var(--color-risk-high)]/25 bg-[var(--color-risk-high-soft)] p-3 text-sm text-[var(--color-ink)]">
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle className="mt-0.5 size-4 shrink-0 text-[var(--color-risk-high)]" aria-hidden="true" />
+                      <div>
+                        <p className="font-semibold text-[var(--color-ink-strong)]">Couldn't start the conversation</p>
+                        <p className="mt-0.5 text-xs text-[var(--color-muted)]">{creationError}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 <Composer
                   value={landingComposer}
                   onChange={setLandingComposer}

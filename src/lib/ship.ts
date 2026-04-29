@@ -1,4 +1,4 @@
-const DEFAULT_SHIP_API_BASE_URL = 'http://localhost:8765';
+const DEFAULT_SHIP_API_BASE_URL = 'http://127.0.0.1:8765';
 
 export type Citation = {
   finding_index: number | null;
@@ -231,13 +231,24 @@ export type StreamEvent =
   | { name: 'final_response'; data: AssistantResponse }
   | { name: 'error'; data: { message: string; retryable: boolean } }
   | { name: 'turn_classifier_started';  data: Record<string, never> }
-  | { name: 'turn_classifier_decision'; data: { mode: AnswerResponse['mode'] | 'clarify' | 'new_conversation' | 'not_answerable'; reasoning_one_line: string; referenced_run_ids: string[] } }
+  | { name: 'turn_classifier_decision'; data: { mode: AnswerResponse['mode'] | 'analytical_query' | 'clarify' | 'new_conversation' | 'not_answerable'; reasoning_one_line: string; referenced_run_ids: string[] } }
   | { name: 'memory_recall';            data: { run_ids: string[]; reason: string } }
   | { name: 'refinement_started';       data: { kind: Operation['kind']; source_run_id: string; description: string } }
   | { name: 'refinement_completed';     data: { kind: Operation['kind']; source_run_id: string; before_count: number; after_count: number; timing_ms: number } }
   | { name: 'composition_started';      data: { kind: 'join' | 'union' | 'intersect' | 'compare'; source_run_ids: string[]; description: string } }
   | { name: 'composition_completed';    data: { kind: 'join' | 'union' | 'intersect' | 'compare'; source_run_ids: string[]; output_count: number; timing_ms: number } }
-  | { name: 'diff_computed';            data: AnswerDiff };
+  | { name: 'diff_computed';            data: AnswerDiff }
+  | { name: 'analytical_started';       data: { question: string } }
+  | { name: 'concept_extraction_started'; data: Record<string, never> }
+  | { name: 'concept_extraction_completed'; data: { concepts: Record<string, unknown>[] } }
+  | { name: 'plan_generation_started';  data: Record<string, never> }
+  | { name: 'plan_generation_completed'; data: { template_id: string; primary_table: string; joins_count: number; filters_count: number; reasoning_one_line: string } }
+  | { name: 'sql_compiled';             data: { sql_query_name: string; query_hash: string; length_chars: number } }
+  | { name: 'sandbox_validation_started'; data: Record<string, never> }
+  | { name: 'sandbox_validation_completed'; data: { ok: boolean; reason: string | null } }
+  | { name: 'sandbox_execution_started'; data: Record<string, never> }
+  | { name: 'sandbox_execution_completed'; data: { row_count: number; timing_ms: number; columns: string[] } }
+  | { name: 'analytical_completed';     data: { run_id: string; row_count: number; timing_ms: number } };
 
 
 export type StreamEventName = StreamEvent['name'];
@@ -452,6 +463,11 @@ function isStreamEvent(name: string, data: unknown): data is StreamEvent['data']
   switch (name) {
     case 'router_started':
     case 'verifier_started':
+    case 'turn_classifier_started':
+    case 'concept_extraction_started':
+    case 'plan_generation_started':
+    case 'sandbox_validation_started':
+    case 'sandbox_execution_started':
       return true;
     case 'router_decision':
       return isString(data.decision) && (data.recipe_id === null || isString(data.recipe_id)) && isString(data.reasoning_one_line);
@@ -491,8 +507,36 @@ function isStreamEvent(name: string, data: unknown): data is StreamEvent['data']
       return isAssistantResponse(data);
     case 'error':
       return isString(data.message) && typeof data.retryable === 'boolean';
+    case 'turn_classifier_decision':
+      return isString(data.mode) && isString(data.reasoning_one_line) && isStringArray(data.referenced_run_ids);
+    case 'memory_recall':
+      return isStringArray(data.run_ids) && isString(data.reason);
+    case 'refinement_started':
+      return isString(data.kind) && isString(data.source_run_id) && isString(data.description);
+    case 'refinement_completed':
+      return isString(data.kind) && isString(data.source_run_id) && isNumber(data.before_count) && isNumber(data.after_count) && isNumber(data.timing_ms);
+    case 'composition_started':
+      return isString(data.kind) && isStringArray(data.source_run_ids) && isString(data.description);
+    case 'composition_completed':
+      return isString(data.kind) && isStringArray(data.source_run_ids) && isNumber(data.output_count) && isNumber(data.timing_ms);
+    case 'diff_computed':
+      return isString(data.baseline_run_id) && isNumber(data.rows_added) && isNumber(data.rows_removed) && isNumber(data.rows_changed) && isStringArray(data.columns_added) && isStringArray(data.columns_removed);
+    case 'analytical_started':
+      return isString(data.question);
+    case 'concept_extraction_completed':
+      return Array.isArray(data.concepts) && data.concepts.every(isRecord);
+    case 'plan_generation_completed':
+      return isString(data.template_id) && isString(data.primary_table) && isNumber(data.joins_count) && isNumber(data.filters_count) && isString(data.reasoning_one_line);
+    case 'sql_compiled':
+      return isString(data.sql_query_name) && isString(data.query_hash) && isNumber(data.length_chars);
+    case 'sandbox_validation_completed':
+      return typeof data.ok === 'boolean' && (data.reason === null || isString(data.reason));
+    case 'sandbox_execution_completed':
+      return isNumber(data.row_count) && isNumber(data.timing_ms) && isStringArray(data.columns);
+    case 'analytical_completed':
+      return isString(data.run_id) && isNumber(data.row_count) && isNumber(data.timing_ms);
     default:
-      return false;
+      return true;
   }
 }
 

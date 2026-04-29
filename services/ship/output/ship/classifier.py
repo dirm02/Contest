@@ -293,6 +293,13 @@ def classify_turn_deterministic(
                 ],
                 referenced_run_ids=[latest_run_id],
             )
+    if _looks_like_zombie_recipient(lowered):
+        return _fresh_classification_for(
+            text,
+            lowered,
+            recipe_id="zombie_recipients",
+            reason="The user asked for high-government-funding charities with stale filings.",
+        )
     if _looks_analytical(lowered):
         return TurnClassification(
             mode="analytical_query",
@@ -385,6 +392,13 @@ def _looks_analytical(lowered: str) -> bool:
     metric = r"\b(how many|count|total|sum|average|avg|median|list|top\s+\d+|which|distinct recipients|more than|over\s+\$?\d)"
     concept = r"\b(school|schools|hospital|hospitals|indigenous|university|universities|college|municipal|cities|city|contracts?|grants?|funding|charities|crown corporation|department|phac|esdc|manitoba|quebec|alberta)\b"
     return bool(re.search(metric, lowered) and re.search(concept, lowered))
+
+
+def _looks_like_zombie_recipient(lowered: str) -> bool:
+    has_charity = "charit" in lowered or "nonprofit" in lowered or "non-profit" in lowered
+    has_government_funding = ("government" in lowered or "govt" in lowered) and "funding" in lowered
+    has_stale_filing = bool(re.search(r"\b(stopped filing|stop filing|stale filing|stale filings|silent|not fil(?:e|ed|ing)|no longer fil(?:e|ed|ing))\b", lowered))
+    return has_charity and has_government_funding and has_stale_filing
 
 
 def _looks_like_filter(lowered: str) -> bool:

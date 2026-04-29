@@ -71,6 +71,17 @@ export function groupEventsIntoPhases(events: StreamEvent[]): Phase[] {
         'canlii_started',
         'canlii_completed',
         'refinement_filter_applied',
+        'analytical_started',
+        'concept_extraction_started',
+        'concept_extraction_completed',
+        'plan_generation_started',
+        'plan_generation_completed',
+        'sql_compiled',
+        'sandbox_validation_started',
+        'sandbox_validation_completed',
+        'sandbox_execution_started',
+        'sandbox_execution_completed',
+        'analytical_completed',
       ].includes(event.name)
     ) {
       targetPhaseId = 'retrieve';
@@ -138,6 +149,148 @@ export function buildActivitySteps(events: StreamEvent[]): ActivityStep[] {
           routeStep.status = 'done';
           routeStep.completedAt = Date.now();
           routeStep.metadata = event.data.recipe_id || undefined;
+        }
+        break;
+      }
+
+      case 'turn_classifier_started':
+        steps.push({
+          id: 'turn-classifier',
+          kind: 'route',
+          title: 'Reading the question',
+          status: 'running',
+          startedAt: Date.now(),
+        });
+        break;
+
+      case 'turn_classifier_decision': {
+        const step = steps.find(s => s.id === 'turn-classifier');
+        if (step) {
+          step.title = `Question mode: ${event.data.mode.replace(/_/g, ' ')}`;
+          step.subtitle = event.data.reasoning_one_line;
+          step.status = 'done';
+          step.completedAt = Date.now();
+        }
+        break;
+      }
+
+      case 'analytical_started':
+        steps.push({
+          id: 'analytical',
+          kind: 'primitive',
+          title: 'Planning a warehouse query',
+          subtitle: event.data.question,
+          status: 'running',
+          startedAt: Date.now(),
+        });
+        break;
+
+      case 'concept_extraction_started':
+        steps.push({
+          id: 'concept-extraction',
+          kind: 'note',
+          parentId: 'analytical',
+          title: 'Matching question terms to data concepts',
+          status: 'running',
+          startedAt: Date.now(),
+        });
+        break;
+
+      case 'concept_extraction_completed': {
+        const step = steps.find(s => s.id === 'concept-extraction');
+        if (step) {
+          step.status = 'done';
+          step.completedAt = Date.now();
+          step.metadata = `${event.data.concepts.length} concept${event.data.concepts.length === 1 ? '' : 's'}`;
+        }
+        break;
+      }
+
+      case 'plan_generation_started':
+        steps.push({
+          id: 'plan-generation',
+          kind: 'note',
+          parentId: 'analytical',
+          title: 'Choosing the query shape',
+          status: 'running',
+          startedAt: Date.now(),
+        });
+        break;
+
+      case 'plan_generation_completed': {
+        const step = steps.find(s => s.id === 'plan-generation');
+        if (step) {
+          step.status = 'done';
+          step.completedAt = Date.now();
+          step.subtitle = event.data.reasoning_one_line;
+          step.metadata = event.data.template_id;
+        }
+        break;
+      }
+
+      case 'sql_compiled':
+        steps.push({
+          id: 'sql-compiled',
+          kind: 'sql',
+          parentId: 'analytical',
+          title: `Compiled ${event.data.sql_query_name}`,
+          metadata: `${event.data.length_chars.toLocaleString()} chars`,
+          status: 'done',
+          startedAt: Date.now(),
+          completedAt: Date.now(),
+        });
+        break;
+
+      case 'sandbox_validation_started':
+        steps.push({
+          id: 'sandbox-validation',
+          kind: 'sql',
+          parentId: 'analytical',
+          title: 'Checking query safety',
+          status: 'running',
+          startedAt: Date.now(),
+        });
+        break;
+
+      case 'sandbox_validation_completed': {
+        const step = steps.find(s => s.id === 'sandbox-validation');
+        if (step) {
+          step.status = event.data.ok ? 'done' : 'failed';
+          step.completedAt = Date.now();
+          step.subtitle = event.data.reason ?? undefined;
+        }
+        break;
+      }
+
+      case 'sandbox_execution_started':
+        steps.push({
+          id: 'sandbox-execution',
+          kind: 'sql',
+          parentId: 'analytical',
+          title: 'Running sandbox query',
+          status: 'running',
+          startedAt: Date.now(),
+        });
+        break;
+
+      case 'sandbox_execution_completed': {
+        const step = steps.find(s => s.id === 'sandbox-execution');
+        if (step) {
+          step.status = 'done';
+          step.completedAt = Date.now();
+          const secs = (event.data.timing_ms / 1000).toFixed(1);
+          step.metadata = `${event.data.row_count.toLocaleString()} rows · ${secs}s`;
+        }
+        break;
+      }
+
+      case 'analytical_completed': {
+        const step = steps.find(s => s.id === 'analytical');
+        if (step) {
+          step.status = 'done';
+          step.completedAt = Date.now();
+          const secs = (event.data.timing_ms / 1000).toFixed(1);
+          step.metadata = `${event.data.row_count.toLocaleString()} rows · ${secs}s`;
         }
         break;
       }
@@ -324,8 +477,34 @@ export function formatLatestEvent(events: StreamEvent[]): string {
       return 'Routing';
     case 'router_decision':
       return 'Routing complete';
+    case 'turn_classifier_started':
+      return 'Reading question';
+    case 'turn_classifier_decision':
+      return `Selected ${latest.data.mode.replace(/_/g, ' ')}`;
     case 'phase_started':
       return `Started ${latest.data.phase.replace(/_/g, ' ')}`;
+    case 'analytical_started':
+      return 'Planning warehouse query';
+    case 'concept_extraction_started':
+      return 'Matching concepts';
+    case 'concept_extraction_completed':
+      return 'Concepts matched';
+    case 'plan_generation_started':
+      return 'Planning query';
+    case 'plan_generation_completed':
+      return 'Query plan ready';
+    case 'sql_compiled':
+      return 'SQL compiled';
+    case 'sandbox_validation_started':
+      return 'Checking SQL safety';
+    case 'sandbox_validation_completed':
+      return latest.data.ok ? 'SQL safety check passed' : 'SQL safety check failed';
+    case 'sandbox_execution_started':
+      return 'Running sandbox query';
+    case 'sandbox_execution_completed':
+      return 'Sandbox query complete';
+    case 'analytical_completed':
+      return 'Retrieved evidence';
     case 'primitive_started':
       return `Preparing ${latest.data.primitive_name.replace(/_/g, ' ')}`;
     case 'sql_query_started':

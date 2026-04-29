@@ -45,24 +45,22 @@ export default function App() {
     <div className="app-shell bg-[var(--color-bg)]">
       <div className="h-1.5 w-full bg-[var(--color-accent)]" />
       
-      {!isAccountability && (
-        <header className="sticky top-0 z-40 border-b border-[var(--color-border)] bg-white">
-          <div className="mx-auto flex h-12 items-center justify-between px-4 sm:px-6 lg:px-8">
-            <Link to="/" className="flex items-center gap-2.5 text-[var(--color-ink-strong)] group">
-              <span className="flex size-7 items-center justify-center rounded-md bg-[var(--color-accent)] text-white font-bold text-sm shadow-sm group-hover:bg-[var(--color-accent-hover)] transition-colors">
-                A
-              </span>
-              <span className="text-sm font-semibold tracking-tight">
-                Accountability <span className="text-[var(--color-accent)]">Max</span>
-              </span>
-            </Link>
-
-            <span className="hidden md:inline text-[10px] font-medium text-[var(--color-muted)]">
-              Official use only
+      <header className="sticky top-0 z-40 border-b border-[var(--color-border)] bg-white">
+        <div className="mx-auto flex h-12 items-center justify-between px-4 sm:px-6 lg:px-8">
+          <Link to="/" className="flex items-center gap-2.5 text-[var(--color-ink-strong)] group">
+            <span className="flex size-7 items-center justify-center rounded-md bg-[var(--color-accent)] text-white font-bold text-sm shadow-sm group-hover:bg-[var(--color-accent-hover)] transition-colors">
+              A
             </span>
-          </div>
-        </header>
-      )}
+            <span className="text-sm font-semibold tracking-tight">
+              Accountability <span className="text-[var(--color-accent)]">Max</span>
+            </span>
+          </Link>
+
+          <span className="hidden md:inline text-[10px] font-medium text-[var(--color-muted)]">
+            Official use only
+          </span>
+        </div>
+      </header>
 
       <div className="flex flex-1 overflow-hidden">
         <aside className="hidden w-56 flex-col border-r border-[var(--color-border)] bg-white lg:flex">

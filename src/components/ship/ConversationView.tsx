@@ -128,7 +128,46 @@ export default function ConversationView({
     [conversationQuery.data],
   );
 
-  const threadItems = useMemo(() => [...historyItems, ...liveItems], [historyItems, liveItems]);
+  const visibleLiveItems = useMemo(() => {
+    if (historyItems.length === 0 || liveItems.length === 0) return liveItems;
+
+    const persistedAssistantMessageIds = new Set<string>();
+    const persistedUserContentCounts = new Map<string, number>();
+
+    for (const item of historyItems) {
+      if (item.role === 'assistant') {
+        if (item.response?.message_id) persistedAssistantMessageIds.add(item.response.message_id);
+        persistedAssistantMessageIds.add(item.id);
+      } else {
+        const normalized = item.content.trim();
+        persistedUserContentCounts.set(normalized, (persistedUserContentCounts.get(normalized) ?? 0) + 1);
+      }
+    }
+
+    const hiddenLiveItemIds = new Set<string>();
+
+    liveItems.forEach((item, index) => {
+      if (item.role !== 'assistant') return;
+      const messageId = item.response?.message_id;
+      if (!messageId || !persistedAssistantMessageIds.has(messageId)) return;
+
+      hiddenLiveItemIds.add(item.id);
+
+      const previousItem = liveItems[index - 1];
+      if (!previousItem || previousItem.role !== 'user') return;
+
+      const normalized = previousItem.content.trim();
+      const persistedCount = persistedUserContentCounts.get(normalized) ?? 0;
+      if (persistedCount <= 0) return;
+
+      hiddenLiveItemIds.add(previousItem.id);
+      persistedUserContentCounts.set(normalized, persistedCount - 1);
+    });
+
+    return hiddenLiveItemIds.size === 0 ? liveItems : liveItems.filter((item) => !hiddenLiveItemIds.has(item.id));
+  }, [historyItems, liveItems]);
+
+  const threadItems = useMemo(() => [...historyItems, ...visibleLiveItems], [historyItems, visibleLiveItems]);
   const isStreaming = liveItems.some((item) => item.role === 'assistant' && item.isRunning);
 
   // Update document title with conversation title.
@@ -299,19 +338,38 @@ export default function ConversationView({
 
   useEffect(() => {
     const state = location.state as RouteState;
-    const content = state?.autoSend ?? state?.draft;
+    const pendingAutoSendKey = `accountability.pendingAutoSend:${conversationId}`;
+    let pendingAutoSend: string | null = null;
+    try {
+      pendingAutoSend = sessionStorage.getItem(pendingAutoSendKey);
+    } catch {
+      pendingAutoSend = null;
+    }
+    const content = state?.autoSend ?? state?.draft ?? pendingAutoSend;
     if (!content) return;
 
-    const key = `${conversationId}:${state?.autoSend ? 'send' : 'draft'}:${content}`;
+    const shouldAutoSend = Boolean(state?.autoSend || pendingAutoSend);
+    const key = `${conversationId}:${shouldAutoSend ? 'send' : 'draft'}:${content}`;
     if (consumedRouteState.current === key) return;
-    consumedRouteState.current = key;
-    navigate(location.pathname, { replace: true, state: null });
 
-    if (state?.autoSend) {
-      void submitMessage(content);
-    } else {
-      prefillComposer(content);
-    }
+    const timer = window.setTimeout(() => {
+      if (consumedRouteState.current === key) return;
+      consumedRouteState.current = key;
+      navigate(location.pathname, { replace: true, state: null });
+      try {
+        sessionStorage.removeItem(pendingAutoSendKey);
+      } catch {
+        // The prompt is already moving into the thread; no recovery is needed.
+      }
+
+      if (shouldAutoSend) {
+        void submitMessage(content);
+      } else {
+        prefillComposer(content);
+      }
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [conversationId, location.pathname, location.state, navigate, prefillComposer, submitMessage]);
 
   const cancelStream = useCallback(() => abortRef.current?.abort(), []);
@@ -415,14 +473,18 @@ export default function ConversationView({
             ))}
           </div>
         ) : threadItems.length === 0 ? (
-          <EmptyState onPickExample={prefillComposer} onOpenCatalog={onOpenCatalog} />
+          <EmptyState
+            onPickExample={(example) => void submitMessage(example)}
+            onOpenCatalog={onOpenCatalog}
+            disabled={isStreaming}
+          />
         ) : (
-          <div className="space-y-8 px-4 py-8 lg:px-8">
-            {threadItems.map((item) => {
+          <div className="space-y-12 px-6 py-8 lg:px-12">
+            {threadItems.map((item, index) => {
               if (item.role === 'user') {
                 return (
                   <div key={item.id} className="flex justify-end">
-                    <div className="max-w-[85%] rounded-2xl rounded-br-md bg-[var(--color-info-soft)] border border-[var(--color-info)]/10 px-4 py-2.5 text-sm leading-relaxed text-[var(--color-ink-strong)] whitespace-pre-wrap shadow-sm">
+                    <div className="max-w-[85%] rounded-2xl rounded-br-md bg-[var(--color-info-soft)] border border-[var(--color-info)]/10 px-6 py-3.5 text-sm leading-relaxed text-[var(--color-ink-strong)] whitespace-pre-wrap shadow-sm">
                       {item.content}
                     </div>
                   </div>
@@ -430,9 +492,13 @@ export default function ConversationView({
               }
 
               if (item.response && dismissedMessages.has(item.response.message_id)) return null;
+              const previousUserQuestion = threadItems
+                .slice(0, index)
+                .reverse()
+                .find((candidate): candidate is UserThreadItem => candidate.role === 'user')?.content;
 
               return (
-                <div key={item.id} className="space-y-4">
+                <div key={item.id} className="space-y-6">
                   {item.isRunning ? (
                     <StreamingAnswerCard
                       events={item.events}
@@ -462,6 +528,7 @@ export default function ConversationView({
                             onStartNewConversation={onStartNewConversation}
                             onDismiss={dismissMessage}
                             onRegenerate={() => regenerateAssistantResponse(item.id)}
+                            userQuestion={previousUserQuestion}
                           />
                         ) : item.errorMessage ? (
                           <div className="rounded-xl border border-[var(--color-risk-high)]/20 bg-[var(--color-risk-high-soft)] p-5">
