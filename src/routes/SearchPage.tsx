@@ -29,16 +29,16 @@ export default function SearchPage() {
   );
 
   return (
-    <section className="space-y-6">
-      <div className="space-y-2">
-        <p className="section-title">Fast investigation</p>
-        <h1 className="max-w-4xl text-3xl font-semibold text-[var(--color-ink)] sm:text-5xl">
-          Search an organization and open a read-only accountability dossier.
+    <section className="space-y-8">
+      <div className="space-y-3">
+        <p className="section-title">Forensic Inquiry</p>
+        <h1 className="max-w-4xl text-3xl font-black text-[var(--color-ink-strong)] sm:text-5xl uppercase tracking-tighter">
+          Official Entity <span className="text-[var(--color-accent)]">Search</span>
         </h1>
-        <p className="max-w-3xl text-sm leading-6 text-[var(--color-muted)] sm:text-base">
-          Maple DOGE is optimized for fast entity lookup, funding context,
-          direct relationships, and evidence review across the existing CRA, FED, and
-          Alberta-backed datasets.
+        <p className="max-w-3xl text-sm leading-relaxed text-[var(--color-muted)] sm:text-base font-medium">
+          The Accountability Max portal is optimized for high-signal entity lookup, 
+          funding provenance analysis, and evidence grounding across official CRA, 
+          FED, and secondary public sector datasets.
         </p>
       </div>
 

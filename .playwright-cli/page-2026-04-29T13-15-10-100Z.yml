@@ -1,0 +1,572 @@
+- generic [ref=e3]:
+  - banner [ref=e5]:
+    - generic [ref=e6]:
+      - link "A Accountability Max Forensic System" [ref=e8] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e9]: A
+        - generic [ref=e10]:
+          - generic [ref=e11]: Accountability Max
+          - generic [ref=e12]: Forensic System
+      - generic [ref=e13]:
+        - generic [ref=e14]:
+          - generic [ref=e15]: OFFICIAL USE ONLY
+          - generic [ref=e16]: Secure Portal
+        - link "SYSTEM ONLINE" [ref=e17] [cursor=pointer]:
+          - /url: /api/health
+          - img [ref=e18]
+          - text: SYSTEM ONLINE
+  - generic [ref=e23]:
+    - complementary [ref=e24]:
+      - navigation [ref=e25]:
+        - generic [ref=e26]: Main Navigation
+        - link "SEARCH" [ref=e27] [cursor=pointer]:
+          - /url: /
+          - img [ref=e28]
+          - text: SEARCH
+        - link "ANALYST" [ref=e31] [cursor=pointer]:
+          - /url: /accountability
+          - img [ref=e32]
+          - text: ANALYST
+        - link "INVESTIGATION PANEL" [ref=e34] [cursor=pointer]:
+          - /url: /investigations
+          - img [ref=e35]
+          - text: INVESTIGATION PANEL
+        - link "PEOPLE" [ref=e36] [cursor=pointer]:
+          - /url: /people
+          - img [ref=e37]
+          - text: PEOPLE
+      - generic [ref=e43]:
+        - paragraph [ref=e44]: Audit Posture
+        - generic [ref=e45]:
+          - img [ref=e46]
+          - generic [ref=e49]: Active Investigation
+    - main [ref=e50]:
+      - generic [ref=e52]:
+        - generic [ref=e53]:
+          - generic [ref=e54]:
+            - heading "Accountability Analyst" [level=1] [ref=e55]
+            - paragraph [ref=e56]: Analytical Question Service · Grounded Investigation
+          - generic [ref=e57]:
+            - img [ref=e58]
+            - text: SHIP ONLINE
+        - generic [ref=e65]:
+          - complementary [ref=e67]:
+            - generic [ref=e68]:
+              - generic [ref=e69]:
+                - generic [ref=e70]:
+                  - paragraph [ref=e71]: FORENSIC THREADS
+                  - heading "Inquiry History" [level=2] [ref=e72]
+                - button "Refresh conversations" [ref=e73]:
+                  - img [ref=e74]
+              - button "NEW INQUIRY" [ref=e79]:
+                - img [ref=e80]
+                - text: NEW INQUIRY
+            - navigation [ref=e114]:
+              - button "Tell me everything risky in Canadian public spending. 6 SEGMENTS JUST NOW" [ref=e430]:
+                - generic [ref=e116]: Tell me everything risky in Canadian public spending.
+                - generic [ref=e117]:
+                  - generic [ref=e118]: 6 SEGMENTS
+                  - generic [ref=e119]: JUST NOW
+              - button "stream clarification probe 2 SEGMENTS 6M AGO" [ref=e120]:
+                - generic [ref=e121]: stream clarification probe
+                - generic [ref=e122]:
+                  - generic [ref=e123]: 2 SEGMENTS
+                  - generic [ref=e124]: 6M AGO
+              - button "Clarification probe 2 SEGMENTS 7M AGO" [ref=e431]:
+                - generic [ref=e126]: Clarification probe
+                - generic [ref=e127]:
+                  - generic [ref=e128]: 2 SEGMENTS
+                  - generic [ref=e129]: 7M AGO
+              - button "SSE adverse media smoke 2 SEGMENTS 38M AGO" [ref=e432]:
+                - generic [ref=e131]: SSE adverse media smoke
+                - generic [ref=e132]:
+                  - generic [ref=e133]: 2 SEGMENTS
+                  - generic [ref=e134]: 38M AGO
+              - button "SSE disconnect persistence 2 SEGMENTS 42M AGO" [ref=e135]:
+                - generic [ref=e136]: SSE disconnect persistence
+                - generic [ref=e137]:
+                  - generic [ref=e138]: 2 SEGMENTS
+                  - generic [ref=e139]: 42M AGO
+              - button "SSE non-stream smoke 2 SEGMENTS 43M AGO" [ref=e433]:
+                - generic [ref=e141]: SSE non-stream smoke
+                - generic [ref=e142]:
+                  - generic [ref=e143]: 2 SEGMENTS
+                  - generic [ref=e144]: 43M AGO
+              - button "SSE SQL smoke 6 SEGMENTS 43M AGO" [ref=e145]:
+                - generic [ref=e146]: SSE SQL smoke
+                - generic [ref=e147]:
+                  - generic [ref=e148]: 6 SEGMENTS
+                  - generic [ref=e149]: 43M AGO
+              - button "Show me the largest charity funding loops 2 SEGMENTS 47M AGO" [ref=e434]:
+                - generic [ref=e151]: Show me the largest charity funding loops
+                - generic [ref=e152]:
+                  - generic [ref=e153]: 2 SEGMENTS
+                  - generic [ref=e154]: 47M AGO
+              - button "Which orgs have adverse coverage? 2 SEGMENTS 47M AGO" [ref=e435]:
+                - generic [ref=e156]: Which orgs have adverse coverage?
+                - generic [ref=e157]:
+                  - generic [ref=e158]: 2 SEGMENTS
+                  - generic [ref=e159]: 47M AGO
+              - button "Final service smoke 4 SEGMENTS 58M AGO" [ref=e160]:
+                - generic [ref=e161]: Final service smoke
+                - generic [ref=e162]:
+                  - generic [ref=e163]: 4 SEGMENTS
+                  - generic [ref=e164]: 58M AGO
+              - 'button "suite: funding_loops 1 SEGMENTS 1H AGO" [ref=e165]':
+                - generic [ref=e166]: "suite: funding_loops"
+                - generic [ref=e167]:
+                  - generic [ref=e168]: 1 SEGMENTS
+                  - generic [ref=e169]: 1H AGO
+              - button "Show me the largest charity funding loops 8 SEGMENTS 1H AGO" [ref=e170]:
+                - generic [ref=e171]: Show me the largest charity funding loops
+                - generic [ref=e172]:
+                  - generic [ref=e173]: 8 SEGMENTS
+                  - generic [ref=e174]: 1H AGO
+              - button "Which orgs have adverse coverage? 10 SEGMENTS 1H AGO" [ref=e175]:
+                - generic [ref=e176]: Which orgs have adverse coverage?
+                - generic [ref=e177]:
+                  - generic [ref=e178]: 10 SEGMENTS
+                  - generic [ref=e179]: 1H AGO
+              - button "Which charities had government funding above 70% and stopped filing? 2 SEGMENTS 1H AGO" [ref=e180]:
+                - generic [ref=e181]: Which charities had government funding above 70% and stopped filing?
+                - generic [ref=e182]:
+                  - generic [ref=e183]: 2 SEGMENTS
+                  - generic [ref=e184]: 1H AGO
+              - button "Which orgs have adverse coverage? 2 SEGMENTS 1H AGO" [ref=e185]:
+                - generic [ref=e186]: Which orgs have adverse coverage?
+                - generic [ref=e187]:
+                  - generic [ref=e188]: 2 SEGMENTS
+                  - generic [ref=e189]: 1H AGO
+          - generic [ref=e91]:
+            - generic [ref=e92]:
+              - generic [ref=e93]:
+                - paragraph [ref=e94]: ACCOUNTABILITY ANALYST
+                - heading "Tell me everything risky in Canadian public spending." [level=1] [ref=e190]
+                - paragraph [ref=e96]: OFFICIAL SHIP SERVICE · CACHED FINDINGS ACTIVE
+              - button "CATALOG" [ref=e97]:
+                - img [ref=e98]
+                - text: CATALOG
+            - generic [ref=e101]:
+              - generic [ref=e192]: Tell me everything risky in Canadian public spending.
+              - article [ref=e194]:
+                - generic [ref=e195]:
+                  - img [ref=e197]
+                  - generic [ref=e199]:
+                    - paragraph [ref=e200]: Clarification needed
+                    - heading "Please narrow the risk lens" [level=2] [ref=e201]
+                    - paragraph [ref=e202]: “Everything risky” spans several different analyses, and I need one starting recipe to run deterministically.
+                    - list [ref=e203]:
+                      - listitem [ref=e204]: large circular charity funding loops
+                      - listitem [ref=e205]: charities with high government funding that stopped filing
+                      - listitem [ref=e206]: high-overhead charities with no staff
+                      - listitem [ref=e207]: organizations funded by multiple public sources
+                      - listitem [ref=e208]: vendor concentration or sole-source risk
+                      - listitem [ref=e209]: directors connected to multiple funded organizations
+                      - listitem [ref=e210]: adverse media involving funded organizations
+                    - generic [ref=e211]:
+                      - button "Show the top 25 largest circular charity funding loops in Canada." [ref=e212]
+                      - button "Find charities with high government funding that stopped filing CRA returns." [ref=e213]
+                      - button "Analyze vendor concentration in federal contract spending since 2020." [ref=e214]
+                    - button "Run the broad scan anyway" [ref=e215]:
+                      - text: Run the broad scan anyway
+                      - img [ref=e216]
+              - generic [ref=e219]: Find charities with high government funding that stopped filing CRA returns.
+              - article [ref=e221]:
+                - generic [ref=e222]:
+                  - generic [ref=e223]:
+                    - paragraph [ref=e224]: Grounded answer
+                    - 'heading "High-government-funded charities with older latest CRA filings: triage leads, not proof of dissolution" [level=2] [ref=e225]'
+                  - group [ref=e226]:
+                    - generic "Verification pass 7 findings, 1 SQL refs" [ref=e227] [cursor=pointer]:
+                      - generic [ref=e228]:
+                        - img [ref=e229]
+                        - text: Verification pass
+                      - generic [ref=e232]: 7 findings, 1 SQL refs
+                - generic [ref=e233]:
+                  - generic [ref=e234]:
+                    - paragraph [ref=e235]: "The funding_then_silent query returned 20 records matching the screen for high recorded government funding and older latest CRA filings. The strongest audit framing is as a triage list: these records show entities with substantial public funding in their latest recorded funding years, but the data alone does not establish that an organization has dissolved, ceased operations, or breached any filing obligation."
+                    - button "sql:funding_then_silent" [ref=e237]:
+                      - img [ref=e238]
+                      - text: sql:funding_then_silent
+                  - generic [ref=e242]:
+                    - paragraph [ref=e243]: The largest government-funding exposures in the supplied findings are concentrated among health-authority records. EASTERN REGIONAL INTEGRATED HEALTH AUTHORITY shows total_government_funding of 6507600605.0, total_revenue of 6565656948.0, govt_share of 0.9911575728887747, latest_filing_year of 2023, and latest_govt_funding_year of 2023. CENTRAL REGIONAL INTEGRATED HEALTH AUTHORITY shows total_government_funding of 1568370645.0, total_revenue of 1691415804.0, govt_share of 0.92725315755652, latest_filing_year of 2023, and latest_govt_funding_year of 2023. Labrador Grenfell Regional Integrated Health Authority shows total_government_funding of 755724541.0, total_revenue of 785245323.0, govt_share of 0.9624056570152918, latest_filing_year of 2023, and latest_govt_funding_year of 2023.
+                    - generic [ref=e244]:
+                      - button "finding[0]" [ref=e245]:
+                        - img [ref=e246]
+                        - text: finding[0]
+                      - button "finding[1]" [ref=e249]:
+                        - img [ref=e250]
+                        - text: finding[1]
+                      - button "finding[2]" [ref=e253]:
+                        - img [ref=e254]
+                        - text: finding[2]
+                  - generic [ref=e257]:
+                    - paragraph [ref=e258]: The more concerning investigative leads are the supplied records with latest_filing_year earlier than 2023 while still showing large government-funded operations in their latest recorded government-funding year. TRILLIUM GIFT OF LIFE NETWORK has latest_filing_year of 2021, latest_govt_funding_year of 2021, total_government_funding of 107979755.0, and govt_share of 0.9950626332435938. CANADIAN MENTAL HEALTH ASSOCIATION, THAMES VALLEY ADDICTION & MENTAL HEALTH SERVICES has latest_filing_year of 2021, latest_govt_funding_year of 2021, total_government_funding of 50913987.0, and govt_share of 0.8006673655563266. ADDICTIONS FOUNDATION OF MANITOBA has latest_filing_year of 2022, latest_govt_funding_year of 2022, total_government_funding of 98065819.0, and govt_share of 0.911680286317931; THE CHILDREN'S AID SOCIETY OF HALDIMAND AND NORFOLK has latest_filing_year of 2022, latest_govt_funding_year of 2022, total_government_funding of 58057044.0, and govt_share of 0.9825835891858987.
+                    - generic [ref=e259]:
+                      - button "finding[5]" [ref=e260]:
+                        - img [ref=e261]
+                        - text: finding[5]
+                      - button "finding[10]" [ref=e264]:
+                        - img [ref=e265]
+                        - text: finding[10]
+                      - button "finding[6]" [ref=e268]:
+                        - img [ref=e269]
+                        - text: finding[6]
+                      - button "finding[9]" [ref=e272]:
+                        - img [ref=e273]
+                        - text: finding[9]
+                - generic [ref=e276]:
+                  - paragraph [ref=e277]: Caveats
+                  - list [ref=e278]:
+                    - listitem [ref=e279]: This identifies charities with high recorded government funding and older latest CRA filings; it does not prove dissolution, non-compliance, or cessation of activity by itself.
+                    - listitem [ref=e280]: Some 2023 latest-filing records may reflect filing-cycle or data-lag issues rather than true silence.
+                    - listitem [ref=e281]: No source_url values were supplied in the finding rows, so no external source links are cited.
+                    - listitem [ref=e282]: Canonical names are used where provided; source_legal_name values should be treated as source-record names rather than independent proof of a separate legal entity.
+                - generic [ref=e283]:
+                  - generic [ref=e284]:
+                    - generic [ref=e285]:
+                      - paragraph [ref=e286]: Findings
+                      - paragraph [ref=e287]: Preview rows from the answer.
+                    - button "Show more findings" [ref=e288]:
+                      - img [ref=e289]
+                      - text: Show more findings
+                  - table [ref=e294]:
+                    - rowgroup [ref=e295]:
+                      - row "Row bn category entity id govt share designation total revenue canonical name funded year count source legal name latest filing year latest govt funding year total government funding" [ref=e296]:
+                        - columnheader "Row" [ref=e297]
+                        - columnheader "bn" [ref=e298]:
+                          - button "bn" [ref=e299]:
+                            - text: bn
+                            - img [ref=e300]
+                        - columnheader "category" [ref=e303]:
+                          - button "category" [ref=e304]:
+                            - text: category
+                            - img [ref=e305]
+                        - columnheader "entity id" [ref=e308]:
+                          - button "entity id" [ref=e309]:
+                            - text: entity id
+                            - img [ref=e310]
+                        - columnheader "govt share" [ref=e313]:
+                          - button "govt share" [ref=e314]:
+                            - text: govt share
+                            - img [ref=e315]
+                        - columnheader "designation" [ref=e318]:
+                          - button "designation" [ref=e319]:
+                            - text: designation
+                            - img [ref=e320]
+                        - columnheader "total revenue" [ref=e323]:
+                          - button "total revenue" [ref=e324]:
+                            - text: total revenue
+                            - img [ref=e325]
+                        - columnheader "canonical name" [ref=e328]:
+                          - button "canonical name" [ref=e329]:
+                            - text: canonical name
+                            - img [ref=e330]
+                        - columnheader "funded year count" [ref=e333]:
+                          - button "funded year count" [ref=e334]:
+                            - text: funded year count
+                            - img [ref=e335]
+                        - columnheader "source legal name" [ref=e338]:
+                          - button "source legal name" [ref=e339]:
+                            - text: source legal name
+                            - img [ref=e340]
+                        - columnheader "latest filing year" [ref=e343]:
+                          - button "latest filing year" [ref=e344]:
+                            - text: latest filing year
+                            - img [ref=e345]
+                        - columnheader "latest govt funding year" [ref=e348]:
+                          - button "latest govt funding year" [ref=e349]:
+                            - text: latest govt funding year
+                            - img [ref=e350]
+                        - columnheader "total government funding" [ref=e353]:
+                          - button "total government funding" [ref=e354]:
+                            - text: total government funding
+                            - img [ref=e355]
+                    - rowgroup [ref=e358]:
+                      - row "0 895640944RR0001 110 84,897 0.99 C 6,565,656,948 EASTERN REGIONAL INTEGRATED HEALTH AUTHORITY 4 EASTERN REGIONAL INTEGRATED HEALTH AUTHORITY 2,023 2,023 6,507,600,605" [ref=e359]:
+                        - cell "0" [ref=e360]
+                        - cell "895640944RR0001" [ref=e361]
+                        - cell "110" [ref=e362]
+                        - cell "84,897" [ref=e363]
+                        - cell "0.99" [ref=e364]
+                        - cell "C" [ref=e365]
+                        - cell "6,565,656,948" [ref=e366]
+                        - cell "EASTERN REGIONAL INTEGRATED HEALTH AUTHORITY" [ref=e367]
+                        - cell "4" [ref=e368]
+                        - cell "EASTERN REGIONAL INTEGRATED HEALTH AUTHORITY" [ref=e369]
+                        - cell "2,023" [ref=e370]
+                        - cell "2,023" [ref=e371]
+                        - cell "6,507,600,605" [ref=e372]
+                      - row "1 899073860RR0001 110 86,492 0.93 C 1,691,415,804 CENTRAL REGIONAL INTEGRATED HEALTH AUTHORITY 4 CENTRAL REGIONAL INTEGRATED HEALTH AUTHORITY 2,023 2,023 1,568,370,645" [ref=e373]:
+                        - cell "1" [ref=e374]
+                        - cell "899073860RR0001" [ref=e375]
+                        - cell "110" [ref=e376]
+                        - cell "86,492" [ref=e377]
+                        - cell "0.93" [ref=e378]
+                        - cell "C" [ref=e379]
+                        - cell "1,691,415,804" [ref=e380]
+                        - cell "CENTRAL REGIONAL INTEGRATED HEALTH AUTHORITY" [ref=e381]
+                        - cell "4" [ref=e382]
+                        - cell "CENTRAL REGIONAL INTEGRATED HEALTH AUTHORITY" [ref=e383]
+                        - cell "2,023" [ref=e384]
+                        - cell "2,023" [ref=e385]
+                        - cell "1,568,370,645" [ref=e386]
+                      - row "2 898339650RR0001 110 86,143 0.96 C 785,245,323 Labrador Grenfell Regional Integrated Health Authority 4 Labrador Grenfell Regional Integrated Health Authority 2,023 2,023 755,724,541" [ref=e387]:
+                        - cell "2" [ref=e388]
+                        - cell "898339650RR0001" [ref=e389]
+                        - cell "110" [ref=e390]
+                        - cell "86,143" [ref=e391]
+                        - cell "0.96" [ref=e392]
+                        - cell "C" [ref=e393]
+                        - cell "785,245,323" [ref=e394]
+                        - cell "Labrador Grenfell Regional Integrated Health Authority" [ref=e395]
+                        - cell "4" [ref=e396]
+                        - cell "Labrador Grenfell Regional Integrated Health Authority" [ref=e397]
+                        - cell "2,023" [ref=e398]
+                        - cell "2,023" [ref=e399]
+                        - cell "755,724,541" [ref=e400]
+                      - row "3 828601922RR0001 10 53,307 0.97 C 178,213,186 Tlicho Community Services Agency 4 TLI CHO COMMUNITY SERVICES AGENCY 2,023 2,023 173,743,477" [ref=e401]:
+                        - cell "3" [ref=e402]
+                        - cell "828601922RR0001" [ref=e403]
+                        - cell "10" [ref=e404]
+                        - cell "53,307" [ref=e405]
+                        - cell "0.97" [ref=e406]
+                        - cell "C" [ref=e407]
+                        - cell "178,213,186" [ref=e408]
+                        - cell "Tlicho Community Services Agency" [ref=e409]
+                        - cell "4" [ref=e410]
+                        - cell "TLI CHO COMMUNITY SERVICES AGENCY" [ref=e411]
+                        - cell "2,023" [ref=e412]
+                        - cell "2,023" [ref=e413]
+                        - cell "173,743,477" [ref=e414]
+                      - row "4 861550044RR0001 10 63,473 0.98 C 117,136,728 SOUTH SLAVE DIVISIONAL EDUCATION COUNCIL 4 SOUTH SLAVE DIVISIONAL EDUCATION COUNCIL 2,023 2,023 114,684,994" [ref=e415]:
+                        - cell "4" [ref=e416]
+                        - cell "861550044RR0001" [ref=e417]
+                        - cell "10" [ref=e418]
+                        - cell "63,473" [ref=e419]
+                        - cell "0.98" [ref=e420]
+                        - cell "C" [ref=e421]
+                        - cell "117,136,728" [ref=e422]
+                        - cell "SOUTH SLAVE DIVISIONAL EDUCATION COUNCIL" [ref=e423]
+                        - cell "4" [ref=e424]
+                        - cell "SOUTH SLAVE DIVISIONAL EDUCATION COUNCIL" [ref=e425]
+                        - cell "2,023" [ref=e426]
+                        - cell "2,023" [ref=e427]
+                        - cell "114,684,994" [ref=e428]
+                - generic [ref=e429]: Answered in 41.5s
+              - generic [ref=e437]: Show only organizations above 100M government funding.
+              - generic [ref=e438]:
+                - generic [ref=e439]:
+                  - button "Thinking trail (39 events, 0.0s) 0.0s" [ref=e440]:
+                    - generic [ref=e441]:
+                      - img [ref=e442]
+                      - generic [ref=e444]: Thinking trail (39 events, 0.0s)
+                    - generic [ref=e445]:
+                      - img [ref=e446]
+                      - text: 0.0s
+                  - generic [ref=e449]:
+                    - generic [ref=e450]: "Cached refinement returned matching public-accountability findings. This answer is an in-memory refinement from the prior result, High-government-funded charities with older latest CRA filings: triage leads, not proof of dissolution: filtered cached findings by total_government_funding. Leading matching rows are EASTERN REGIONAL INTEGRATED HEALTH AUTHORITY has total_government_funding 6507600605.0, CENTRAL REGIONAL INTEGRATED HEALTH AUTHORITY has total_government_funding 1568370645.0, Labrador Grenfell Regional Integrated Health Authority has total_government_funding 755724541.0, Tlicho Community Services Agency has total_government_funding 173743477.0, SOUTH SLAVE DIVISIONAL EDUCATION COUNCIL has total_government_funding 114684994.0."
+                    - list [ref=e451]:
+                      - listitem [ref=e452]:
+                        - generic [ref=e454]: Routing your question...
+                      - listitem [ref=e455]:
+                        - generic [ref=e457]: "Route: refine using zombie_recipients. Controller detected a cached-findings refinement before routing."
+                      - listitem [ref=e458]:
+                        - generic [ref=e460]: Started refinement filter.
+                      - listitem [ref=e461]:
+                        - generic [ref=e463]: Refined cached findings from 20 to 6 rows.
+                      - listitem [ref=e464]:
+                        - generic [ref=e466]: Started summarizer.
+                      - listitem [ref=e467]:
+                        - generic [ref=e469]: Writing the grounded answer from about 0 prompt tokens.
+                      - listitem [ref=e470]:
+                        - generic [ref=e472]: Answer draft complete (0 output tokens).
+                      - listitem [ref=e473]:
+                        - generic [ref=e475]: Started verifier.
+                      - listitem [ref=e476]:
+                        - generic [ref=e478]: Starting grounding checks...
+                      - listitem [ref=e479]:
+                        - generic [ref=e481]: "Verifier S3_grounding: pass. 5 finding citations, 0 SQL citations across 1 paragraphs."
+                      - listitem [ref=e482]:
+                        - generic [ref=e484]: "Verifier S4_numeric: pass. 5 numeric claims checked against cited finding rows and cited SQL rows."
+                      - listitem [ref=e485]:
+                        - generic [ref=e487]: "Verifier S5_canonical: pass. 5 canonical entities verified in text from 6 candidate canonical names."
+                      - listitem [ref=e488]:
+                        - generic [ref=e490]: Verification pass in 0.0s.
+                      - listitem [ref=e491]:
+                        - generic [ref=e493]: Final response received.
+                - article [ref=e494]:
+                  - generic [ref=e495]:
+                    - generic [ref=e496]:
+                      - paragraph [ref=e497]: Grounded answer
+                      - heading "Cached refinement returned matching public-accountability findings." [level=2] [ref=e498]
+                      - paragraph [ref=e499]: Refined from run 1f033b80-1a1e-407e-be4a-8444b1b306ac
+                    - group [ref=e500]:
+                      - generic "Verification pass 5 findings, 0 SQL refs" [ref=e501] [cursor=pointer]:
+                        - generic [ref=e502]:
+                          - img [ref=e503]
+                          - text: Verification pass
+                        - generic [ref=e506]: 5 findings, 0 SQL refs
+                  - generic [ref=e508]:
+                    - paragraph [ref=e509]: "This answer is an in-memory refinement from the prior result, High-government-funded charities with older latest CRA filings: triage leads, not proof of dissolution: filtered cached findings by total_government_funding. Leading matching rows are EASTERN REGIONAL INTEGRATED HEALTH AUTHORITY has total_government_funding 6507600605.0, CENTRAL REGIONAL INTEGRATED HEALTH AUTHORITY has total_government_funding 1568370645.0, Labrador Grenfell Regional Integrated Health Authority has total_government_funding 755724541.0, Tlicho Community Services Agency has total_government_funding 173743477.0, SOUTH SLAVE DIVISIONAL EDUCATION COUNCIL has total_government_funding 114684994.0."
+                    - generic [ref=e510]:
+                      - button "finding[0]" [ref=e511]:
+                        - img [ref=e512]
+                        - text: finding[0]
+                      - button "finding[1]" [ref=e515]:
+                        - img [ref=e516]
+                        - text: finding[1]
+                      - button "finding[2]" [ref=e519]:
+                        - img [ref=e520]
+                        - text: finding[2]
+                      - button "finding[3]" [ref=e523]:
+                        - img [ref=e524]
+                        - text: finding[3]
+                      - button "finding[4]" [ref=e527]:
+                        - img [ref=e528]
+                        - text: finding[4]
+                  - generic [ref=e531]:
+                    - paragraph [ref=e532]: Caveats
+                    - list [ref=e533]:
+                      - listitem [ref=e534]: Refinement used cached findings from recipe_run 1f033b80-1a1e-407e-be4a-8444b1b306ac; no new SQL or web search was executed.
+                      - listitem [ref=e535]: filtered cached findings where total_government_funding >= 100000000.0
+                  - generic [ref=e536]:
+                    - generic [ref=e537]:
+                      - generic [ref=e538]:
+                        - paragraph [ref=e539]: Findings
+                        - paragraph [ref=e540]: Preview rows from the answer.
+                      - button "Show more findings" [ref=e541]:
+                        - img [ref=e542]
+                        - text: Show more findings
+                    - table [ref=e547]:
+                      - rowgroup [ref=e548]:
+                        - row "Row bn category entity id govt share designation total revenue canonical name funded year count source legal name latest filing year latest govt funding year total government funding" [ref=e549]:
+                          - columnheader "Row" [ref=e550]
+                          - columnheader "bn" [ref=e551]:
+                            - button "bn" [ref=e552]:
+                              - text: bn
+                              - img [ref=e553]
+                          - columnheader "category" [ref=e556]:
+                            - button "category" [ref=e557]:
+                              - text: category
+                              - img [ref=e558]
+                          - columnheader "entity id" [ref=e561]:
+                            - button "entity id" [ref=e562]:
+                              - text: entity id
+                              - img [ref=e563]
+                          - columnheader "govt share" [ref=e566]:
+                            - button "govt share" [ref=e567]:
+                              - text: govt share
+                              - img [ref=e568]
+                          - columnheader "designation" [ref=e571]:
+                            - button "designation" [ref=e572]:
+                              - text: designation
+                              - img [ref=e573]
+                          - columnheader "total revenue" [ref=e576]:
+                            - button "total revenue" [ref=e577]:
+                              - text: total revenue
+                              - img [ref=e578]
+                          - columnheader "canonical name" [ref=e581]:
+                            - button "canonical name" [ref=e582]:
+                              - text: canonical name
+                              - img [ref=e583]
+                          - columnheader "funded year count" [ref=e586]:
+                            - button "funded year count" [ref=e587]:
+                              - text: funded year count
+                              - img [ref=e588]
+                          - columnheader "source legal name" [ref=e591]:
+                            - button "source legal name" [ref=e592]:
+                              - text: source legal name
+                              - img [ref=e593]
+                          - columnheader "latest filing year" [ref=e596]:
+                            - button "latest filing year" [ref=e597]:
+                              - text: latest filing year
+                              - img [ref=e598]
+                          - columnheader "latest govt funding year" [ref=e601]:
+                            - button "latest govt funding year" [ref=e602]:
+                              - text: latest govt funding year
+                              - img [ref=e603]
+                          - columnheader "total government funding" [ref=e606]:
+                            - button "total government funding" [ref=e607]:
+                              - text: total government funding
+                              - img [ref=e608]
+                      - rowgroup [ref=e611]:
+                        - row "0 895640944RR0001 110 84,897 0.99 C 6,565,656,948 EASTERN REGIONAL INTEGRATED HEALTH AUTHORITY 4 EASTERN REGIONAL INTEGRATED HEALTH AUTHORITY 2,023 2,023 6,507,600,605" [ref=e612]:
+                          - cell "0" [ref=e613]
+                          - cell "895640944RR0001" [ref=e614]
+                          - cell "110" [ref=e615]
+                          - cell "84,897" [ref=e616]
+                          - cell "0.99" [ref=e617]
+                          - cell "C" [ref=e618]
+                          - cell "6,565,656,948" [ref=e619]
+                          - cell "EASTERN REGIONAL INTEGRATED HEALTH AUTHORITY" [ref=e620]
+                          - cell "4" [ref=e621]
+                          - cell "EASTERN REGIONAL INTEGRATED HEALTH AUTHORITY" [ref=e622]
+                          - cell "2,023" [ref=e623]
+                          - cell "2,023" [ref=e624]
+                          - cell "6,507,600,605" [ref=e625]
+                        - row "1 899073860RR0001 110 86,492 0.93 C 1,691,415,804 CENTRAL REGIONAL INTEGRATED HEALTH AUTHORITY 4 CENTRAL REGIONAL INTEGRATED HEALTH AUTHORITY 2,023 2,023 1,568,370,645" [ref=e626]:
+                          - cell "1" [ref=e627]
+                          - cell "899073860RR0001" [ref=e628]
+                          - cell "110" [ref=e629]
+                          - cell "86,492" [ref=e630]
+                          - cell "0.93" [ref=e631]
+                          - cell "C" [ref=e632]
+                          - cell "1,691,415,804" [ref=e633]
+                          - cell "CENTRAL REGIONAL INTEGRATED HEALTH AUTHORITY" [ref=e634]
+                          - cell "4" [ref=e635]
+                          - cell "CENTRAL REGIONAL INTEGRATED HEALTH AUTHORITY" [ref=e636]
+                          - cell "2,023" [ref=e637]
+                          - cell "2,023" [ref=e638]
+                          - cell "1,568,370,645" [ref=e639]
+                        - row "2 898339650RR0001 110 86,143 0.96 C 785,245,323 Labrador Grenfell Regional Integrated Health Authority 4 Labrador Grenfell Regional Integrated Health Authority 2,023 2,023 755,724,541" [ref=e640]:
+                          - cell "2" [ref=e641]
+                          - cell "898339650RR0001" [ref=e642]
+                          - cell "110" [ref=e643]
+                          - cell "86,143" [ref=e644]
+                          - cell "0.96" [ref=e645]
+                          - cell "C" [ref=e646]
+                          - cell "785,245,323" [ref=e647]
+                          - cell "Labrador Grenfell Regional Integrated Health Authority" [ref=e648]
+                          - cell "4" [ref=e649]
+                          - cell "Labrador Grenfell Regional Integrated Health Authority" [ref=e650]
+                          - cell "2,023" [ref=e651]
+                          - cell "2,023" [ref=e652]
+                          - cell "755,724,541" [ref=e653]
+                        - row "3 828601922RR0001 10 53,307 0.97 C 178,213,186 Tlicho Community Services Agency 4 TLI CHO COMMUNITY SERVICES AGENCY 2,023 2,023 173,743,477" [ref=e654]:
+                          - cell "3" [ref=e655]
+                          - cell "828601922RR0001" [ref=e656]
+                          - cell "10" [ref=e657]
+                          - cell "53,307" [ref=e658]
+                          - cell "0.97" [ref=e659]
+                          - cell "C" [ref=e660]
+                          - cell "178,213,186" [ref=e661]
+                          - cell "Tlicho Community Services Agency" [ref=e662]
+                          - cell "4" [ref=e663]
+                          - cell "TLI CHO COMMUNITY SERVICES AGENCY" [ref=e664]
+                          - cell "2,023" [ref=e665]
+                          - cell "2,023" [ref=e666]
+                          - cell "173,743,477" [ref=e667]
+                        - row "4 861550044RR0001 10 63,473 0.98 C 117,136,728 SOUTH SLAVE DIVISIONAL EDUCATION COUNCIL 4 SOUTH SLAVE DIVISIONAL EDUCATION COUNCIL 2,023 2,023 114,684,994" [ref=e668]:
+                          - cell "4" [ref=e669]
+                          - cell "861550044RR0001" [ref=e670]
+                          - cell "10" [ref=e671]
+                          - cell "63,473" [ref=e672]
+                          - cell "0.98" [ref=e673]
+                          - cell "C" [ref=e674]
+                          - cell "117,136,728" [ref=e675]
+                          - cell "SOUTH SLAVE DIVISIONAL EDUCATION COUNCIL" [ref=e676]
+                          - cell "4" [ref=e677]
+                          - cell "SOUTH SLAVE DIVISIONAL EDUCATION COUNCIL" [ref=e678]
+                          - cell "2,023" [ref=e679]
+                          - cell "2,023" [ref=e680]
+                          - cell "114,684,994" [ref=e681]
+                  - generic [ref=e682]: Answered in 0.0s
+            - generic [ref=e106]:
+              - generic [ref=e107]:
+                - text: OFFICIAL INQUIRY COMPOSER
+                - textbox "OFFICIAL INQUIRY COMPOSER" [ref=e108]:
+                  - /placeholder: ENTER INQUIRY REGARDING RECIPIENTS, PROGRAMS, OR RISK SIGNALS...
+              - button "EXECUTE" [disabled] [ref=e110]:
+                - img [ref=e683]
+                - text: EXECUTE

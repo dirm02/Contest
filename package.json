@@ -7,7 +7,12 @@
     "dev": "vite",
     "start": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview --host 127.0.0.1 --port 4173 --strictPort"
+    "preview": "vite preview --host 127.0.0.1 --port 4173 --strictPort",
+    "seed:prepare": "node scripts/prepare-project-database-seed.mjs --hardlink",
+    "seed:export-vectors": "node scripts/export-entity-vectors.mjs",
+    "docker:up": "docker compose --env-file .env.docker up --build",
+    "docker:down": "docker compose --env-file .env.docker down",
+    "docker:reset-db": "docker compose --env-file .env.docker down -v && docker compose --env-file .env.docker up --build postgres"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.2.4",

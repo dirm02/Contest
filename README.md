@@ -207,6 +207,70 @@ Maple DOGE demonstrates that a public-spending accountability app can combine:
 
 Challenge 1 is the most complete decision workflow. The other challenges are implemented as investigation modules with ranked outputs, graphs, tables, charts, source caveats, and analytical evidence ready for deeper validation.
 
+## Full Docker Deployment
+
+The deployment stack now runs the entire application from this repo:
+
+| Container | User-facing role |
+| --- | --- |
+| `web` | Serves the React app on `http://localhost:8080`, including search, dossiers, challenge pages, and `/accountability`. |
+| `dossier-api` | Serves the Node JSON API behind `/api/*`. |
+| `ship-service` | Serves the analytical conversation API behind `/ship-api/*`. |
+| `postgres` | Runs this repo's project-local Postgres/pgvector database on container port `5432` and host port `55432`. |
+
+The browser entry point is:
+
+```bash
+http://localhost:8080
+```
+
+The web container proxies `/api` to the Node dossier API and `/ship-api` to the ship analyst service, so users stay on one origin instead of juggling service ports.
+
+### Local Seed
+
+Prepare the project-local database seed from the already-loaded hackathon source repo:
+
+```bash
+node scripts/prepare-project-database-seed.mjs --source=/home/david/GitHub/hackathon2026 --hardlink
+node scripts/export-entity-vectors.mjs --source-db=postgresql://hackathon:hackathon@localhost:5432/hackathon
+```
+
+The first command places the `.local-db` importer and 13 GB dataset under `services/postgres/seed/` using hardlinks, so the data is available from this repo without duplicating disk. The second command exports `investigator.entity_embeddings` into `services/postgres/seed/entity-vectors/`.
+
+The database container refuses to initialize an empty database. It needs either:
+
+- `services/postgres/seed/hackathon.dump`, or
+- `services/postgres/seed/.local-db/data/` plus an entity-vector CSV export.
+
+### Local Runtime
+
+Secrets live in `.env.docker`, which is gitignored.
+
+```bash
+docker compose --env-file .env.docker up --build
+```
+
+Health checks:
+
+```bash
+curl http://localhost:8080/healthz
+curl http://localhost:3801/api/health
+curl http://localhost:8765/healthz
+```
+
+### GCP
+
+Full-app GCP deployment scripts live in `deploy/gcp/`.
+
+```bash
+cp deploy/gcp/env.example deploy/gcp/env
+deploy/gcp/bootstrap.sh
+deploy/gcp/load-data.sh
+deploy/gcp/build-and-deploy.sh
+```
+
+The GCP shape is Cloud Run for the three Docker services, Cloud SQL PostgreSQL 16 for the shared database, Artifact Registry for images, and Secret Manager for API keys and the database password. Cloud SQL supports the `pgvector` extension; the load script creates `vector`, `pg_trgm`, `fuzzystrmatch`, and `pgcrypto` before loading data.
+
 ## Copyright
 
 Copyright (c) From 2026-3000 dirm02. All rights reserved.

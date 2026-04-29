@@ -1,0 +1,11 @@
+node_modules/
+.env
+.env.*
+!.env.example
+*.log
+splink/data/
+data/c9-procurement/raw/
+data/c8b-policy/raw/
+data/c7-policy/raw/
+data/c1-registry/raw/
+scripts/tools/.phase-pids/

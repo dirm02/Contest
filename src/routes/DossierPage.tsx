@@ -31,13 +31,13 @@ import type { GraphNodeData } from '../api/types';
 
 function LoadingSection({ label }: { label: string }) {
   return (
-    <div className="app-card rounded-lg p-6">
+    <div className="app-card rounded-sm p-6">
       <div className="animate-pulse space-y-3">
-        <div className="h-4 w-32 rounded bg-[var(--color-border)]" />
-        <div className="h-8 w-1/2 rounded bg-[var(--color-border)]" />
-        <div className="h-40 rounded bg-[var(--color-surface-subtle)]" />
+        <div className="h-4 w-32 rounded-sm bg-[var(--color-border)]" />
+        <div className="h-8 w-1/2 rounded-sm bg-[var(--color-border)]" />
+        <div className="h-40 rounded-sm bg-[var(--color-surface-subtle)]" />
       </div>
-      <p className="mt-4 text-sm text-[var(--color-muted)]">{label}</p>
+      <p className="mt-4 text-[10px] font-black text-[var(--color-muted)] uppercase tracking-widest">{label}</p>
     </div>
   );
 }
@@ -155,10 +155,10 @@ export default function DossierPage() {
 
   if (!Number.isFinite(entityId) || entityId <= 0) {
     return (
-      <div className="app-card rounded-lg p-6">
-        <p className="section-title">Invalid entity</p>
-        <p className="mt-2 text-sm text-[var(--color-muted)]">
-          The dossier route requires a numeric entity identifier.
+      <div className="app-card rounded-sm p-8 text-center border-l-4 border-l-[var(--color-risk-high)]">
+        <p className="section-title text-[var(--color-risk-high)]">INVALID ENTITY IDENTIFIER</p>
+        <p className="mt-3 text-sm font-bold text-[var(--color-ink-strong)]">
+          The requested dossier route requires a valid numeric entity identifier.
         </p>
       </div>
     );
@@ -167,39 +167,50 @@ export default function DossierPage() {
   if (isLoading || !viewModel) {
     return (
       <section className="space-y-6">
-        <LoadingSection label="Loading entity dossier..." />
-        <LoadingSection label="Loading funding and graph data..." />
+        <LoadingSection label="INITIALIZING FORENSIC DOSSIER..." />
+        <LoadingSection label="FETCHING FUNDING PROVENANCE AND GRAPH DATA..." />
       </section>
     );
   }
 
   if (isError) {
     return (
-      <div className="app-card rounded-lg border-[var(--color-risk-high)] p-6">
-        <p className="section-title">Dossier failed to load</p>
-        <p className="mt-2 text-sm text-[var(--color-risk-high)]">
-          {errorMessage ?? 'One of the backend dossier endpoints returned an error.'}
+      <div className="app-card rounded-sm border-l-4 border-l-[var(--color-risk-high)] p-8">
+        <p className="section-title text-[var(--color-risk-high)]">DOSSIER RETRIEVAL FAILED</p>
+        <p className="mt-3 text-sm font-bold text-[var(--color-ink-strong)]">
+          {errorMessage ?? 'One or more forensic dossier endpoints returned an unrecoverable error.'}
         </p>
         <Link
-          className="btn mt-4 inline-flex rounded-md border border-transparent bg-[var(--color-accent)] px-4 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-accent-hover)]"
+          className="mt-6 inline-flex rounded-sm bg-[var(--color-accent)] px-6 py-2.5 text-[11px] font-black tracking-widest text-white uppercase hover:bg-[var(--color-accent-hover)] transition-colors"
           to="/"
         >
-          Return to search
+          RETURN TO SEARCH
         </Link>
       </div>
     );
   }
 
   return (
-    <section className="space-y-6">
-      <div className="flex items-center gap-3">
-        <Link
-          to="/"
-          className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 text-sm text-[var(--color-muted)] transition hover:bg-[var(--color-surface-subtle)]"
-        >
-          Back to search
-        </Link>
-        <span className="section-title">Entity #{viewModel.summary.id}</span>
+    <section className="space-y-8">
+      <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-4">
+        <div className="flex items-center gap-4">
+          <Link
+            to="/"
+            className="flex items-center gap-2 rounded-sm border border-[var(--color-border)] bg-white px-3 py-1.5 text-[10px] font-black text-[var(--color-muted)] uppercase tracking-widest transition hover:bg-[var(--color-surface-subtle)]"
+          >
+            ← BACK TO SEARCH
+          </Link>
+          <div className="h-4 w-px bg-[var(--color-border)]" />
+          <span className="text-[10px] font-black text-[var(--color-muted-light)] uppercase tracking-[0.2em]">
+            OFFICIAL DOSSIER #{viewModel.summary.id}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="flex size-2 rounded-full bg-[var(--color-success)] animate-pulse" />
+          <span className="text-[10px] font-black text-[var(--color-success)] uppercase tracking-widest">
+            LIVE EVIDENCE
+          </span>
+        </div>
       </div>
 
       <HeaderSummary
@@ -221,8 +232,8 @@ export default function DossierPage() {
       <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
         <div className="space-y-4">
           <div>
-            <p className="section-title">Relationship graph</p>
-            <h2 className="mt-2 text-xl font-semibold text-[var(--color-ink)]">
+            <p className="section-title">RELATIONSHIP GRAPH</p>
+            <h2 className="mt-2 text-xl font-black text-[var(--color-ink-strong)] uppercase tracking-tight">
               Direct related entities and candidate links
             </h2>
           </div>
@@ -263,4 +274,3 @@ export default function DossierPage() {
     </section>
   );
 }
-

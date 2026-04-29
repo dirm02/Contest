@@ -1,6 +1,7 @@
-import { Link, NavLink, Route, Routes } from 'react-router-dom';
+import { Link, NavLink, Route, Routes, useLocation } from 'react-router-dom';
 import {
   DatabaseZap,
+  MessageSquareText,
   Search,
   ShieldCheck,
   SlidersHorizontal,
@@ -29,110 +30,144 @@ import VendorConcentrationPage from './routes/VendorConcentrationPage';
 import ContractIntelligencePage from './routes/ContractIntelligencePage';
 import DuplicativeFundingPage from './routes/DuplicativeFundingPage';
 import PolicyAlignmentPage from './routes/PolicyAlignmentPage';
+import AccountabilityPage from './routes/AccountabilityPage';
 
 const NAV_ITEMS: Array<{ to: string; label: string; end?: boolean; Icon: typeof Search }> = [
-  { to: '/', label: 'Search', end: true, Icon: Search },
-  { to: '/investigations', label: 'Investigation Panel', Icon: SlidersHorizontal },
-  { to: '/people', label: 'People', Icon: Users },
+  { to: '/', label: 'SEARCH', end: true, Icon: Search },
+  { to: '/accountability', label: 'ANALYST', Icon: MessageSquareText },
+  { to: '/investigations', label: 'INVESTIGATION PANEL', Icon: SlidersHorizontal },
+  { to: '/people', label: 'PEOPLE', Icon: Users },
 ];
 
-const LOGO_SRC = '/Maple%20DOGE.png';
-
 export default function App() {
+  const location = useLocation();
+  const isAccountability = location.pathname.startsWith('/accountability');
+
   return (
-    <div className="app-shell">
-      <header className="sticky top-0 z-40 border-b border-[var(--color-border)] bg-[var(--color-surface)]/95 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:gap-6 lg:px-8">
-          <div className="flex items-center justify-between gap-4">
-            <Link to="/" className="flex min-w-0 items-center gap-3 text-[var(--color-ink)]">
-              <span className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-subtle)]">
-                <img
-                  src={LOGO_SRC}
-                  alt="Maple DOGE logo"
-                  className="h-full w-full object-contain"
-                />
+    <div className="app-shell bg-[var(--color-bg)]">
+      <div className="h-1.5 w-full bg-[var(--color-accent)]" />
+      
+      <header className="sticky top-0 z-40 border-b border-[var(--color-border)] bg-white shadow-sm">
+        <div className="mx-auto flex h-14 items-center justify-between px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center gap-4">
+            <Link to="/" className="flex items-center gap-2 text-[var(--color-ink-strong)]">
+              <span className="flex size-8 items-center justify-center rounded-sm bg-[var(--color-accent)] text-white font-black text-xl">
+                A
               </span>
-              <span className="truncate text-lg font-semibold">
-                Maple DOGE
-              </span>
+              <div className="flex flex-col leading-none">
+                <span className="text-sm font-black tracking-tighter uppercase">
+                  Accountability <span className="text-[var(--color-accent)]">Max</span>
+                </span>
+                <span className="text-[9px] font-bold text-[var(--color-muted)] tracking-widest uppercase">
+                  Forensic System
+                </span>
+              </div>
             </Link>
-            <a
-              href="/api/health"
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex shrink-0 items-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-surface-subtle)] px-3 py-1.5 text-xs font-medium text-[var(--color-muted)] hover:bg-white lg:hidden"
-            >
-              <ShieldCheck className="icon-sm text-[var(--color-success)]" aria-hidden="true" />
-              Data online
-            </a>
           </div>
-          <div className="flex items-center justify-between gap-3">
-            <nav className="flex flex-wrap items-center gap-1 text-sm">
-              {NAV_ITEMS.map(({ Icon, ...item }) => (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  end={item.end}
-                  className={({ isActive }) =>
-                    `interactive-surface inline-flex items-center gap-2 rounded-md px-3 py-2 font-medium ${
-                      isActive
-                        ? 'bg-[var(--color-accent)] text-white'
-                        : 'text-[var(--color-muted)] hover:bg-[var(--color-surface-subtle)] hover:text-[var(--color-ink)]'
-                    }`
-                  }
-                >
-                  <Icon className="icon-sm" aria-hidden="true" />
-                  {item.label}
-                </NavLink>
-              ))}
-            </nav>
+
+          <div className="flex items-center gap-6">
+            <div className="hidden md:flex flex-col items-end leading-none">
+              <span className="text-[10px] font-black text-[var(--color-ink-strong)] tracking-widest uppercase">
+                OFFICIAL USE ONLY
+              </span>
+              <span className="text-[9px] font-bold text-[var(--color-muted)] tracking-wider uppercase">
+                Secure Portal
+              </span>
+            </div>
             <a
               href="/api/health"
               target="_blank"
               rel="noreferrer"
-              className="hidden shrink-0 items-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-surface-subtle)] px-3 py-1.5 text-xs font-medium text-[var(--color-muted)] hover:bg-white lg:inline-flex"
+              className="flex items-center gap-2 rounded-sm border border-[var(--color-border)] bg-[var(--color-surface-subtle)] px-3 py-1 text-[10px] font-extrabold text-[var(--color-muted)] hover:bg-white"
             >
-              <DatabaseZap className="icon-sm text-[var(--color-success)]" aria-hidden="true" />
-              Data online
+              <DatabaseZap className="size-3 text-[var(--color-success)]" aria-hidden="true" />
+              SYSTEM ONLINE
             </a>
           </div>
         </div>
       </header>
 
-      <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col px-4 py-6 sm:px-6 lg:px-8">
-        <Routes>
-          <Route path="/" element={<SearchPage />} />
-          <Route path="/action-queue" element={<ActionQueuePage />} />
-          <Route path="/cases/:caseId" element={<CaseDecisionPage />} />
-          <Route path="/investigations" element={<ChallengeAtlasPage />} />
-          <Route path="/challenge-atlas" element={<ChallengeAtlasPage />} />
-          <Route path="/challenge-review" element={<ChallengeReviewPage />} />
-          <Route path="/entity/:id" element={<DossierPage />} />
-          <Route path="/governance" element={<GovernanceLandingPage />} />
-          <Route
-            path="/governance/pair/:entityA/:entityB"
-            element={<GovernancePairDetailPage />}
-          />
-          <Route path="/loops" element={<LoopsLandingPage />} />
-          <Route path="/loops/:loopId" element={<LoopDetailPage />} />
-          <Route path="/amendment-creep" element={<AmendmentCreepLandingPage />} />
-          <Route path="/amendment-creep/:caseId" element={<AmendmentCreepDetailPage />} />
-          <Route path="/media-finder" element={<MediaFinderPage />} />
-          <Route path="/zombies" element={<ZombiesLandingPage />} />
-          <Route path="/zombies/:recipientKey" element={<ZombieDetailPage />} />
-          <Route path="/ghost-capacity" element={<GhostCapacityLandingPage />} />
-          <Route
-            path="/ghost-capacity/:recipientKey"
-            element={<GhostCapacityDetailPage />}
-          />
-          <Route path="/vendor-concentration" element={<VendorConcentrationPage />} />
-          <Route path="/contract-intelligence" element={<ContractIntelligencePage />} />
-          <Route path="/policy-alignment" element={<PolicyAlignmentPage />} />
-          <Route path="/duplicative-funding" element={<DuplicativeFundingPage />} />
-          <Route path="/people" element={<PeopleSearchPage />} />
-          <Route path="/people/:personNorm" element={<PersonDetailPage />} />
-        </Routes>
-      </main>
+      <div className="flex flex-1 overflow-hidden">
+        <aside className="hidden w-64 flex-col border-r border-[var(--color-border)] bg-white lg:flex">
+          <nav className="flex-1 space-y-1 p-4">
+            <div className="mb-4 px-2">
+              <span className="text-[10px] font-black text-[var(--color-muted-light)] tracking-widest uppercase">
+                Main Navigation
+              </span>
+            </div>
+            {NAV_ITEMS.map(({ Icon, ...item }) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.end}
+                className={({ isActive }) =>
+                  `flex items-center gap-3 border-l-2 px-3 py-2.5 text-[11px] font-black tracking-wider transition-colors ${
+                    isActive
+                      ? 'border-[var(--color-accent)] bg-[var(--color-surface-subtle)] text-[var(--color-accent)]'
+                      : 'border-transparent text-[var(--color-muted)] hover:bg-[var(--color-surface-subtle)] hover:text-[var(--color-ink-strong)]'
+                  }`
+                }
+              >
+                <Icon className="size-4" aria-hidden="true" />
+                {item.label}
+              </NavLink>
+            ))}
+          </nav>
+          
+          <div className="border-t border-[var(--color-border)] p-4">
+            <div className="rounded-sm bg-[var(--color-surface-subtle)] p-3 border border-[var(--color-border-soft)]">
+              <p className="text-[9px] font-black text-[var(--color-muted)] tracking-widest uppercase mb-1">
+                Audit Posture
+              </p>
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="size-3 text-[var(--color-success)]" />
+                <span className="text-[10px] font-bold text-[var(--color-ink)] uppercase">
+                  Active Investigation
+                </span>
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        <main className="flex-1 overflow-hidden">
+          <div className={`h-full overflow-y-auto ${isAccountability ? 'w-full' : 'mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8'}`}>
+            <Routes>
+              <Route path="/" element={<SearchPage />} />
+              <Route path="/accountability" element={<AccountabilityPage />} />
+              <Route path="/accountability/:conversationId" element={<AccountabilityPage />} />
+              <Route path="/action-queue" element={<ActionQueuePage />} />
+              <Route path="/cases/:caseId" element={<CaseDecisionPage />} />
+              <Route path="/investigations" element={<ChallengeAtlasPage />} />
+              <Route path="/challenge-atlas" element={<ChallengeAtlasPage />} />
+              <Route path="/challenge-review" element={<ChallengeReviewPage />} />
+              <Route path="/entity/:id" element={<DossierPage />} />
+              <Route path="/governance" element={<GovernanceLandingPage />} />
+              <Route
+                path="/governance/pair/:entityA/:entityB"
+                element={<GovernancePairDetailPage />}
+              />
+              <Route path="/loops" element={<LoopsLandingPage />} />
+              <Route path="/loops/:loopId" element={<LoopDetailPage />} />
+              <Route path="/amendment-creep" element={<AmendmentCreepLandingPage />} />
+              <Route path="/amendment-creep/:caseId" element={<AmendmentCreepDetailPage />} />
+              <Route path="/media-finder" element={<MediaFinderPage />} />
+              <Route path="/zombies" element={<ZombiesLandingPage />} />
+              <Route path="/zombies/:recipientKey" element={<ZombieDetailPage />} />
+              <Route path="/ghost-capacity" element={<GhostCapacityLandingPage />} />
+              <Route
+                path="/ghost-capacity/:recipientKey"
+                element={<GhostCapacityDetailPage />}
+              />
+              <Route path="/vendor-concentration" element={<VendorConcentrationPage />} />
+              <Route path="/contract-intelligence" element={<ContractIntelligencePage />} />
+              <Route path="/policy-alignment" element={<PolicyAlignmentPage />} />
+              <Route path="/duplicative-funding" element={<DuplicativeFundingPage />} />
+              <Route path="/people" element={<PeopleSearchPage />} />
+              <Route path="/people/:personNorm" element={<PersonDetailPage />} />
+            </Routes>
+          </div>
+        </main>
+      </div>
     </div>
   );
 }

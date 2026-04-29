@@ -73,9 +73,23 @@ const apiCache = new Map();
 const BIGQUERY_PROJECT_ID = process.env.GOOGLE_CLOUD_PROJECT || process.env.GCLOUD_PROJECT || 'my-project-45978-resume';
 const BIGQUERY_DATASET = process.env.BIGQUERY_DATASET || 'accountibilitymax_raw';
 const BIGQUERY_LOCATION = process.env.BIGQUERY_LOCATION || 'northamerica-northeast1';
+const BIGQUERY_TABLE_LAYOUT = process.env.BIGQUERY_TABLE_LAYOUT || 'flat';
+const BIGQUERY_SPLIT_TABLES = {
+  fed_grants_contributions: ['fed', 'grants_contributions'],
+  ab_ab_contracts: ['ab', 'ab_contracts'],
+  ab_ab_sole_source: ['ab', 'ab_sole_source'],
+  ab_ab_non_profit: ['ab', 'ab_non_profit'],
+  cra_loops: ['cra', 'loops'],
+  cra_loop_edges: ['cra', 'loop_edges'],
+  cra_loop_participants: ['cra', 'loop_participants'],
+  cra_loop_universe: ['cra', 'loop_universe'],
+  cra_loop_financials: ['cra', 'loop_financials'],
+  cra_cra_directors: ['cra', 'cra_directors'],
+  general_entity_golden_records: ['general', 'entity_golden_records'],
+  general_entity_source_links: ['general', 'entity_source_links'],
+};
 const USE_BIGQUERY_CLIENT = process.env.USE_BIGQUERY_CLIENT === 'true'
   || Boolean(process.env.GOOGLE_APPLICATION_CREDENTIALS);
-const DECISION_DB_CONNECTION_STRING = process.env.DECISION_DB_CONNECTION_STRING || '';
 const DECISION_DB_SSL = process.env.DECISION_DB_SSL === 'true';
 const BQ_CLI_PATH = process.env.BQ_CLI_PATH || (
   process.platform === 'win32'
@@ -85,6 +99,62 @@ const BQ_CLI_PATH = process.env.BQ_CLI_PATH || (
 const bigQueryClient = BigQuery && USE_BIGQUERY_CLIENT
   ? new BigQuery({ projectId: BIGQUERY_PROJECT_ID, location: BIGQUERY_LOCATION })
   : null;
+
+function encodeConnectionPart(value) {
+  return encodeURIComponent(value);
+}
+
+function buildDatabaseUrlFromEnv() {
+  const user = process.env.DB_USER;
+  const password = process.env.DB_PASSWORD;
+  const database = process.env.DB_NAME;
+  if (!user || !password || !database) return '';
+
+  const encodedUser = encodeConnectionPart(user);
+  const encodedPassword = encodeConnectionPart(password);
+
+  if (process.env.CLOUD_SQL_CONNECTION_NAME) {
+    return `postgresql://${encodedUser}:${encodedPassword}@/${database}?host=/cloudsql/${process.env.CLOUD_SQL_CONNECTION_NAME}`;
+  }
+
+  if (process.env.DB_HOST) {
+    const port = process.env.DB_PORT || '5432';
+    return `postgresql://${encodedUser}:${encodedPassword}@${process.env.DB_HOST}:${port}/${database}`;
+  }
+
+  return '';
+}
+
+const DECISION_DB_CONNECTION_STRING = process.env.DECISION_DB_CONNECTION_STRING || buildDatabaseUrlFromEnv();
+
+function bigQueryTableParts(logicalTable) {
+  const splitParts = BIGQUERY_TABLE_LAYOUT === 'split'
+    ? BIGQUERY_SPLIT_TABLES[logicalTable]
+    : null;
+  if (splitParts) {
+    return {
+      project: BIGQUERY_PROJECT_ID,
+      dataset: splitParts[0],
+      table: splitParts[1],
+    };
+  }
+  return {
+    project: BIGQUERY_PROJECT_ID,
+    dataset: BIGQUERY_DATASET,
+    table: logicalTable,
+  };
+}
+
+function bigQueryTable(logicalTable) {
+  const parts = bigQueryTableParts(logicalTable);
+  return `\`${parts.project}.${parts.dataset}.${parts.table}\``;
+}
+
+function bigQueryCliTableSpec(logicalTable) {
+  const parts = bigQueryTableParts(logicalTable);
+  return `${parts.project}:${parts.dataset}.${parts.table}`;
+}
+
 const decisionPool = DECISION_DB_CONNECTION_STRING
   ? new Pool({
     connectionString: DECISION_DB_CONNECTION_STRING,
@@ -1671,7 +1741,7 @@ async function fetchActionQueueChallenge1(limit) {
   const limitSql = parseActionQueueLimit(limit, 100, 200);
   const sql = `
     SELECT *
-    FROM \`my-project-45978-resume.accountibilitymax_raw.challenge1_zombie_recipients_v2\`
+    FROM ${bigQueryTable('challenge1_zombie_recipients_v2')}
     WHERE match_method = 'bn_root_registry_match'
     ORDER BY challenge1_score DESC, total_funding_value DESC, last_funding_date ASC, recipient_name ASC
     LIMIT ${limitSql}
@@ -2488,6 +2558,7 @@ async function runBqCliJson(cliArgs) {
 
 async function runBigQueryCli(sql) {
   return runBqCliJson([
+    `--project_id=${BIGQUERY_PROJECT_ID}`,
     `--location=${BIGQUERY_LOCATION}`,
     '--format=json',
     'query',
@@ -2498,11 +2569,12 @@ async function runBigQueryCli(sql) {
 }
 
 async function getBigQueryTableRowCount(table) {
+  const parts = bigQueryTableParts(table);
   if (bigQueryClient) {
     try {
       const [metadata] = await bigQueryClient
-        .dataset(BIGQUERY_DATASET)
-        .table(table)
+        .dataset(parts.dataset)
+        .table(parts.table)
         .getMetadata();
       return Number(metadata.numRows || 0);
     } catch {
@@ -2510,9 +2582,10 @@ async function getBigQueryTableRowCount(table) {
     }
   }
   const metadata = await runBqCliJson([
+    `--project_id=${BIGQUERY_PROJECT_ID}`,
     '--format=json',
     'show',
-    `${BIGQUERY_PROJECT_ID}:${BIGQUERY_DATASET}.${table}`,
+    bigQueryCliTableSpec(table),
   ]);
   return Number(metadata.numRows || 0);
 }
@@ -2533,7 +2606,7 @@ async function getBigQuerySourceCounts() {
   ];
   const query = tables
     .map(([label, table]) => (
-      `SELECT '${label}' AS source, COUNT(*) AS row_count FROM ${BIGQUERY_DATASET}.${table}`
+      `SELECT '${label}' AS source, COUNT(*) AS row_count FROM ${bigQueryTable(table)}`
     ))
     .join(' UNION ALL ');
   let rows;
@@ -2766,7 +2839,7 @@ async function compareRecipientChallenge(kind) {
           agreement_start_date,
           amendment_date,
           COALESCE(is_amendment, FALSE) AS is_amendment
-        FROM ${BIGQUERY_DATASET}.fed_grants_contributions
+        FROM ${bigQueryTable('fed_grants_contributions')}
         WHERE recipient_legal_name IS NOT NULL
           AND TRIM(recipient_legal_name) <> ''
           AND COALESCE(CAST(agreement_value AS NUMERIC), 0) > 0
@@ -2827,7 +2900,7 @@ async function compareRecipientChallenge(kind) {
           owner_org,
           CAST(agreement_value AS NUMERIC) AS agreement_value,
           COALESCE(is_amendment, FALSE) AS is_amendment
-        FROM ${BIGQUERY_DATASET}.fed_grants_contributions
+        FROM ${bigQueryTable('fed_grants_contributions')}
         WHERE recipient_legal_name IS NOT NULL
           AND TRIM(recipient_legal_name) <> ''
           AND COALESCE(CAST(agreement_value AS NUMERIC), 0) > 0
@@ -2945,7 +3018,7 @@ async function compareLoopsChallenge() {
   const bqSql = `
     WITH participants AS (
       SELECT loop_id, COUNT(*) AS participant_count
-      FROM ${BIGQUERY_DATASET}.cra_loop_participants
+      FROM ${bigQueryTable('cra_loop_participants')}
       GROUP BY loop_id
     ),
     scored AS (
@@ -2975,8 +3048,8 @@ async function compareLoopsChallenge() {
           + LEAST(l.hops, 6)
           + LEAST(COALESCE(p.participant_count, ARRAY_LENGTH(l.path_bns), 0), 6)
         ) AS score
-      FROM ${BIGQUERY_DATASET}.cra_loops l
-      LEFT JOIN ${BIGQUERY_DATASET}.cra_loop_financials lf ON lf.loop_id = l.id
+      FROM ${bigQueryTable('cra_loops')} l
+      LEFT JOIN ${bigQueryTable('cra_loop_financials')} lf ON lf.loop_id = l.id
       LEFT JOIN participants p ON p.loop_id = l.id
     )
     SELECT *
@@ -3004,7 +3077,7 @@ const BIGQUERY_AMENDMENT_CREEP_SQL = `
     SELECT *,
            COALESCE(recipient_business_number, recipient_legal_name, CAST(_id AS STRING)) AS agreement_party_key,
            SAFE_CAST(REGEXP_REPLACE(COALESCE(amendment_number, ''), r'\\D', '') AS INT64) AS amend_no
-    FROM ${BIGQUERY_DATASET}.fed_grants_contributions
+    FROM ${bigQueryTable('fed_grants_contributions')}
     WHERE ref_number IS NOT NULL AND agreement_value IS NOT NULL
   ),
   fed_originals AS (
@@ -3068,7 +3141,7 @@ const BIGQUERY_AMENDMENT_CREEP_SQL = `
            MIN(recipient) AS label,
            SUM(amount) AS competitive_total,
            COUNT(*) AS competitive_count
-    FROM ${BIGQUERY_DATASET}.ab_ab_contracts
+    FROM ${bigQueryTable('ab_ab_contracts')}
     WHERE recipient IS NOT NULL AND amount > 0
     GROUP BY vendor_key
   ),
@@ -3077,7 +3150,7 @@ const BIGQUERY_AMENDMENT_CREEP_SQL = `
            SUM(amount) AS sole_total,
            COUNT(*) AS sole_source_count,
            COUNTIF(permitted_situations = 'z') AS nonstandard_count
-    FROM ${BIGQUERY_DATASET}.ab_ab_sole_source
+    FROM ${bigQueryTable('ab_ab_sole_source')}
     WHERE vendor IS NOT NULL AND amount > 0
     GROUP BY vendor_key
   ),
@@ -3175,7 +3248,7 @@ async function compareGovernanceChallenge() {
         UPPER(REGEXP_REPLACE(TRIM(CONCAT(COALESCE(first_name, ''), ' ', COALESCE(last_name, ''))), r'\\s+', ' ')) AS label,
         SUBSTR(COALESCE(CAST(bn AS STRING), ''), 1, 9) AS bn_root,
         COALESCE(at_arms_length, FALSE) AS at_arms_length
-      FROM ${BIGQUERY_DATASET}.cra_cra_directors
+      FROM ${bigQueryTable('cra_cra_directors')}
       WHERE bn IS NOT NULL
         AND LENGTH(CAST(bn AS STRING)) >= 9
         AND COALESCE(TRIM(first_name), '') <> ''
@@ -4334,7 +4407,7 @@ app.get('/api/zombies', async (req, res) => {
         SELECT
           *,
           COUNT(*) OVER() AS total_rows
-        FROM \`my-project-45978-resume.accountibilitymax_raw.challenge1_zombie_recipients_v2\`
+        FROM ${bigQueryTable('challenge1_zombie_recipients_v2')}
         WHERE total_funding_value >= ${minTotalValueSql}
           AND ${signalTypeFilterSql}
           AND ${confidenceLevelFilterSql}
@@ -4358,7 +4431,7 @@ app.get('/api/zombies', async (req, res) => {
         COUNTIF(match_method = 'bn_root_registry_match') AS registry_backed_count,
         COUNTIF(signal_type = 'no_bn_funding_disappearance_review') AS no_bn_fallback_count,
         COUNTIF(signal_type = 'post_inactive_funding') AS post_status_funding_count
-      FROM \`my-project-45978-resume.accountibilitymax_raw.challenge1_zombie_recipients_v2\`
+      FROM ${bigQueryTable('challenge1_zombie_recipients_v2')}
       WHERE total_funding_value >= ${minTotalValueSql}
         AND ${signalTypeFilterSql}
         AND ${confidenceLevelFilterSql}
@@ -4418,7 +4491,7 @@ app.get('/api/zombies/:recipientKey', async (req, res) => {
 
     const summarySql = `
       SELECT *
-      FROM \`my-project-45978-resume.accountibilitymax_raw.challenge1_zombie_recipients_v2\`
+      FROM ${bigQueryTable('challenge1_zombie_recipients_v2')}
       WHERE recipient_key = ${bigQueryStringLiteral(recipientKey)}
       ORDER BY challenge1_score DESC, total_funding_value DESC
       LIMIT 1
@@ -6269,7 +6342,7 @@ fed_latest AS (
         PARTITION BY agreement_number
         ORDER BY COALESCE(amendment_date, agreement_start_date) DESC, _id DESC
       ) AS rn
-    FROM \`my-project-45978-resume.accountibilitymax_raw.fed_grants_contributions\`
+    FROM ${bigQueryTable('fed_grants_contributions')}
     WHERE agreement_number IS NOT NULL
       AND agreement_value IS NOT NULL
       AND agreement_value > 0
@@ -6287,7 +6360,7 @@ ab_sole_source AS (
     CONCAT('vendor:', LOWER(TRIM(vendor))) AS entity_key,
     vendor AS entity_name,
     CAST(amount AS FLOAT64) AS dollars
-  FROM \`my-project-45978-resume.accountibilitymax_raw.ab_ab_sole_source\`
+  FROM ${bigQueryTable('ab_ab_sole_source')}
   WHERE amount IS NOT NULL
     AND amount > 0
     AND start_date BETWEEN TIMESTAMP('2018-01-01') AND TIMESTAMP('2024-12-31')
@@ -6677,7 +6750,7 @@ SELECT
   max_year_observed,
   years_present,
   end_vendor_count
-FROM ${BIGQUERY_DATASET}.c9_procurement_grade_v1
+FROM ${bigQueryTable('c9_procurement_grade_v1')}
 ORDER BY delta_total_value DESC, end_total_value DESC
 `;
 
@@ -6835,7 +6908,7 @@ SELECT
   why_flagged,
   caveats,
   normalized_alignment_gap_score
-FROM ${BIGQUERY_DATASET}.challenge7_policy_alignment_v1
+FROM ${bigQueryTable('challenge7_policy_alignment_v1')}
 ORDER BY
   CASE confidence_level WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END,
   CASE review_tier WHEN 'HIGH_REVIEW' THEN 1 WHEN 'MEDIUM_REVIEW' THEN 2 ELSE 3 END,
@@ -7060,7 +7133,7 @@ SELECT
   why_flagged,
   caveats,
   source_grade
-FROM ${BIGQUERY_DATASET}.challenge8a_overlap_v1
+FROM ${bigQueryTable('challenge8a_overlap_v1')}
 ORDER BY
   CASE review_tier WHEN 'HIGH_REVIEW' THEN 1 WHEN 'MEDIUM_REVIEW' THEN 2 ELSE 3 END,
   overlap_score DESC,
@@ -7096,7 +7169,7 @@ SELECT
   case_type,
   confidence_level,
   gap_score
-FROM ${BIGQUERY_DATASET}.challenge8b_gap_review_v1
+FROM ${bigQueryTable('challenge8b_gap_review_v1')}
 ORDER BY
   CASE confidence_level WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END,
   CASE review_tier WHEN 'HIGH_REVIEW' THEN 1 WHEN 'MEDIUM_REVIEW' THEN 2 ELSE 3 END,

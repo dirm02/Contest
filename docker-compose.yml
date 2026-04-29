@@ -1,0 +1,102 @@
+services:
+  postgres:
+    build:
+      context: ./services/postgres
+      dockerfile: Dockerfile
+    env_file:
+      - ./.env.docker
+    environment:
+      POSTGRES_DB: hackathon
+      POSTGRES_USER: hackathon
+      POSTGRES_PASSWORD: hackathon
+      PGDATA: /var/lib/postgresql/data/pgdata
+      PG_RESTORE_JOBS: "4"
+      JSONL_BATCH_SIZE: "5000"
+      REQUIRE_VECTOR_SEED: "1"
+      BUILD_VECTOR_INDEXES: "1"
+    ports:
+      - "127.0.0.1:55432:5432"
+    volumes:
+      - contest-postgres-data:/var/lib/postgresql/data
+      - ./services/postgres/seed:/docker-entrypoint-initdb.d/seed:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hackathon -d hackathon"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  dossier-api:
+    build:
+      context: ./backend/general
+      dockerfile: Dockerfile
+    env_file:
+      - ./.env.docker
+    environment:
+      PORT: "3801"
+      DB_CONNECTION_STRING: postgresql://hackathon:hackathon@postgres:5432/hackathon
+      DB_POOL_MAX: "25"
+      DECISION_DB_CONNECTION_STRING: postgresql://hackathon:hackathon@postgres:5432/hackathon
+      DECISION_DB_POOL_MAX: "5"
+      GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT:-agency2026ot-data-1776775157}
+      BIGQUERY_DATASET: ${BIGQUERY_DATASET:-agency_hackathon_data}
+      BIGQUERY_LOCATION: ${BIGQUERY_LOCATION:-northamerica-northeast1}
+      BIGQUERY_TABLE_LAYOUT: ${BIGQUERY_TABLE_LAYOUT:-split}
+    ports:
+      - "127.0.0.1:3801:3801"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3801/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+
+  ship-service:
+    build:
+      context: ./services/ship
+      dockerfile: Dockerfile
+    env_file:
+      - ./.env.docker
+    environment:
+      DATABASE_URL: postgresql://hackathon:hackathon@postgres:5432/hackathon
+      PORT: "8765"
+      SHIP_API_PORT: "8765"
+      PRIMARY_MODEL: ${PRIMARY_MODEL:-gpt-5.5}
+      FAST_MODEL: ${FAST_MODEL:-gpt-5.5}
+    ports:
+      - "127.0.0.1:8765:8765"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python - <<'PY'\nimport urllib.request, sys\ntry:\n    urllib.request.urlopen('http://127.0.0.1:8765/healthz', timeout=5)\nexcept Exception:\n    sys.exit(1)\nPY"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_SHIP_API_BASE_URL: /ship-api
+    environment:
+      DOSSIER_API_URL: http://dossier-api:3801
+      SHIP_API_URL: http://ship-service:8765
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      dossier-api:
+        condition: service_healthy
+      ship-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/healthz >/dev/null"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  contest-postgres-data:

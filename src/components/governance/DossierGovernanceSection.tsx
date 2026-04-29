@@ -33,10 +33,10 @@ export default function DossierGovernanceSection({
 
   if (isError) {
     return (
-      <div className="app-card rounded-2xl border-[var(--color-risk-high)] p-6">
-        <p className="section-title">People &amp; Governance unavailable</p>
-        <p className="mt-2 text-sm text-[var(--color-risk-high)]">
-          {errorMessage ?? 'Governance endpoint returned an error.'}
+      <div className="app-card rounded-sm border-l-4 border-l-[var(--color-risk-high)] p-6">
+        <p className="section-title text-[var(--color-risk-high)]">Governance Data Unavailable</p>
+        <p className="mt-2 text-sm font-bold text-[var(--color-ink-strong)]">
+          {errorMessage ?? 'The governance telemetry endpoint returned an error.'}
         </p>
       </div>
     );
@@ -45,59 +45,61 @@ export default function DossierGovernanceSection({
   const topConnectors = rows.filter((row) => row.otherLinkedEntityCount > 0).slice(0, 6);
 
   return (
-    <section className="app-card rounded-2xl p-5 sm:p-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <section className="app-card rounded-sm p-6 sm:p-8">
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[var(--color-border)] pb-6 mb-6">
         <div>
           <p className="section-title">People &amp; Governance</p>
-          <h2 className="mt-2 text-xl font-semibold text-[var(--color-ink)]">
-            {rows.length} directors linked to this entity
+          <h2 className="mt-2 text-xl font-black text-[var(--color-ink-strong)] uppercase tracking-tight">
+            {rows.length} Directors Linked to Record
           </h2>
-          <p className="mt-1 text-sm text-[var(--color-muted)]">
-            Normalized CRA director filings. People connected to other funded entities are highlighted.
+          <p className="mt-2 text-sm font-medium text-[var(--color-muted)] leading-relaxed max-w-2xl">
+            Normalized CRA director filings. Connectors to other funded entities are highlighted for forensic review.
           </p>
         </div>
         <Link
           to={`/governance`}
-          className="rounded-xl border border-[var(--color-border)] bg-white/80 px-3 py-1.5 text-sm text-[var(--color-muted)] transition hover:bg-white"
+          className="rounded-sm border border-[var(--color-border)] bg-white px-4 py-2 text-[10px] font-black text-[var(--color-muted)] uppercase tracking-widest transition hover:bg-[var(--color-surface-subtle)] shadow-sm"
         >
-          Open governance lens
+          Open Governance Lens
         </Link>
       </div>
 
       {rows.length === 0 ? (
-        <p className="mt-4 text-sm text-[var(--color-muted)]">
-          No CRA director filings were surfaced for this entity.
-        </p>
+        <div className="rounded-sm border border-dashed border-[var(--color-border)] p-8 text-center bg-[var(--color-surface-subtle)]">
+          <p className="text-sm font-bold text-[var(--color-muted)] uppercase tracking-wider">
+            No CRA director filings were surfaced for this entity.
+          </p>
+        </div>
       ) : (
         <>
           {topConnectors.length > 0 && (
-            <div className="mt-4">
-              <p className="section-title">Cross-entity connectors</p>
-              <div className="mt-2 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="mb-8">
+              <p className="section-title mb-4">Cross-Entity Connectors</p>
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 {topConnectors.map((person) => (
                   <article
                     key={person.personNameNorm}
-                    className="rounded-2xl border border-[var(--color-border)] bg-white/80 p-4"
+                    className="rounded-sm border border-[var(--color-border-soft)] bg-[var(--color-surface-subtle)] p-5 border-l-4 border-l-[var(--color-accent)]"
                   >
                     <Link
                       to={`/people/${encodeURIComponent(person.personNameNorm)}`}
-                      className="font-semibold text-[var(--color-ink)] hover:underline"
+                      className="text-[15px] font-black text-[var(--color-ink-strong)] uppercase tracking-tight hover:text-[var(--color-accent)] transition-colors"
                     >
                       {person.personNameDisplay}
                     </Link>
-                    <p className="mt-1 text-xs text-[var(--color-muted)]">
+                    <p className="mt-1 text-[10px] font-black text-[var(--color-muted)] uppercase tracking-widest">
                       {person.firstYearSeen && person.lastYearSeen
                         ? `${person.firstYearSeen}–${person.lastYearSeen}`
-                        : 'Unknown span'}{' '}
-                      · {person.activeYearCount} filing year{person.activeYearCount === 1 ? '' : 's'}
+                        : 'UNKNOWN SPAN'}{' '}
+                      · {person.activeYearCount} FILING YEAR{person.activeYearCount === 1 ? '' : 'S'}
                     </p>
-                    <p className="mt-2 text-xs font-medium text-[var(--color-accent)]">
-                      Also linked to {person.otherLinkedEntityCount} other funded{' '}
-                      {person.otherLinkedEntityCount === 1 ? 'entity' : 'entities'}
+                    <p className="mt-3 text-[11px] font-black text-[var(--color-accent)] uppercase tracking-tighter">
+                      LINKED TO {person.otherLinkedEntityCount} OTHER FUNDED{' '}
+                      {person.otherLinkedEntityCount === 1 ? 'ENTITY' : 'ENTITIES'}
                     </p>
                     {person.everNonArmsLength && (
-                      <span className="mt-2 inline-flex rounded-full px-2.5 py-1 text-[11px] font-medium signal-badge-medium">
-                        Non-arms-length signal
+                      <span className="mt-3 inline-flex rounded-sm px-2 py-0.5 text-[9px] font-black uppercase tracking-widest border border-[var(--color-risk-medium)] text-[var(--color-risk-medium)] bg-[var(--color-risk-medium-soft)]">
+                        Non-Arms-Length Signal
                       </span>
                     )}
                   </article>
@@ -106,28 +108,28 @@ export default function DossierGovernanceSection({
             </div>
           )}
 
-          <details className="mt-5 group">
-            <summary className="cursor-pointer text-sm text-[var(--color-muted)] group-open:text-[var(--color-ink)]">
-              View all directors ({rows.length})
+          <details className="group border border-[var(--color-border)] rounded-sm overflow-hidden">
+            <summary className="cursor-pointer bg-[var(--color-surface-subtle)] px-4 py-2.5 text-[10px] font-black text-[var(--color-muted)] uppercase tracking-widest hover:bg-white transition-colors">
+              VIEW ALL DIRECTORS ({rows.length})
             </summary>
-            <ul className="mt-3 divide-y divide-[var(--color-border)]">
+            <ul className="divide-y divide-[var(--color-border-soft)] bg-white">
               {rows.map((person) => (
                 <li
                   key={person.personNameNorm}
-                  className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm"
+                  className="flex flex-wrap items-center justify-between gap-4 px-4 py-2.5 hover:bg-[var(--color-surface-subtle)] transition-colors"
                 >
                   <Link
                     to={`/people/${encodeURIComponent(person.personNameNorm)}`}
-                    className="text-[var(--color-ink)] hover:underline"
+                    className="text-[13px] font-bold text-[var(--color-ink-strong)] uppercase tracking-tight hover:text-[var(--color-accent)]"
                   >
                     {person.personNameDisplay}
                   </Link>
-                  <span className="text-xs text-[var(--color-muted)]">
+                  <span className="text-[10px] font-bold text-[var(--color-muted)] uppercase tracking-widest">
                     {person.firstYearSeen && person.lastYearSeen
                       ? `${person.firstYearSeen}–${person.lastYearSeen}`
                       : '—'}
                     {person.otherLinkedEntityCount > 0
-                      ? ` · ${person.otherLinkedEntityCount} other funded entit${person.otherLinkedEntityCount === 1 ? 'y' : 'ies'}`
+                      ? ` · ${person.otherLinkedEntityCount} CONNECTS`
                       : ''}
                   </span>
                 </li>
@@ -137,9 +139,10 @@ export default function DossierGovernanceSection({
         </>
       )}
 
-      <p className="mt-4 text-xs text-[var(--color-muted)]">
-        Entity #{entityId} · Connected through CRA director filings
-      </p>
+      <div className="mt-8 pt-4 border-t border-[var(--color-border-soft)] flex items-center justify-between text-[9px] font-bold text-[var(--color-muted)] uppercase tracking-[0.2em]">
+        <span>Entity Identifier: #{entityId}</span>
+        <span>Source: CRA Director Filings</span>
+      </div>
     </section>
   );
 }

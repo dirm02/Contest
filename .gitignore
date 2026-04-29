@@ -27,6 +27,10 @@ dist-ssr
 deploy-bundle.zip
 dist-upload.zip
 .local-secrets/
+.env
+.env.*
+!.env.example
+!.env.*.example
 
 # Backend runtime state inside the monorepo
 backend/**/node_modules/
@@ -51,3 +55,38 @@ backend/general/data/c1-registry/raw/
 backend/.local-db/data/
 backend/.local-db/node_modules/
 backend/.local-db/.env
+
+# Ship analyst backend local state and large data seeds
+services/ship/.env
+services/ship/.env.*
+!services/ship/.env.example
+services/ship/.venv/
+services/ship/.pytest_cache/
+services/ship/.ruff_cache/
+services/ship/**/*.pyc
+services/ship/**/__pycache__/
+services/ship/seed/*.dump
+services/ship/seed/*.sql
+services/ship/seed/*.sql.gz
+services/ship/seed/dataset/
+services/ship/seed/.local-db/data
+services/ship/seed/.local-db/data/
+services/ship/seed/.local-db/node_modules/
+services/ship/seed/.local-db/.env
+services/ship/deploy/gcp/env
+
+# Full-app Postgres seed/runtime files. These are large and/or secret-bearing.
+services/postgres/seed/*.dump
+services/postgres/seed/*.sql
+services/postgres/seed/*.sql.gz
+services/postgres/seed/.local-db/.env
+services/postgres/seed/.local-db/data/
+services/postgres/seed/.local-db/node_modules/
+services/postgres/seed/entity-vectors/*.csv
+services/postgres/seed/entity-vectors/*.csv.gz
+services/postgres/seed/entity-vectors/*.sha256
+services/postgres/seed/entity-vectors/*.manifest.json
+services/postgres/**/*.log
+
+# GCP deployment local operator env
+deploy/gcp/env

@@ -13,28 +13,28 @@ export default function SearchBar({
 }: SearchBarProps) {
   return (
     <form
-      className="app-card rounded-2xl p-4 sm:p-5"
+      className="app-card rounded-sm p-4 sm:p-5"
       onSubmit={(event) => {
         event.preventDefault();
         onSubmit();
       }}
     >
-      <label className="section-title mb-3 block">Search organization</label>
+      <label className="section-title mb-4 block">Official Recipient Inquiry</label>
       <div className="flex flex-col gap-3 sm:flex-row">
         <input
-          className="input flex-1 rounded-xl border border-[var(--color-border)] bg-white px-4 py-3 text-sm text-[var(--color-ink)] shadow-none outline-none"
+          className="flex-1 rounded-sm border border-[var(--color-border)] bg-white px-4 py-3 text-sm font-medium text-[var(--color-ink)] shadow-none outline-none focus:border-[var(--color-accent)] focus:ring-1 focus:ring-[var(--color-accent)]"
           type="search"
           value={value}
           onChange={(event) => onChange(event.target.value)}
-          placeholder="Search by canonical name, alias, or BN root"
+          placeholder="ENTER CANONICAL NAME, ALIAS, OR BUSINESS NUMBER..."
           aria-label="Search organization"
         />
         <button
-          className="btn rounded-xl border border-transparent bg-[var(--color-accent)] px-5 py-3 text-sm font-medium text-white hover:opacity-90"
+          className="rounded-sm bg-[var(--color-accent)] px-8 py-3 text-[11px] font-black tracking-[0.2em] text-white uppercase hover:bg-[var(--color-accent-hover)] transition-colors disabled:opacity-50"
           type="submit"
           disabled={isLoading}
         >
-          {isLoading ? 'Searching…' : 'Search'}
+          {isLoading ? 'PROCESSING...' : 'EXECUTE INQUIRY'}
         </button>
       </div>
     </form>

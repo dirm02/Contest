@@ -1,0 +1,28 @@
+[project]
+name = "contest-ship-service"
+version = "0.1.0"
+description = "Portable FastAPI backend for the Maple DOGE ship analyst."
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "asyncpg>=0.30.0,<0.31",
+    "fastapi>=0.115.0,<0.116",
+    "httpx>=0.28.0,<0.29",
+    "openai>=1.76.0",
+    "openai-agents>=0.14.6",
+    "pydantic>=2.11.0,<3",
+    "pydantic-settings>=2.8.0,<3",
+    "uvicorn[standard]>=0.34.0,<0.35",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.26.0",
+    "ruff>=0.8.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+asyncio_mode = "auto"
+testpaths = ["output/ship/tests"]
+

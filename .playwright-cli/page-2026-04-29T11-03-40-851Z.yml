@@ -1,0 +1,420 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - link "Maple DOGE logo Maple DOGE" [ref=e7] [cursor=pointer]:
+        - /url: /
+        - img "Maple DOGE logo" [ref=e9]
+        - generic [ref=e10]: Maple DOGE
+      - generic [ref=e11]:
+        - navigation [ref=e12]:
+          - link "Search" [ref=e13] [cursor=pointer]:
+            - /url: /
+            - img [ref=e14]
+            - text: Search
+          - link "Investigation Panel" [ref=e17] [cursor=pointer]:
+            - /url: /investigations
+            - img [ref=e18]
+            - text: Investigation Panel
+          - link "People" [ref=e19] [cursor=pointer]:
+            - /url: /people
+            - img [ref=e20]
+            - text: People
+        - link "Data online" [ref=e25] [cursor=pointer]:
+          - /url: /api/health
+          - img [ref=e26]
+          - text: Data online
+  - main [ref=e31]:
+    - generic [ref=e32]:
+      - generic [ref=e33]:
+        - generic [ref=e34]:
+          - paragraph [ref=e35]: Investigation Panel
+          - heading "Challenge watchlists, dossiers, and evidence trails" [level=1] [ref=e36]
+          - paragraph [ref=e37]: The challenges are related views of the same accountability graph. Use this page to move from entity risk, to money movement, to procurement, without adding more buttons to the header.
+        - generic [ref=e38]:
+          - generic [ref=e39]:
+            - paragraph [ref=e40]:
+              - img [ref=e41]
+              - text: Live
+            - paragraph [ref=e44]: "10"
+          - generic [ref=e45]:
+            - paragraph [ref=e46]:
+              - img [ref=e47]
+              - text: Review
+            - paragraph [ref=e49]: "0"
+          - generic [ref=e50]:
+            - paragraph [ref=e51]:
+              - img [ref=e52]
+              - text: Next
+            - paragraph [ref=e55]: "0"
+      - generic [ref=e56]:
+        - article [ref=e57]:
+          - generic [ref=e58]:
+            - img [ref=e60]
+            - heading "Start with an entity" [level=2] [ref=e63]
+          - paragraph [ref=e64]: Search a company, nonprofit, charity, person, or vendor, then open the dossier to see funding, graph context, media, and challenge signals together.
+          - link "Search dossiers" [ref=e65] [cursor=pointer]:
+            - /url: /
+            - text: Search dossiers
+            - img [ref=e66]
+        - article [ref=e68]:
+          - generic [ref=e69]:
+            - img [ref=e71]
+            - heading "Scan investigations" [level=2] [ref=e72]
+          - paragraph [ref=e73]: Use the challenge cards as entry points into ranked watchlists, graphs, tables, and case detail pages.
+          - link "View hub" [ref=e74] [cursor=pointer]:
+            - /url: "#challenge-cards"
+            - text: View hub
+            - img [ref=e75]
+        - article [ref=e77]:
+          - generic [ref=e78]:
+            - img [ref=e80]
+            - heading "Validate analytics" [level=2] [ref=e84]
+          - paragraph [ref=e85]: Keep BigQuery/Postgres comparison checks separate from the main user journey while we verify solved challenges.
+          - link "Open review" [ref=e86] [cursor=pointer]:
+            - /url: /challenge-review
+            - text: Open review
+            - img [ref=e87]
+      - generic [ref=e89]:
+        - generic [ref=e90]:
+          - paragraph [ref=e91]: Cross-challenge logic
+          - heading "Same entity, multiple reasons to investigate" [level=2] [ref=e92]
+          - paragraph [ref=e93]: The strongest cases are not isolated. A recipient can appear as a zombie risk, share a governance network, sit inside a funding loop, receive amended contracts, and carry adverse media signals. The dossier is where those signals should converge.
+          - generic [ref=e94]:
+            - generic [ref=e95]:
+              - strong [ref=e96]: "Entity risk:"
+              - text: challenges 1, 2, and 6 explain identity, capacity, and control.
+            - generic [ref=e97]:
+              - strong [ref=e98]: "Money flow:"
+              - text: challenges 3, 4, 5, and 9 explain how public dollars move and concentrate.
+            - generic [ref=e99]:
+              - strong [ref=e100]: "Policy context:"
+              - text: challenges 7, 8, and 10 explain whether spending matches priorities and external risk.
+        - generic [ref=e101]:
+          - generic [ref=e102]:
+            - generic [ref=e103]:
+              - paragraph [ref=e104]:
+                - img [ref=e105]
+                - text: External source register
+              - heading "Official data behind the live challenges" [level=2] [ref=e108]
+            - generic [ref=e109]: Scroll
+          - paragraph [ref=e110]: Sources are grouped by challenge and quoted as review inputs. They explain where the evidence comes from, not a final finding by themselves.
+          - generic [ref=e111]:
+            - generic [ref=e112]:
+              - paragraph [ref=e113]: Challenge 1
+              - heading "Zombie Recipients" [level=3] [ref=e114]
+              - generic [ref=e115]:
+                - link "Federal Corporations open dataset Corporation status, names, business numbers, and registry metadata used for BN-root matching." [ref=e116] [cursor=pointer]:
+                  - /url: https://open.canada.ca/data/en/dataset/0032ce54-c5dd-4b66-99a0-320a7b5e99f2
+                  - generic [ref=e117]:
+                    - text: Federal Corporations open dataset
+                    - img [ref=e118]
+                  - generic [ref=e122]: Corporation status, names, business numbers, and registry metadata used for BN-root matching.
+                - link "Corporations Canada status definitions Explains status labels such as dissolved, discontinued, amalgamated, and pending status changes." [ref=e123] [cursor=pointer]:
+                  - /url: https://ised-isde.canada.ca/site/corporations-canada/en/glossary-terms
+                  - generic [ref=e124]:
+                    - text: Corporations Canada status definitions
+                    - img [ref=e125]
+                  - generic [ref=e129]: Explains status labels such as dissolved, discontinued, amalgamated, and pending status changes.
+                - link "Canada's Business Registries Federated search context for business registry status across participating jurisdictions." [ref=e130] [cursor=pointer]:
+                  - /url: https://ised-isde.canada.ca/cbr-rec/
+                  - generic [ref=e131]:
+                    - text: Canada's Business Registries
+                    - img [ref=e132]
+                  - generic [ref=e136]: Federated search context for business registry status across participating jurisdictions.
+            - generic [ref=e137]:
+              - paragraph [ref=e138]: Challenge 7
+              - heading "Policy Misalignment" [level=3] [ref=e139]
+              - generic [ref=e140]:
+                - link "GC InfoBase plans and results Structured planned spending, actual spending, and performance-result context." [ref=e141] [cursor=pointer]:
+                  - /url: https://www.tbs-sct.canada.ca/ems-sgd/edb-bdd/index-eng.html
+                  - generic [ref=e142]:
+                    - text: GC InfoBase plans and results
+                    - img [ref=e143]
+                  - generic [ref=e147]: Structured planned spending, actual spending, and performance-result context.
+                - link "Departmental Plans / Results open data Official program-level planning and reporting source used for review-queue comparisons." [ref=e148] [cursor=pointer]:
+                  - /url: https://open.canada.ca/data/en/dataset/b15ee8d7-2ac0-4656-8330-6c60d085cda8
+                  - generic [ref=e149]:
+                    - text: Departmental Plans / Results open data
+                    - img [ref=e150]
+                  - generic [ref=e154]: Official program-level planning and reporting source used for review-queue comparisons.
+                - link "CMHC housing starts data Housing context used conservatively where policy rows relate to starts and completions." [ref=e155] [cursor=pointer]:
+                  - /url: https://open.canada.ca/data/en/dataset/d0e77820-0bd2-4fcd-9098-17fb3283ae12
+                  - generic [ref=e156]:
+                    - text: CMHC housing starts data
+                    - img [ref=e157]
+                  - generic [ref=e161]: Housing context used conservatively where policy rows relate to starts and completions.
+            - generic [ref=e162]:
+              - paragraph [ref=e163]: Challenge 8
+              - heading "Duplicative Funding & Gaps" [level=3] [ref=e164]
+              - generic [ref=e165]:
+                - link "Infrastructure Canada projects Project, transfer, and forecast records used for delay and allocation review queues." [ref=e166] [cursor=pointer]:
+                  - /url: https://open.canada.ca/data/en/dataset/f348614b-7ccf-4d05-a11f-5974b6c5a44f
+                  - generic [ref=e167]:
+                    - text: Infrastructure Canada projects
+                    - img [ref=e168]
+                  - generic [ref=e172]: Project, transfer, and forecast records used for delay and allocation review queues.
+                - link "GC InfoBase Government-wide program spending and results used to compare planned and observed activity." [ref=e173] [cursor=pointer]:
+                  - /url: https://www.canada.ca/GCInfoBase
+                  - generic [ref=e174]:
+                    - text: GC InfoBase
+                    - img [ref=e175]
+                  - generic [ref=e179]: Government-wide program spending and results used to compare planned and observed activity.
+            - generic [ref=e180]:
+              - paragraph [ref=e181]: Challenge 9
+              - heading "Contract Intelligence" [level=3] [ref=e182]
+              - generic [ref=e183]:
+                - link "Contracts over $10K Federal contract disclosure baseline for procurement-grade growth and concentration analysis." [ref=e184] [cursor=pointer]:
+                  - /url: https://open.canada.ca/data/en/dataset/d8f85d91-7dec-4fd1-8055-483b77225d8b
+                  - generic [ref=e185]:
+                    - text: Contracts over $10K
+                    - img [ref=e186]
+                  - generic [ref=e190]: Federal contract disclosure baseline for procurement-grade growth and concentration analysis.
+                - link "CanadaBuys Award Notices Award notices and procurement lifecycle context for future enrichment." [ref=e191] [cursor=pointer]:
+                  - /url: https://open.canada.ca/data/en/dataset/a1acb126-9ce8-40a9-b889-5da2b1dd20cb
+                  - generic [ref=e192]:
+                    - text: CanadaBuys Award Notices
+                    - img [ref=e193]
+                  - generic [ref=e197]: Award notices and procurement lifecycle context for future enrichment.
+                - link "Standing Offers and Supply Arrangements Supplier-framework context for standing-offer share and competition interpretation." [ref=e198] [cursor=pointer]:
+                  - /url: https://open.canada.ca/data/en/dataset/f5c8a5a0-354d-455a-99ab-8276aa38032e
+                  - generic [ref=e199]:
+                    - text: Standing Offers and Supply Arrangements
+                    - img [ref=e200]
+                  - generic [ref=e204]: Supplier-framework context for standing-offer share and competition interpretation.
+            - generic [ref=e205]:
+              - paragraph [ref=e206]: Challenge 10
+              - heading "Adverse Media" [level=3] [ref=e207]
+              - generic [ref=e208]:
+                - link "Google News RSS RSS headline scan used with explicit warning states when a source fails." [ref=e209] [cursor=pointer]:
+                  - /url: https://news.google.com/rss
+                  - generic [ref=e210]:
+                    - text: Google News RSS
+                    - img [ref=e211]
+                  - generic [ref=e215]: RSS headline scan used with explicit warning states when a source fails.
+                - link "NewsAPI Secondary media source for deduped adverse-media review signals." [ref=e216] [cursor=pointer]:
+                  - /url: https://newsapi.org/
+                  - generic [ref=e217]:
+                    - text: NewsAPI
+                    - img [ref=e218]
+                  - generic [ref=e222]: Secondary media source for deduped adverse-media review signals.
+      - generic [ref=e223]:
+        - article [ref=e224]:
+          - generic [ref=e225]:
+            - generic [ref=e226]: Challenge 1
+            - generic [ref=e227]:
+              - img [ref=e228]
+              - text: Live
+          - generic [ref=e231]:
+            - img [ref=e232]
+            - generic [ref=e235]: Entity risk
+          - heading "Zombie Recipients" [level=2] [ref=e236]
+          - paragraph [ref=e237]: Which funded recipients disappear, dissolve, or stop showing signs of life after public money arrives?
+          - generic [ref=e238]:
+            - paragraph [ref=e239]:
+              - img [ref=e240]
+              - text: Evidence
+            - paragraph [ref=e244]: Federal grants, Corporations Canada registry status, BN-root matching, post-status funding, and low-confidence fallback labels.
+          - generic [ref=e246]:
+            - link "Open module" [ref=e247] [cursor=pointer]:
+              - /url: /zombies
+              - text: Open module
+              - img [ref=e248]
+            - link "Action queue" [ref=e250] [cursor=pointer]:
+              - /url: /action-queue?challenge=1
+              - text: Action queue
+              - img [ref=e251]
+        - article [ref=e255]:
+          - generic [ref=e256]:
+            - generic [ref=e257]: Challenge 2
+            - generic [ref=e258]:
+              - img [ref=e259]
+              - text: Live
+          - generic [ref=e262]:
+            - img [ref=e263]
+            - generic [ref=e266]: Entity risk
+          - heading "Ghost Capacity" [level=2] [ref=e267]
+          - paragraph [ref=e268]: Which organizations receive funding despite weak signs of operational capacity?
+          - generic [ref=e269]:
+            - paragraph [ref=e270]:
+              - img [ref=e271]
+              - text: Evidence
+            - paragraph [ref=e275]: No-BN signals, sparse awards, high average award value, multi-department patterns.
+          - generic [ref=e277]:
+            - link "Open module" [ref=e278] [cursor=pointer]:
+              - /url: /ghost-capacity
+              - text: Open module
+              - img [ref=e279]
+            - link "Action queue" [ref=e281] [cursor=pointer]:
+              - /url: /action-queue?challenge=2
+              - text: Action queue
+              - img [ref=e282]
+        - article [ref=e286]:
+          - generic [ref=e287]:
+            - generic [ref=e288]: Challenge 3
+            - generic [ref=e289]:
+              - img [ref=e290]
+              - text: Live
+          - generic [ref=e293]:
+            - img [ref=e294]
+            - generic [ref=e299]: Money movement
+          - heading "Funding Loops" [level=2] [ref=e300]
+          - paragraph [ref=e301]: Where do funds circulate through charity or transfer networks instead of reaching a clear endpoint?
+          - generic [ref=e302]:
+            - paragraph [ref=e303]:
+              - img [ref=e304]
+              - text: Evidence
+            - paragraph [ref=e308]: CRA loop tables, participants, edges, hop count, bottleneck, total flow.
+          - generic [ref=e310]:
+            - link "Open module" [ref=e311] [cursor=pointer]:
+              - /url: /loops
+              - text: Open module
+              - img [ref=e312]
+            - link "Action queue" [ref=e314] [cursor=pointer]:
+              - /url: /action-queue?challenge=3
+              - text: Action queue
+              - img [ref=e315]
+        - article [ref=e319]:
+          - generic [ref=e320]:
+            - generic [ref=e321]: Challenge 4
+            - generic [ref=e322]:
+              - img [ref=e323]
+              - text: Live
+          - generic [ref=e326]:
+            - img [ref=e327]
+            - generic [ref=e331]: Procurement
+          - heading "Sole Source & Amendment Creep" [level=2] [ref=e332]
+          - paragraph [ref=e333]: Which relationships started small or competitive and then grew through amendments or sole-source work?
+          - generic [ref=e334]:
+            - paragraph [ref=e335]:
+              - img [ref=e336]
+              - text: Evidence
+            - paragraph [ref=e340]: Federal original/current values, Alberta competitive contracts, Alberta sole-source follow-ons.
+          - generic [ref=e342]:
+            - link "Open module" [ref=e343] [cursor=pointer]:
+              - /url: /amendment-creep
+              - text: Open module
+              - img [ref=e344]
+            - link "Action queue" [ref=e346] [cursor=pointer]:
+              - /url: /action-queue?challenge=4
+              - text: Action queue
+              - img [ref=e347]
+        - article [ref=e351]:
+          - generic [ref=e352]:
+            - generic [ref=e353]: Challenge 5
+            - generic [ref=e354]:
+              - img [ref=e355]
+              - text: Live
+          - generic [ref=e358]:
+            - img [ref=e359]
+            - generic [ref=e363]: Market structure
+          - heading "Vendor Concentration" [level=2] [ref=e364]
+          - paragraph [ref=e365]: Where has competition narrowed to one supplier or a small supplier group?
+          - generic [ref=e366]:
+            - paragraph [ref=e367]:
+              - img [ref=e368]
+              - text: Evidence
+            - paragraph [ref=e372]: HHI, CR4, top share, effective competitors, top entities, source, department, and category.
+          - link "Open module" [ref=e375] [cursor=pointer]:
+            - /url: /vendor-concentration
+            - text: Open module
+            - img [ref=e376]
+        - article [ref=e378]:
+          - generic [ref=e379]:
+            - generic [ref=e380]: Challenge 6
+            - generic [ref=e381]:
+              - img [ref=e382]
+              - text: Live
+          - generic [ref=e385]:
+            - img [ref=e386]
+            - generic [ref=e389]: Entity risk
+          - heading "Governance Networks" [level=2] [ref=e390]
+          - paragraph [ref=e391]: Which funded organizations are connected through shared directors, officers, or control relationships?
+          - generic [ref=e392]:
+            - paragraph [ref=e393]:
+              - img [ref=e394]
+              - text: Evidence
+            - paragraph [ref=e398]: Director normalization, entity pairs, linked funding totals, non-arm-length flags.
+          - link "Open module" [ref=e401] [cursor=pointer]:
+            - /url: /governance
+            - text: Open module
+            - img [ref=e402]
+        - article [ref=e404]:
+          - generic [ref=e405]:
+            - generic [ref=e406]: Challenge 7
+            - generic [ref=e407]:
+              - img [ref=e408]
+              - text: Live
+          - generic [ref=e411]:
+            - img [ref=e412]
+            - generic [ref=e417]: Policy fit
+          - heading "Policy Misalignment" [level=2] [ref=e418]
+          - paragraph [ref=e419]: Does actual spending match the priorities governments say they are funding?
+          - generic [ref=e420]:
+            - paragraph [ref=e421]:
+              - img [ref=e422]
+              - text: Evidence
+            - paragraph [ref=e426]: GC InfoBase plans/results, mandate commitments, CMHC housing context, PHAC health indicators, Infrastructure Canada projects.
+          - link "Open module" [ref=e429] [cursor=pointer]:
+            - /url: /policy-alignment
+            - text: Open module
+            - img [ref=e430]
+        - article [ref=e432]:
+          - generic [ref=e433]:
+            - generic [ref=e434]: Challenge 8
+            - generic [ref=e435]:
+              - img [ref=e436]
+              - text: Live
+          - generic [ref=e439]:
+            - img [ref=e440]
+            - generic [ref=e445]: Policy fit
+          - heading "Duplicative Funding & Gaps" [level=2] [ref=e446]
+          - paragraph [ref=e447]: Which organizations receive overlapping public streams, and where do priority plans, projects, or targets need gap review?
+          - generic [ref=e448]:
+            - paragraph [ref=e449]:
+              - img [ref=e450]
+              - text: Evidence
+            - paragraph [ref=e454]: Federal, Alberta, and CRA funding overlap; GC InfoBase plans/results; Infrastructure Canada projects and transfer allocations.
+          - link "Open module" [ref=e457] [cursor=pointer]:
+            - /url: /duplicative-funding
+            - text: Open module
+            - img [ref=e458]
+        - article [ref=e460]:
+          - generic [ref=e461]:
+            - generic [ref=e462]: Challenge 9
+            - generic [ref=e463]:
+              - img [ref=e464]
+              - text: Live
+          - generic [ref=e467]:
+            - img [ref=e468]
+            - generic [ref=e472]: Procurement
+          - heading "Contract Intelligence" [level=2] [ref=e473]
+          - paragraph [ref=e474]: What is Canada buying, and is procurement spending rising because of contract count, average contract value, amendments, or concentration?
+          - generic [ref=e475]:
+            - paragraph [ref=e476]:
+              - img [ref=e477]
+              - text: Evidence
+            - paragraph [ref=e481]: Contracts over $10K, CanadaBuys award/history context, SOSA context, Bennett decomposition, HHI, CR4, top vendor share.
+          - link "Open module" [ref=e484] [cursor=pointer]:
+            - /url: /contract-intelligence
+            - text: Open module
+            - img [ref=e485]
+        - article [ref=e487]:
+          - generic [ref=e488]:
+            - generic [ref=e489]: Challenge 10
+            - generic [ref=e490]:
+              - img [ref=e491]
+              - text: Live
+          - generic [ref=e494]:
+            - img [ref=e495]
+            - generic [ref=e497]: External signals
+          - heading "Adverse Media" [level=2] [ref=e498]
+          - paragraph [ref=e499]: Which funded organizations have serious adverse news or enforcement signals?
+          - generic [ref=e500]:
+            - paragraph [ref=e501]:
+              - img [ref=e502]
+              - text: Evidence
+            - paragraph [ref=e506]: Google News RSS, NewsAPI, source warnings, deduped headlines, dossier media counts.
+          - link "Open module" [ref=e509] [cursor=pointer]:
+            - /url: /media-finder
+            - text: Open module
+            - img [ref=e510]

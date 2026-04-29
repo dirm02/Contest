@@ -7,50 +7,58 @@ interface GraphFocusPanelProps {
 
 export default function GraphFocusPanel({ node, onOpenEntity }: GraphFocusPanelProps) {
   return (
-    <aside className="app-card rounded-2xl p-5">
-      <p className="section-title">Graph focus</p>
+    <aside className="app-card rounded-sm p-6 bg-white shadow-md">
+      <p className="section-title mb-6">Graph Inspection Focus</p>
       {!node ? (
-        <div className="mt-4 rounded-2xl border border-dashed border-[var(--color-border)] bg-white/70 p-4 text-sm text-[var(--color-muted)]">
-          Click a node in the relationship graph to inspect its metadata and jump to that entity dossier.
+        <div className="rounded-sm border border-dashed border-[var(--color-border)] bg-[var(--color-surface-subtle)] p-6 text-center">
+          <p className="text-[10px] font-black text-[var(--color-muted)] uppercase tracking-widest leading-relaxed">
+            SELECT A NODE IN THE RELATIONSHIP GRAPH TO RETRIEVE METADATA AND SOURCE ATTRIBUTION.
+          </p>
         </div>
       ) : (
-        <div className="mt-4 space-y-4">
-          <div>
-            <h3 className="text-lg font-semibold text-[var(--color-ink)]">{node.label}</h3>
-            <p className="mt-1 text-sm text-[var(--color-muted)]">BN root: {node.bnRoot ?? 'Unavailable'}</p>
+        <div className="space-y-6">
+          <div className="border-b border-[var(--color-border-soft)] pb-4">
+            <h3 className="text-xl font-black text-[var(--color-ink-strong)] uppercase tracking-tighter leading-tight">{node.label}</h3>
+            <p className="mt-2 text-[10px] font-black text-[var(--color-muted)] uppercase tracking-widest">
+              BN ROOT: {node.bnRoot ?? 'UNAVAILABLE'}
+            </p>
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <span className="dataset-badge rounded-full px-2.5 py-1 text-xs font-medium">
-              {node.relation}
+            <span className="dataset-badge bg-[var(--color-accent)] text-white border-[var(--color-accent)]">
+              {node.relation.toUpperCase()}
             </span>
             {node.datasets.map((dataset) => (
               <span
                 key={dataset}
-                className="dataset-badge rounded-full px-2.5 py-1 text-xs font-medium"
+                className="dataset-badge"
               >
-                {dataset}
+                {dataset.toUpperCase()}
               </span>
             ))}
           </div>
 
-          <ul className="space-y-2 text-sm text-[var(--color-ink)]">
-            {node.meta.map((item) => (
-              <li key={item} className="rounded-xl bg-white/70 px-3 py-2">
-                {item}
-              </li>
-            ))}
-          </ul>
+          <div className="space-y-2">
+            <p className="section-title">METADATA SEGMENTS</p>
+            <ul className="space-y-1.5">
+              {node.meta.map((item) => (
+                <li key={item} className="rounded-sm border border-[var(--color-border-soft)] bg-[var(--color-surface-subtle)] px-3 py-2 text-[11px] font-bold text-[var(--color-ink)] uppercase tracking-tight">
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
 
           <button
-            className="btn w-full rounded-xl border border-transparent bg-[var(--color-accent)] px-4 py-2.5 text-sm font-medium text-white hover:opacity-90"
+            className="w-full rounded-sm bg-[var(--color-accent)] px-4 py-3 text-[11px] font-black tracking-[0.2em] text-white uppercase hover:bg-[var(--color-accent-hover)] transition-colors shadow-sm"
             onClick={() => onOpenEntity(node.entityId)}
             type="button"
           >
-            Open this dossier
+            EXECUTE DOSSIER JUMP
           </button>
         </div>
       )}
     </aside>
   );
 }
+

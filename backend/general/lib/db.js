@@ -14,11 +14,35 @@ if (fs.existsSync(adminEnv)) {
 
 const { Pool } = require('pg');
 
-const connString = process.env.DB_CONNECTION_STRING || '';
+function encodeConnectionPart(value) {
+  return encodeURIComponent(value);
+}
+
+function buildDatabaseUrlFromEnv() {
+  const user = process.env.DB_USER;
+  const password = process.env.DB_PASSWORD;
+  const database = process.env.DB_NAME;
+  if (!user || !password || !database) return '';
+
+  const encodedUser = encodeConnectionPart(user);
+  const encodedPassword = encodeConnectionPart(password);
+
+  if (process.env.CLOUD_SQL_CONNECTION_NAME) {
+    return `postgresql://${encodedUser}:${encodedPassword}@/${database}?host=/cloudsql/${process.env.CLOUD_SQL_CONNECTION_NAME}`;
+  }
+
+  if (process.env.DB_HOST) {
+    const port = process.env.DB_PORT || '5432';
+    return `postgresql://${encodedUser}:${encodedPassword}@${process.env.DB_HOST}:${port}/${database}`;
+  }
+
+  return '';
+}
+
+const connString = process.env.DB_CONNECTION_STRING || buildDatabaseUrlFromEnv();
 if (!connString) {
   console.error(
-    'No DB_CONNECTION_STRING found. Create general/.env or general/.env.public ' +
-      '(see general/.env.example) or set the variable in your shell before starting the server.',
+    'No database connection found. Set DB_CONNECTION_STRING, or set DB_USER, DB_PASSWORD, DB_NAME, and either CLOUD_SQL_CONNECTION_NAME or DB_HOST.',
   );
   process.exit(1);
 }

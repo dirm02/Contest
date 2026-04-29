@@ -1,0 +1,68 @@
+substitutions:
+  _REGION: us-central1
+  _REPOSITORY: ship
+  _SERVICE_NAME: ship-service
+  _INSTANCE: ship-postgres
+  _DB_NAME: hackathon
+  _DB_USER: hackathon
+  _RUNTIME_SA: ship-service
+  _OPENAI_SECRET_NAME: openai-api-key
+  _CANLII_SECRET_NAME: canlii-api-key
+  _DB_PASSWORD_SECRET: ship-db-password
+
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -t
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/ship-service:$SHORT_SHA
+      - .
+
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/ship-service:$SHORT_SHA
+
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - ${_SERVICE_NAME}
+      - --image
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/ship-service:$SHORT_SHA
+      - --region
+      - ${_REGION}
+      - --platform
+      - managed
+      - --service-account
+      - ${_RUNTIME_SA}@$PROJECT_ID.iam.gserviceaccount.com
+      - --add-cloudsql-instances
+      - $PROJECT_ID:${_REGION}:${_INSTANCE}
+      - --memory
+      - 2Gi
+      - --cpu
+      - "2"
+      - --concurrency
+      - "8"
+      - --timeout
+      - 300s
+      - --min-instances
+      - "0"
+      - --max-instances
+      - "10"
+      - --execution-environment
+      - gen2
+      - --cpu-boost
+      - --allow-unauthenticated
+      - --set-env-vars
+      - PORT=8080,DB_USER=${_DB_USER},DB_NAME=${_DB_NAME},CLOUD_SQL_CONNECTION_NAME=$PROJECT_ID:${_REGION}:${_INSTANCE},PRIMARY_MODEL=gpt-5.5,FAST_MODEL=gpt-5.5,SHIP_PROMPT_CACHE_RETENTION=24h
+      - --set-secrets
+      - OPENAI_API_KEY=${_OPENAI_SECRET_NAME}:latest,CANLII_API_KEY=${_CANLII_SECRET_NAME}:latest,DB_PASSWORD=${_DB_PASSWORD_SECRET}:latest
+
+images:
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/ship-service:$SHORT_SHA
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+

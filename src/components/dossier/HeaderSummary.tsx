@@ -22,58 +22,47 @@ function RiskMeter({ signals }: { signals: SignalCard[] }) {
     }, 0),
     100,
   );
-  const rotation = (score / 100) * 180 - 90;
   const label =
-    score >= 80 ? 'Very high' : score >= 60 ? 'High' : score >= 40 ? 'Moderate' : score >= 20 ? 'Low' : 'Very low';
+    score >= 80 ? 'Critical' : score >= 60 ? 'High' : score >= 40 ? 'Moderate' : score >= 20 ? 'Low' : 'Nominal';
   const labelClass =
     score >= 80
       ? 'text-[var(--color-risk-high)]'
       : score >= 60
-        ? 'text-orange-600'
+        ? 'text-[var(--color-risk-high)]'
         : score >= 40
-          ? 'text-yellow-600'
-          : 'text-green-700';
+          ? 'text-[var(--color-risk-medium)]'
+          : 'text-[var(--color-risk-low)]';
 
   return (
-    <div className="flex min-w-[190px] flex-col items-center justify-center rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-subtle)] p-4">
-      <div className="relative h-24 w-48 overflow-hidden">
+    <div className="flex min-w-[200px] flex-col items-center justify-center rounded-sm border border-[var(--color-border)] bg-[var(--color-surface-subtle)] p-5">
+      <p className="section-title mb-4">Risk Posture</p>
+      <div className="relative h-20 w-40 overflow-hidden">
         <svg viewBox="0 0 100 50" className="h-full w-full" aria-hidden="true">
-          <defs>
-            <linearGradient id="risk-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#059669" />
-              <stop offset="25%" stopColor="#84cc16" />
-              <stop offset="50%" stopColor="#eab308" />
-              <stop offset="75%" stopColor="#f97316" />
-              <stop offset="100%" stopColor="#ef4444" />
-            </linearGradient>
-          </defs>
           <path
             d="M 10 50 A 40 40 0 0 1 90 50"
             fill="none"
             stroke="var(--color-border)"
-            strokeWidth="12"
-            strokeLinecap="round"
-            className="opacity-20"
+            strokeWidth="10"
+            strokeLinecap="square"
+            className="opacity-40"
           />
           <path
             d="M 10 50 A 40 40 0 0 1 90 50"
             fill="none"
-            stroke="url(#risk-gradient)"
-            strokeWidth="12"
-            strokeLinecap="round"
+            stroke="var(--color-accent)"
+            strokeWidth="10"
+            strokeLinecap="square"
+            strokeDasharray={`${(score / 100) * 125} 125`}
+            className="transition-[stroke-dasharray] duration-1000"
           />
         </svg>
-        <div
-          className="absolute bottom-0 left-1/2 h-20 w-1 origin-bottom bg-[var(--color-ink)] transition-transform duration-700"
-          style={{ transform: `translateX(-50%) rotate(${rotation}deg)` }}
-        >
-          <div className="absolute -top-1 left-1/2 h-3 w-3 -translate-x-1/2 rounded-full bg-[var(--color-ink)]" />
+        <div className="absolute inset-0 flex flex-col items-center justify-end pb-1">
+          <span className="text-xl font-black text-[var(--color-ink-strong)]">{score}</span>
+          <span className="text-[8px] font-black text-[var(--color-muted)] uppercase tracking-widest">Index</span>
         </div>
-        <div className="absolute bottom-0 left-1/2 h-4 w-4 -translate-x-1/2 translate-y-1/2 rounded-full border-2 border-white bg-[var(--color-ink)] shadow-sm" />
       </div>
-      <div className="mt-2 text-center">
-        <p className={`text-xs font-semibold uppercase tracking-[0.16em] ${labelClass}`}>{label}</p>
-        <p className="mt-1 text-[11px] font-medium text-[var(--color-muted)]">Risk score {score}</p>
+      <div className="mt-4 text-center">
+        <p className={`text-[10px] font-black uppercase tracking-[0.2em] ${labelClass}`}>{label}</p>
       </div>
     </div>
   );
@@ -91,28 +80,33 @@ export default function HeaderSummary({
   isAmendmentCreepError = false,
 }: HeaderSummaryProps) {
   const adverseMediaValue = isAdverseMediaError
-    ? '!'
+    ? 'ERR'
     : isAdverseMediaLoading || adverseMediaCount == null
       ? '...'
       : adverseMediaCount;
   const amendmentCreepValue = isAmendmentCreepError
-    ? '!'
+    ? 'ERR'
     : isAmendmentCreepLoading || amendmentCreepCount == null
       ? '...'
       : amendmentCreepCount;
 
   return (
-    <section className="app-card rounded-lg p-6 sm:p-7">
-      <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-        <div className="flex flex-1 flex-col gap-6 sm:flex-row sm:items-start sm:justify-between lg:justify-start lg:gap-10">
-          <div className="space-y-3">
-            <p className="section-title">Entity dossier</p>
+    <section className="app-card rounded-sm p-6 sm:p-8">
+      <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex flex-1 flex-col gap-8 sm:flex-row sm:items-start sm:justify-between lg:justify-start lg:gap-12">
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <p className="section-title">Verified Entity Record</p>
+              <span className="text-[10px] font-bold text-[var(--color-success)] bg-[var(--color-success-soft)] px-1.5 py-0.5 border border-[var(--color-success)] rounded-sm uppercase tracking-tighter">
+                Grounded
+              </span>
+            </div>
             <div>
-              <h1 className="text-2xl font-semibold text-[var(--color-ink)] sm:text-4xl">
+              <h1 className="text-3xl font-black text-[var(--color-ink-strong)] sm:text-5xl uppercase tracking-tighter">
                 {summary.canonicalName}
               </h1>
-              <p className="mt-2 text-sm text-[var(--color-muted)]">
-                BN root: {summary.bnRoot ?? 'Unavailable'}
+              <p className="mt-2 text-[11px] font-black text-[var(--color-muted)] uppercase tracking-widest">
+                BN ROOT IDENTIFIER: {summary.bnRoot ?? 'UNAVAILABLE'}
               </p>
             </div>
 
@@ -121,14 +115,14 @@ export default function HeaderSummary({
                 summary.datasets.map((dataset) => (
                   <span
                     key={dataset}
-                    className="dataset-badge rounded-full px-2.5 py-1 text-xs font-medium"
+                    className="dataset-badge"
                   >
                     {dataset}
                   </span>
                 ))
               ) : (
-                <span className="dataset-badge rounded-full px-2.5 py-1 text-xs font-medium">
-                  No dataset tag
+                <span className="dataset-badge opacity-50">
+                  NO DATASET TAG
                 </span>
               )}
             </div>
@@ -137,23 +131,23 @@ export default function HeaderSummary({
           <RiskMeter signals={signals} />
         </div>
 
-        <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:w-[480px] lg:grid-cols-3">
-          <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-subtle)] p-4">
-            <dt className="section-title">Aliases</dt>
-            <dd className="metric-value mt-2 text-2xl">{summary.aliasCount}</dd>
+        <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:w-[520px] lg:grid-cols-3">
+          <div className="rounded-sm border border-[var(--color-border)] bg-[var(--color-surface-subtle)] p-4">
+            <dt className="section-title mb-2">Aliases</dt>
+            <dd className="metric-value">{summary.aliasCount}</dd>
           </div>
-          <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-subtle)] p-4">
-            <dt className="section-title">Related</dt>
-            <dd className="metric-value mt-2 text-2xl">{summary.relatedCount}</dd>
+          <div className="rounded-sm border border-[var(--color-border)] bg-[var(--color-surface-subtle)] p-4">
+            <dt className="section-title mb-2">Related</dt>
+            <dd className="metric-value">{summary.relatedCount}</dd>
           </div>
-          <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-subtle)] p-4">
-            <dt className="section-title">Source links</dt>
-            <dd className="metric-value mt-2 text-2xl">{summary.linkCount}</dd>
+          <div className="rounded-sm border border-[var(--color-border)] bg-[var(--color-surface-subtle)] p-4">
+            <dt className="section-title mb-2">Links</dt>
+            <dd className="metric-value">{summary.linkCount}</dd>
           </div>
-          <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-subtle)] p-4">
-            <dt className="section-title">Adverse news</dt>
+          <div className="rounded-sm border border-[var(--color-border)] bg-[var(--color-surface-subtle)] p-4">
+            <dt className="section-title mb-2">Adverse News</dt>
             <dd
-              className={`metric-value mt-2 text-2xl ${
+              className={`metric-value ${
                 isAdverseMediaError ? 'text-[var(--color-risk-high)]' : ''
               }`}
               title={isAdverseMediaError ? 'Adverse media scan failed' : undefined}
@@ -161,10 +155,10 @@ export default function HeaderSummary({
               {adverseMediaValue}
             </dd>
           </div>
-          <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-subtle)] p-4">
-            <dt className="section-title">Amendment creep</dt>
+          <div className="rounded-sm border border-[var(--color-border)] bg-[var(--color-surface-subtle)] p-4">
+            <dt className="section-title mb-2">Amend Creep</dt>
             <dd
-              className={`metric-value mt-2 text-2xl ${
+              className={`metric-value ${
                 isAmendmentCreepError || (amendmentCreepMaxScore ?? 0) >= 70
                   ? 'text-[var(--color-risk-high)]'
                   : ''
@@ -174,8 +168,8 @@ export default function HeaderSummary({
               {amendmentCreepValue}
             </dd>
             {amendmentCreepMaxScore != null && !isAmendmentCreepError ? (
-              <p className="mt-1 text-[11px] text-[var(--color-muted)]">
-                Max score {amendmentCreepMaxScore}
+              <p className="mt-1 text-[9px] font-black text-[var(--color-muted)] uppercase tracking-widest">
+                Max Score {amendmentCreepMaxScore}
               </p>
             ) : null}
           </div>

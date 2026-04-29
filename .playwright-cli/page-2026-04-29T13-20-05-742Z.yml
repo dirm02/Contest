@@ -1,0 +1,220 @@
+- generic [ref=e3]:
+  - banner [ref=e5]:
+    - generic [ref=e6]:
+      - link "A Accountability Max Forensic System" [ref=e8] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e9]: A
+        - generic [ref=e10]:
+          - generic [ref=e11]: Accountability Max
+          - generic [ref=e12]: Forensic System
+      - generic [ref=e13]:
+        - generic [ref=e14]:
+          - generic [ref=e15]: OFFICIAL USE ONLY
+          - generic [ref=e16]: Secure Portal
+        - link "SYSTEM ONLINE" [ref=e17] [cursor=pointer]:
+          - /url: /api/health
+          - img [ref=e18]
+          - text: SYSTEM ONLINE
+  - generic [ref=e23]:
+    - complementary [ref=e24]:
+      - navigation [ref=e25]:
+        - generic [ref=e26]: Main Navigation
+        - link "SEARCH" [ref=e27] [cursor=pointer]:
+          - /url: /
+          - img [ref=e28]
+          - text: SEARCH
+        - link "ANALYST" [ref=e31] [cursor=pointer]:
+          - /url: /accountability
+          - img [ref=e32]
+          - text: ANALYST
+        - link "INVESTIGATION PANEL" [ref=e34] [cursor=pointer]:
+          - /url: /investigations
+          - img [ref=e35]
+          - text: INVESTIGATION PANEL
+        - link "PEOPLE" [ref=e36] [cursor=pointer]:
+          - /url: /people
+          - img [ref=e37]
+          - text: PEOPLE
+      - generic [ref=e43]:
+        - paragraph [ref=e44]: Audit Posture
+        - generic [ref=e45]:
+          - img [ref=e46]
+          - generic [ref=e49]: Active Investigation
+    - main [ref=e50]:
+      - generic [ref=e52]:
+        - generic [ref=e53]:
+          - generic [ref=e54]:
+            - heading "Accountability Analyst" [level=1] [ref=e55]
+            - paragraph [ref=e56]: Analytical Question Service · Grounded Investigation
+          - generic [ref=e57]:
+            - img [ref=e58]
+            - text: SHIP ONLINE
+        - generic [ref=e65]:
+          - complementary [ref=e67]:
+            - generic [ref=e68]:
+              - generic [ref=e69]:
+                - generic [ref=e70]:
+                  - paragraph [ref=e71]: FORENSIC THREADS
+                  - heading "Inquiry History" [level=2] [ref=e72]
+                - button "Refresh conversations" [ref=e73]:
+                  - img [ref=e74]
+              - button "NEW INQUIRY" [ref=e79]:
+                - img [ref=e80]
+                - text: NEW INQUIRY
+            - navigation [ref=e114]:
+              - button "Untitled accountability thread 0 SEGMENTS 2M AGO" [ref=e845]:
+                - generic [ref=e628]: Untitled accountability thread
+                - generic [ref=e629]:
+                  - generic [ref=e630]: 0 SEGMENTS
+                  - generic [ref=e631]: 2M AGO
+              - button "Analyze vendor concentration in federal contract spending since 2020. 4 SEGMENTS 2M AGO" [ref=e723]:
+                - generic [ref=e116]: Analyze vendor concentration in federal contract spending since 2020.
+                - generic [ref=e117]:
+                  - generic [ref=e118]: 4 SEGMENTS
+                  - generic [ref=e119]: 2M AGO
+              - button "Tell me everything risky in Canadian public spending. 8 SEGMENTS 4M AGO" [ref=e724]:
+                - generic [ref=e121]: Tell me everything risky in Canadian public spending.
+                - generic [ref=e122]:
+                  - generic [ref=e123]: 8 SEGMENTS
+                  - generic [ref=e124]: 4M AGO
+              - button "stream clarification probe 2 SEGMENTS 11M AGO" [ref=e725]:
+                - generic [ref=e126]: stream clarification probe
+                - generic [ref=e127]:
+                  - generic [ref=e128]: 2 SEGMENTS
+                  - generic [ref=e129]: 11M AGO
+              - button "Clarification probe 2 SEGMENTS 12M AGO" [ref=e846]:
+                - generic [ref=e131]: Clarification probe
+                - generic [ref=e132]:
+                  - generic [ref=e133]: 2 SEGMENTS
+                  - generic [ref=e134]: 12M AGO
+              - button "SSE adverse media smoke 2 SEGMENTS 43M AGO" [ref=e847]:
+                - generic [ref=e136]: SSE adverse media smoke
+                - generic [ref=e137]:
+                  - generic [ref=e138]: 2 SEGMENTS
+                  - generic [ref=e139]: 43M AGO
+              - button "SSE disconnect persistence 2 SEGMENTS 47M AGO" [ref=e728]:
+                - generic [ref=e141]: SSE disconnect persistence
+                - generic [ref=e142]:
+                  - generic [ref=e143]: 2 SEGMENTS
+                  - generic [ref=e144]: 47M AGO
+              - button "SSE non-stream smoke 2 SEGMENTS 48M AGO" [ref=e848]:
+                - generic [ref=e146]: SSE non-stream smoke
+                - generic [ref=e147]:
+                  - generic [ref=e148]: 2 SEGMENTS
+                  - generic [ref=e149]: 48M AGO
+              - button "SSE SQL smoke 6 SEGMENTS 48M AGO" [ref=e730]:
+                - generic [ref=e151]: SSE SQL smoke
+                - generic [ref=e152]:
+                  - generic [ref=e153]: 6 SEGMENTS
+                  - generic [ref=e154]: 48M AGO
+              - button "Show me the largest charity funding loops 2 SEGMENTS 52M AGO" [ref=e849]:
+                - generic [ref=e156]: Show me the largest charity funding loops
+                - generic [ref=e157]:
+                  - generic [ref=e158]: 2 SEGMENTS
+                  - generic [ref=e159]: 52M AGO
+              - button "Which orgs have adverse coverage? 2 SEGMENTS 52M AGO" [ref=e850]:
+                - generic [ref=e161]: Which orgs have adverse coverage?
+                - generic [ref=e162]:
+                  - generic [ref=e163]: 2 SEGMENTS
+                  - generic [ref=e164]: 52M AGO
+              - button "Final service smoke 4 SEGMENTS 1H AGO" [ref=e165]:
+                - generic [ref=e166]: Final service smoke
+                - generic [ref=e167]:
+                  - generic [ref=e168]: 4 SEGMENTS
+                  - generic [ref=e169]: 1H AGO
+              - 'button "suite: funding_loops 1 SEGMENTS 1H AGO" [ref=e170]':
+                - generic [ref=e171]: "suite: funding_loops"
+                - generic [ref=e172]:
+                  - generic [ref=e173]: 1 SEGMENTS
+                  - generic [ref=e174]: 1H AGO
+              - button "Show me the largest charity funding loops 8 SEGMENTS 1H AGO" [ref=e175]:
+                - generic [ref=e176]: Show me the largest charity funding loops
+                - generic [ref=e177]:
+                  - generic [ref=e178]: 8 SEGMENTS
+                  - generic [ref=e179]: 1H AGO
+              - button "Which orgs have adverse coverage? 10 SEGMENTS 1H AGO" [ref=e180]:
+                - generic [ref=e181]: Which orgs have adverse coverage?
+                - generic [ref=e182]:
+                  - generic [ref=e183]: 10 SEGMENTS
+                  - generic [ref=e184]: 1H AGO
+              - button "Which charities had government funding above 70% and stopped filing? 2 SEGMENTS 1H AGO" [ref=e185]:
+                - generic [ref=e186]: Which charities had government funding above 70% and stopped filing?
+                - generic [ref=e187]:
+                  - generic [ref=e188]: 2 SEGMENTS
+                  - generic [ref=e189]: 1H AGO
+              - button "Which orgs have adverse coverage? 2 SEGMENTS 1H AGO" [ref=e190]:
+                - generic [ref=e191]: Which orgs have adverse coverage?
+                - generic [ref=e192]:
+                  - generic [ref=e193]: 2 SEGMENTS
+                  - generic [ref=e194]: 1H AGO
+          - generic [ref=e91]:
+            - generic [ref=e92]:
+              - generic [ref=e93]:
+                - paragraph [ref=e94]: ACCOUNTABILITY ANALYST
+                - heading "LIVE FORENSIC THREAD" [level=1] [ref=e95]
+                - paragraph [ref=e96]: OFFICIAL SHIP SERVICE · CACHED FINDINGS ACTIVE
+              - button "CATALOG" [ref=e97]:
+                - img [ref=e98]
+                - text: CATALOG
+            - generic [ref=e101]:
+              - generic [ref=e637]: Which federally funded organizations have serious adverse media coverage?
+              - generic [ref=e638]:
+                - generic [ref=e639]:
+                  - button "Thinking trail (18 events, 31.9s) 31.9s" [ref=e692]:
+                    - generic [ref=e641]:
+                      - img [ref=e642]
+                      - generic [ref=e644]: Thinking trail (18 events, 31.9s)
+                    - generic [ref=e645]:
+                      - img [ref=e646]
+                      - text: 31.9s
+                  - list [ref=e650]:
+                    - listitem [ref=e651]:
+                      - generic [ref=e653]: Routing your question...
+                    - listitem [ref=e662]:
+                      - generic [ref=e664]: "Route: execute using adverse_media. The question matches adverse media screening and includes a federal funding scope restriction, satisfying specificity."
+                    - listitem [ref=e665]:
+                      - generic [ref=e667]: Started primitive.
+                    - listitem [ref=e668]:
+                      - generic [ref=e670]: Preparing adverse_signal_discovery.
+                    - listitem [ref=e671]:
+                      - generic [ref=e673]: Searching the web for site:canada.ca/en/auditor-general conflict of interest contribution agreements foundation audit finding recipient...
+                    - listitem [ref=e674]:
+                      - generic [ref=e676]: Searching the web for site:canada.ca/en/environment-climate-change/news pleaded guilty Fisheries Act fined company environmental offences Canada...
+                    - listitem [ref=e677]:
+                      - generic [ref=e679]: Searching the web for site:canada.ca/en/environment-climate-change/news charges Fisheries Act company mine deleterious substance Canada...
+                    - listitem [ref=e680]:
+                      - generic [ref=e682]: Searching the web for site:ppsc-sppc.gc.ca fraud guilty plea company corruption Canada OR site:worldbank.org debarred Canadian company affiliates corruption...
+                    - listitem [ref=e683]:
+                      - generic [ref=e685]: Searching the web for site:canada.ca/en/canadian-heritage funding frozen audit conditions sport organization sexual assault Canada...
+                    - listitem [ref=e686]:
+                      - generic [ref=e688]: Searching the web for site:aer.ca Kearl environmental protection order administrative penalty company Alberta...
+                    - listitem [ref=e689]:
+                      - generic [ref=e691]: Still working after 16.9s.
+                    - listitem [ref=e693]:
+                      - generic [ref=e695]: Web search returned 1 results in 11.5s.
+                    - listitem [ref=e696]:
+                      - generic [ref=e698]: Web search returned 4 results in 12.3s.
+                    - listitem [ref=e699]:
+                      - generic [ref=e701]: Web search returned 4 results in 13.1s.
+                    - listitem [ref=e702]:
+                      - generic [ref=e704]: Web search returned 4 results in 16.1s.
+                    - listitem [ref=e705]:
+                      - generic [ref=e707]: Still working after 26.9s.
+                    - listitem [ref=e708]:
+                      - generic [ref=e710]: Web search returned 4 results in 21.9s.
+                    - listitem [ref=e711]:
+                      - generic [ref=e713]: Web search returned 3 results in 24.4s.
+                - generic [ref=e654]:
+                  - paragraph [ref=e714]: STREAM INTERRUPTED
+                  - paragraph [ref=e715]: ANALYST STREAM TERMINATED BEFORE RESPONSE COMPLETION.
+                  - paragraph [ref=e716]: Request cancelled. The composer is ready for a new question.
+                  - button "RETRY OFFICIAL INQUIRY" [ref=e717]
+            - generic [ref=e106]:
+              - generic [ref=e107]:
+                - text: OFFICIAL INQUIRY COMPOSER
+                - textbox "OFFICIAL INQUIRY COMPOSER" [active] [ref=e108]:
+                  - /placeholder: ENTER INQUIRY REGARDING RECIPIENTS, PROGRAMS, OR RISK SIGNALS...
+                  - text: Which charities had government funding above 70% and stopped filing?
+              - button "EXECUTE" [ref=e718]:
+                - img [ref=e719]
+                - text: EXECUTE
