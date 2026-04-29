@@ -263,3 +263,69 @@
 - Requested Action: none
 - Waiting State: none
 - Body: Native dev stack is running detached. Web is on `http://127.0.0.1:5173`, dossier API is on `http://127.0.0.1:3801`, and ship API is on `http://127.0.0.1:8765`. Logs and PID files are in `output/dev-runtime/`. Verified dossier health, ship health, Vite HTTP 200, and the `/accountability` page in Playwright with screenshot `output/playwright/dev-stack-accountability-20260429T141627Z.png`. Caveat: the GCP Cloud SQL database is reachable but not fully loaded; `/api/search` currently fails with `relation "general.entities" does not exist`.
+
+### msg-sess_019dd96a-bd9d-7a21-9df7-9bb639551a9d-20260429T151544Z-009
+- Timestamp: 2026-04-29T15:15:44Z
+- Session ID: sess_019dd96a-bd9d-7a21-9df7-9bb639551a9d
+- Target Session ID: none
+- Type: claim
+- Files: `services/ship/`, `src/lib/ship.ts`, `src/routes/AccountabilityPage.tsx`, `src/components/ship/`, `output/dev-runtime/`, `output/playwright/`, `chat.md`, `kanban.md`
+- References: `task-sess_019dd96a-bd9d-7a21-9df7-9bb639551a9d-004`
+- Requested Action: Reply here before changing the accountability chat route, frontend client, or ship backend while this diagnosis is running.
+- Waiting State: none
+- Body: Starting live diagnosis of why normal accountability chat queries underperform compared with catalog/scenario prompts. I will test through the browser first, then compare UI payloads, ship routing, recipe selection, database coverage, and logs before deciding whether this is a prompt/router issue, a frontend scenario-bias issue, or missing Cloud SQL data.
+
+### msg-sess_019dd96a-bd9d-7a21-9df7-9bb639551a9d-20260429T151947Z-010
+- Timestamp: 2026-04-29T15:19:47Z
+- Session ID: sess_019dd96a-bd9d-7a21-9df7-9bb639551a9d
+- Target Session ID: none
+- Type: claim
+- Files: `services/ship/output/ship/classifier.py`, `services/ship/output/ship/responses.py`, `services/ship/output/ship/memory.py`, `services/ship/output/ship/predicate_parser.py`, `services/ship/output/ship/diff.py`, `services/ship/output/ship/refine.py`, `services/ship/output/ship/orchestrator.py`, `services/ship/output/ship/summarizer.py`, `services/ship/output/ship/verify.py`, `services/ship/output/ship/server.py`, `services/ship/output/ship/bootstrap_schema.py`, `services/ship/output/ship/recipes/`, `services/ship/output/ship/tests/`, `services/ship/pyproject.toml`, `services/ship/uv.lock`, `MULTITURN.md`, `chat.md`, `kanban.md`
+- References: `task-sess_019dd96a-bd9d-7a21-9df7-9bb639551a9d-004`, `msg-sess_019dd96a-bd9d-7a21-9df7-9bb639551a9d-20260429T151544Z-009`
+- Requested Action: Reply here before editing the iterative analyst backend, memory schema, service package metadata, tests, or `MULTITURN.md`.
+- Waiting State: none
+- Body: The user provided the frozen backend brief for multi-turn iterative investigation. I am shifting the active work from diagnosis into implementation: classifier and memory first, then deterministic refinement/composition execution, orchestrator SSE wiring, schema/endpoints, verifier/summarizer updates, and focused iterative tests.
+
+### msg-sess_019dd9d2-ae3e-7e62-9ba1-7757f39fd4bf-20260429T152024Z-001
+- Timestamp: 2026-04-29T15:20:24Z
+- Session ID: sess_019dd9d2-ae3e-7e62-9ba1-7757f39fd4bf
+- Target Session ID: none
+- Type: info
+- Files: GCP Cloud SQL Postgres database, `chat.md`, `kanban.md`
+- References: `task-sess_019dd9d2-ae3e-7e62-9ba1-7757f39fd4bf-001`
+- Requested Action: Reply here before starting any competing investigation-record deletion or database reload that would race this cleanup.
+- Waiting State: none
+- Body: Starting the user-requested database-only cleanup. I will identify the Cloud SQL database target, enumerate investigation/conversation tables and row counts, delete only investigation runtime records, and verify counts afterward. I will not edit the active iterative analyst backend files.
+
+### msg-sess_019dd96a-b6dd-7e50-a444-f7ab78e398f9-20260429T152322Z-001
+- Timestamp: 2026-04-29T15:23:22Z
+- Session ID: sess_019dd96a-b6dd-7e50-a444-f7ab78e398f9
+- Target Session ID: none
+- Type: info
+- Files: GCP Cloud Run, GCP Artifact Registry, GCP Secret Manager, `chat.md`, `kanban.md`
+- References: `task-sess_019dd96a-b6dd-7e50-a444-f7ab78e398f9-002`
+- Requested Action: Reply here before changing Cloud Run service names, the Artifact Registry repository, or the app-vs-BigQuery project split.
+- Waiting State: none
+- Body: Continuing the deployment with the existing external env split: app infrastructure in `agency2026ot-doge-v-0429`, source-data BigQuery in `agency2026ot-data-1776775157`. I am not editing the iterative analyst backend or deleting database records, and I will only apply narrow IAM fixes needed for Cloud Build/Cloud Run to deploy.
+
+### msg-sess_019dd9d2-ae3e-7e62-9ba1-7757f39fd4bf-20260429T152306Z-002
+- Timestamp: 2026-04-29T15:23:06Z
+- Session ID: sess_019dd9d2-ae3e-7e62-9ba1-7757f39fd4bf
+- Target Session ID: none
+- Type: done
+- Files: GCP Cloud SQL Postgres database, `chat.md`, `kanban.md`
+- References: `task-sess_019dd9d2-ae3e-7e62-9ba1-7757f39fd4bf-001`, `msg-sess_019dd9d2-ae3e-7e62-9ba1-7757f39fd4bf-20260429T152024Z-001`
+- Requested Action: none
+- Waiting State: none
+- Body: Cleared only the `/accountability` conversation-history tables in the GCP Cloud SQL Postgres database. Deleted 2 rows from `investigator.ship_recipe_runs`, 9 rows from `investigator.ship_messages`, and 5 rows from `investigator.ship_conversations`. Verified `investigator.entity_embeddings` stayed unchanged at 851300 rows.
+
+### msg-sess_019dd9d2-ae3e-7e62-9ba1-7757f39fd4bf-20260429T152357Z-003
+- Timestamp: 2026-04-29T15:23:57Z
+- Session ID: sess_019dd9d2-ae3e-7e62-9ba1-7757f39fd4bf
+- Target Session ID: none
+- Type: claim
+- Files: `src/lib/clipboard.ts`, `src/components/ship/MessageActions.tsx`, `output/playwright/`, `chat.md`, `kanban.md`
+- References: `task-sess_019dd9d2-ae3e-7e62-9ba1-7757f39fd4bf-002`
+- Requested Action: Reply here before editing the clipboard helpers or message actions while I fix the `/accountability` load-breaking import error.
+- Waiting State: none
+- Body: The browser is failing because `MessageActions.tsx` imports `copyAnswerAsMarkdown` and `copyText`, but `src/lib/clipboard.ts` only exports `copyToClipboard` and `generateMarkdownReport`. I will add compatible real clipboard exports, keep the visible message actions the same, then verify the accountability page in Playwright.
