@@ -4,7 +4,7 @@
   <h1>Maple DOGE</h1>
 
   <p>
-    A proof-of-concept investigation app for Canadian public spending, procurement,
+    A proof-of-concept OSINT app for Canadian public spending, procurement,
     charity, registry, governance, policy, and adverse-media data.
   </p>
 
