@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { fetchLoopDetail, queryKeys } from '../api/client';
@@ -8,6 +8,7 @@ import {
   mapLoopDetail,
 } from '../api/mappers';
 import LoopGraph from '../components/loops/LoopGraph';
+import { useChat } from '../components/chat/ChatContext';
 
 function LoadingSection({ label }: { label: string }) {
   return (
@@ -26,6 +27,7 @@ export default function LoopDetailPage() {
   const params = useParams<{ loopId: string }>();
   const navigate = useNavigate();
   const loopId = Number(params.loopId);
+  const { setPageContext } = useChat();
 
   const detailQuery = useQuery({
     queryKey: queryKeys.loopDetail(loopId),
@@ -38,6 +40,22 @@ export default function LoopDetailPage() {
     () => (detailQuery.data ? mapLoopDetail(detailQuery.data) : null),
     [detailQuery.data],
   );
+
+  useEffect(() => {
+    if (detail) {
+      setPageContext({
+        type: 'funding_loop',
+        loopId: detail.summary.loopId,
+        path: detail.summary.pathDisplay,
+        participantCount: detail.summary.participantCount,
+        totalFlow: detail.summary.totalFlowWindow,
+        bottleneck: detail.summary.bottleneckWindow,
+        interpretation: detail.summary.interpretationLabel,
+        participants: detail.participants.map(p => ({ name: p.legalName, bn: p.bn })),
+      });
+    }
+    return () => setPageContext(null);
+  }, [detail, setPageContext]);
 
   if (!Number.isFinite(loopId)) {
     return (
