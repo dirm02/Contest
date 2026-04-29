@@ -19,6 +19,8 @@
 </div>
 
 ---
+## Human-In-The-Loop PoC
+Maple DOGE is built to support human reviewers, not replace them. The app ranks and explains public-spending signals, then routes cases into review queues, case workspaces, advisory actions, briefs, and outcome notes so a person can verify sources before any policy or operational decision is made.
 
 ## Project Summary
 
